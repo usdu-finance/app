@@ -1,17 +1,17 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChartColumn } from '@fortawesome/free-solid-svg-icons';
+import { faCalendarAlt } from '@fortawesome/free-solid-svg-icons';
 
-export default function AnalyticsPage() {
+export default function MaturitiesPage() {
 	return (
 		<div className="space-y-8">
 			{/* Header */}
 			<div>
 				<h1 className="text-3xl font-bold text-usdu-black mb-2">
-					Analytics
+					Maturities
 				</h1>
 				<p className="text-usdu-black">
-					Comprehensive analytics and insights for USDU protocol metrics,
-					market performance, and historical data visualization.
+					Track and manage fixed-term positions with clear maturity dates.
+					Monitor your lending terms and plan for upcoming maturities.
 				</p>
 			</div>
 
@@ -20,7 +20,7 @@ export default function AnalyticsPage() {
 				<div className="text-center">
 					<div className="w-16 h-16 bg-usdu-orange/10 rounded-full flex items-center justify-center mx-auto mb-4">
 						<FontAwesomeIcon
-							icon={faChartColumn}
+							icon={faCalendarAlt}
 							className="w-8 h-8 text-usdu-orange"
 						/>
 					</div>
@@ -28,10 +28,9 @@ export default function AnalyticsPage() {
 						Coming Soon
 					</h2>
 					<p className="text-text-secondary">
-						Advanced analytics dashboard with interactive charts,
-						protocol performance metrics, yield tracking, and
-						comprehensive market analysis tools are being developed
-						for enhanced decision-making.
+						The maturities dashboard will help you track all your
+						fixed-term positions in one place. View upcoming maturity
+						dates and manage your lending portfolio effectively.
 					</p>
 				</div>
 			</div>

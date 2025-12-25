@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
 	faBars,
 	faTimes,
 	faWallet,
-	faCoins,
-	faChartLine,
+	faChartColumn,
 	faHome,
+	faDroplet,
+	faPercentage,
+	faCalendarAlt,
+	faEye,
 } from '@fortawesome/free-solid-svg-icons';
 import { PROJECT } from '@/lib/constants';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,8 +24,23 @@ interface DashboardLayoutProps {
 
 const dashboardNavigation = [
 	{ name: 'Overview', href: '/dashboard', icon: faHome },
-	{ name: 'Vaults', href: '/dashboard/vaults', icon: faCoins },
-	{ name: 'Analytics', href: '/dashboard/analytics', icon: faChartLine },
+	{ name: 'Liquidity', href: '/dashboard/liquidity', icon: faDroplet },
+	{
+		name: 'Borrow Rates',
+		href: '/dashboard/borrow-rates',
+		icon: faPercentage,
+	},
+	{
+		name: 'Maturities',
+		href: '/dashboard/maturities',
+		icon: faCalendarAlt,
+	},
+	{
+		name: 'Transparency',
+		href: '/dashboard/transparency',
+		icon: faEye,
+	},
+	{ name: 'Analytics', href: '/dashboard/analytics', icon: faChartColumn },
 ];
 
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
@@ -29,6 +48,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 	const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 	const { isConnected, address } = useAuth();
 	const { open } = useAppKit();
+	const router = useRouter();
 
 	const toggleSidebar = () => {
 		setIsSidebarOpen(!isSidebarOpen);
@@ -123,7 +143,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 									<Link
 										key={item.name}
 										href={item.href}
-										className="flex items-center gap-3 text-text-secondary hover:text-usdu-orange transition-colors text-sm"
+										className={`flex items-center gap-3 transition-colors text-sm rounded-lg px-3 py-2 ${
+											router.pathname === item.href
+												? 'bg-usdu-surface'
+												: 'text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface'
+										}`}
 										onClick={closeMobileMenu}>
 										<FontAwesomeIcon
 											icon={item.icon}
@@ -194,7 +218,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 							<Link
 								key={item.name}
 								href={item.href}
-								className="flex items-center gap-3 text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface transition-colors rounded-lg px-3 py-2"
+								className={`flex items-center gap-3 transition-colors rounded-lg px-3 py-2 ${
+									router.pathname === item.href
+										? 'bg-usdu-surface border'
+										: 'text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface'
+								}`}
 								onClick={closeSidebar}>
 								<FontAwesomeIcon
 									icon={item.icon}
