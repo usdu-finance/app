@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-inter: 'Inter', system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  font-family: var(--font-inter);
+}
+
+body {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  font-feature-settings: 'rlig' 1, 'calt' 1;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for webkit browsers */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #666666;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #888888;
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid #ff6b35;
+  outline-offset: 2px;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Custom Toast Styles - React Hot Toast */
+div[data-hot-toast-wrapper] div[role="status"] {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  padding: 16px !important;
+  position: relative !important;
+}
+
+div[data-hot-toast-wrapper] div[role="status"] > svg {
+  flex-shrink: 0 !important;
+}
+
+div[data-hot-toast-wrapper] div[role="status"] > div {
+  flex: 1 !important;
+  width: 100% !important;
+}
+
+/* Alternative selectors for react-hot-toast */
+.toast-container > div {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  position: relative !important;
+}
+
+.toast-container > div > svg {
+  flex-shrink: 0 !important;
+}
+
+.toast-container > div > div {
+  flex: 1 !important;
+}
