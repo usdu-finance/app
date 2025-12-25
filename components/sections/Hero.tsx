@@ -7,9 +7,9 @@ import { PROJECT } from '@/lib/constants';
 
 export default function Hero() {
 	return (
-		<section className="relative min-h-screen flex items-center justify-center bg-usdu-bg overflow-hidden">
+		<section className="relative min-h-screen flex items-center justify-center bg-usdu-black overflow-hidden">
 			{/* Background Image */}
-			<div className="absolute inset-0 opacity-5">
+			<div className="absolute inset-0 opacity-10">
 				<div
 					className="w-full h-full bg-cover bg-center bg-no-repeat"
 					style={{
@@ -30,7 +30,7 @@ export default function Hero() {
 						initial={{ opacity: 0, scale: 0.9 }}
 						animate={{ opacity: 1, scale: 1 }}
 						transition={{ duration: 0.8, delay: 0.2 }}
-						className="text-5xl md:text-6xl lg:text-7xl font-bold mb-8 text-usdu-black leading-tight">
+						className="text-5xl md:text-6xl lg:text-7xl font-bold mb-8 text-usdu-card leading-tight">
 						Low-Cost Stable Funding
 						<br />
 						<span className="text-usdu-orange">
@@ -43,7 +43,7 @@ export default function Hero() {
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ duration: 0.8, delay: 0.4 }}
-						className="text-xl md:text-2xl text-text-secondary mb-8 max-w-3xl mx-auto leading-relaxed">
+						className="text-xl md:text-2xl text-usdu-card mb-8 max-w-3xl mx-auto leading-relaxed">
 						{PROJECT.description}
 					</motion.p>
 
@@ -101,7 +101,7 @@ export default function Hero() {
 							variant="outline"
 							size="lg"
 							href="/transparency"
-							className="border-usdu-black text-black hover:bg-usdu-orange hover:text-white">
+							className="border-usdu-card text-usdu-card hover:bg-usdu-orange hover:text-white">
 							View Transparency
 						</Button>
 					</motion.div>

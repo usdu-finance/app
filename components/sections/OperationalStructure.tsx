@@ -38,8 +38,8 @@ export default function OperationalStructure() {
 					</h2>
 					<p className="text-xl text-text-secondary max-w-3xl mx-auto">
 						USDU operates through a modular adapter system that
-						separates issuance, collateral custody, and
-						liquidity management.
+						separates issuance, collateral custody, and liquidity
+						management.
 					</p>
 				</motion.div>
 
@@ -48,7 +48,6 @@ export default function OperationalStructure() {
 					whileInView={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.6, delay: 0.4 }}
 					viewport={{ once: true }}>
-
 					<div className="grid lg:grid-cols-2 gap-12 items-start max-w-7xl mx-auto">
 						{/* Left Column - Three Operational Items */}
 						<div className="space-y-8">
@@ -94,7 +93,7 @@ export default function OperationalStructure() {
 							transition={{ duration: 0.6, delay: 0.2 }}
 							viewport={{ once: true }}
 							className="lg:sticky lg:top-8">
-							<div className="bg-usdu-bg p-8 pt-0 rounded-2xl">
+							<div className="p-8 pt-0 rounded-2xl">
 								<div className="text-center mb-6">
 									<h4 className="text-xl font-bold text-usdu-black mb-2">
 										Adapter System Overview
