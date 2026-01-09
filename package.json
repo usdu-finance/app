@@ -1,7 +1,8 @@
 {
 	"name": "@usdu-core/app",
-	"version": "0.1.0",
+	"version": "0.0.1",
 	"private": false,
+	"license": "GPL-3.0",
 	"scripts": {
 		"dev": "next dev --turbopack",
 		"build": "next build",
@@ -13,6 +14,15 @@
 		"format:check": "prettier --check .",
 		"analyze": "ANALYZE=true yarn build"
 	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/usdu-finance/app"
+	},
+	"keywords": [],
+	"bugs": {
+		"url": "https://github.com/usdu-finance/app/issues"
+	},
+	"homepage": "https://github.com/usdu-finance/app#readme",
 	"dependencies": {
 		"@apollo/client": "^3.13.9",
 		"@fortawesome/fontawesome-svg-core": "^7.0.0",
