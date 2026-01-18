@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useReadContracts } from 'wagmi';
 import { ICurveStableSwapNG } from '@/lib/abis/curve/ICurveStableSwapNG';
-import { erc20Abi, parseEther, parseUnits } from 'viem';
+import { erc20Abi, formatUnits, parseEther, parseUnits } from 'viem';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { mainnet } from 'viem/chains';
 
@@ -9,15 +9,18 @@ interface PoolData {
 	// Pool balances
 	usdcBalance: bigint | null;
 	usduBalance: bigint | null;
+	totalBalance: bigint | null;
 
 	// LP token info
 	totalSupply: bigint | null;
 	adapterLPBalance: bigint | null;
-	adapterLPRatio: bigint | null;
 
 	// Pool stats
+	usduPrice: number | null;
 	poolImbalance: boolean | null;
-	usduPrice: bigint | null;
+	usdcRatio: number | null;
+	usduRatio: number | null;
+	adapterLPRatio: number | null;
 
 	// Loading states
 	isLoading: boolean;
@@ -28,11 +31,14 @@ export function usePoolData(): PoolData {
 	const [poolData, setPoolData] = useState<PoolData>({
 		usdcBalance: null,
 		usduBalance: null,
+		totalBalance: null,
 		totalSupply: null,
 		adapterLPBalance: null,
-		adapterLPRatio: null,
-		poolImbalance: null,
 		usduPrice: null,
+		poolImbalance: null,
+		usdcRatio: null,
+		usduRatio: null,
+		adapterLPRatio: null,
 		isLoading: true,
 		error: null,
 	});
@@ -100,9 +106,13 @@ export function usePoolData(): PoolData {
 		const [usdcBalanceResult, usduBalanceResult, totalSupplyResult, adapterLPResult, priceResult] = data;
 
 		// Check if all calls succeeded
-		const allSuccess = [usdcBalanceResult, usduBalanceResult, totalSupplyResult, adapterLPResult, priceResult].every(
-			(result) => result.status === 'success'
-		);
+		const allSuccess = [
+			usdcBalanceResult,
+			usduBalanceResult,
+			totalSupplyResult,
+			adapterLPResult,
+			priceResult,
+		].every((result) => result.status === 'success');
 
 		if (!allSuccess) {
 			setPoolData((prev) => ({
@@ -119,23 +129,28 @@ export function usePoolData(): PoolData {
 		const adapterLPBalance = adapterLPResult.result as bigint;
 
 		// Calculate USDU price (how much USDC for 1 USDU)
-		const usduPrice = priceResult.result ? (priceResult.result as bigint) : null;
+		const usduPrice = priceResult.result ? parseFloat(formatUnits(priceResult.result as bigint, 6)) : null;
 
 		// Calculate ratio for adapter
-		const adapterLPRatio = (adapterLPBalance * parseEther('1')) / totalSupply;
+		const adapterLPRatio = parseFloat(formatUnits((adapterLPBalance * parseEther('1')) / totalSupply, 18));
 
 		// Calculate pool imbalance (check if USDU > 50% of pool)
-		const totalValue = parseUnits(String(usdcBalance), 18 - 6) + usduBalance; // Assuming 1:1 value ratio
-		const usduPercentage = totalValue > 0n ? (usduBalance * 100n) / totalValue : 0n;
-		const poolImbalance = usduPercentage > 50n;
+		const totalBalance = BigInt(parseUnits(String(usdcBalance), 18 - 6)) + usduBalance; // Assuming 1:1 value ratio
+		const usdcRatio =
+			totalBalance > 0n ? parseFloat(formatUnits((usdcBalance * parseEther('1')) / totalBalance, 6)) : 0;
+		const usduRatio = 1 - usdcRatio;
+		const poolImbalance = usduRatio > 0.5;
 
 		setPoolData({
 			usdcBalance,
 			usduBalance,
+			totalBalance,
 			totalSupply,
 			adapterLPBalance,
 			adapterLPRatio,
 			poolImbalance,
+			usduRatio,
+			usdcRatio,
 			usduPrice,
 			isLoading: false,
 			error: null,
@@ -149,7 +164,8 @@ export function usePoolStats() {
 	const poolData = usePoolData();
 
 	// Calculate additional stats
-	const totalPoolValue = poolData.usdcBalance && poolData.usduBalance ? poolData.usdcBalance + poolData.usduBalance : null;
+	const totalPoolValue =
+		poolData.usdcBalance && poolData.usduBalance ? poolData.usdcBalance + poolData.usduBalance : null;
 
 	const usduPercentage =
 		totalPoolValue && totalPoolValue > 0n && poolData.usduBalance

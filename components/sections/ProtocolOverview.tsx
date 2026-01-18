@@ -90,7 +90,7 @@ export default function ProtocolOverview() {
 						</div>
 						<div>
 							<div className="text-2xl font-bold text-usdu-card mb-2">
-								{formatPriceWithState(usduPrice, isLoading, error, 5)}
+								{formatPriceWithState(usduPrice, isLoading, error, 4)}
 							</div>
 							<div className="text-sm text-usdu-card">USDU Price</div>
 						</div>

@@ -35,7 +35,7 @@ export default function Hero() {
 					>
 						Low-Cost Stable Funding
 						<br />
-						<span className="text-usdu-orange">for On-Chain Credit</span>
+						<span className="text-usdu-card">for On-Chain Credit</span>
 					</motion.h1>
 
 					{/* Subtitle */}
@@ -78,7 +78,7 @@ export default function Hero() {
 					>
 						<Button
 							size="lg"
-							href="/dashboard"
+							href="/dashboard/liquidity"
 							icon={<FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />}
 							className="bg-usdu-orange hover:bg-opacity-90 text-white shadow-lg"
 						>

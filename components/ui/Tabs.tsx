@@ -1,9 +1,4 @@
-import {
-	useState,
-	ReactNode,
-	Children,
-	isValidElement,
-} from 'react';
+import { useState, ReactNode, Children, isValidElement } from 'react';
 
 interface TabsProps {
 	children: ReactNode;
@@ -22,23 +17,15 @@ export function Tab({ children, className = '' }: TabProps) {
 	return <div className={className}>{children}</div>;
 }
 
-export default function Tabs({
-	children,
-	selectedIndex,
-	onSelectionChange,
-	className = '',
-}: TabsProps) {
-	const tabChildren = Children.toArray(children).filter(
-		(child) => isValidElement(child) && child.type === Tab
-	);
+export default function Tabs({ children, selectedIndex, onSelectionChange, className = '' }: TabsProps) {
+	const tabChildren = Children.toArray(children).filter((child) => isValidElement(child) && child.type === Tab);
 
 	const [internalSelectedIndex, setInternalSelectedIndex] = useState<number>(
 		selectedIndex !== undefined ? selectedIndex : 0
 	);
 
 	// Use controlled or uncontrolled mode
-	const currentSelectedIndex =
-		selectedIndex !== undefined ? selectedIndex : internalSelectedIndex;
+	const currentSelectedIndex = selectedIndex !== undefined ? selectedIndex : internalSelectedIndex;
 
 	const handleTabClick = (index: number) => {
 		if (selectedIndex === undefined) {
@@ -69,10 +56,9 @@ export default function Tabs({
 										? 'bg-usdu-orange text-white shadow-md'
 										: 'bg-white text-usdu-black hover:bg-usdu-surface border border-usdu-surface'
 								}
-							`}>
-							{isValidElement(child)
-								? child.props.children
-								: child}
+							`}
+						>
+							{isValidElement(child) ? child.props.children : child}
 						</button>
 					);
 				})}
