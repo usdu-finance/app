@@ -1,13 +1,9 @@
 import React from 'react';
-import {
-	ApolloProvider as ApolloProviderBase,
-	ApolloClient,
-	InMemoryCache,
-	createHttpLink,
-} from '@apollo/client';
+import { ApolloProvider as ApolloProviderBase, ApolloClient, InMemoryCache, createHttpLink } from '@apollo/client';
+import { INDEXER_URL } from '../constants';
 
 const httpLink = createHttpLink({
-	uri: process.env.NEXT_PUBLIC_GRAPHQL_URL || 'https://ponder.usdu.finance',
+	uri: INDEXER_URL || 'https://indexer.usdu.finance',
 });
 
 const client = new ApolloClient({
