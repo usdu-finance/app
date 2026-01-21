@@ -58,7 +58,7 @@ export default function Tabs({ children, selectedIndex, onSelectionChange, class
 								}
 							`}
 						>
-							{isValidElement(child) ? child.props.children : child}
+							{isValidElement<TabProps>(child) ? child.props.children : child}
 						</button>
 					);
 				})}
