@@ -1,10 +1,10 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDroplet, faPlus, faMinus, faRoute, faBalanceScale, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { usePoolStats } from '@/hooks/usePoolData';
+import { usePoolData } from '@/hooks/usePoolData';
 import { formatValue } from '@/lib/utils';
 
 export default function LiquidityPage() {
-	const poolStats = usePoolStats();
+	const poolData = usePoolData();
 
 	return (
 		<div className="space-y-8">
@@ -21,19 +21,19 @@ export default function LiquidityPage() {
 			<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface">
 				<h2 className="text-xl font-bold text-usdu-black mb-4">Pool Statistics</h2>
 
-				{poolStats.isLoading && (
+				{poolData.isLoading && (
 					<div className="text-center py-4">
 						<p className="text-text-secondary">Loading pool data...</p>
 					</div>
 				)}
 
-				{poolStats.error && (
+				{poolData.error && (
 					<div className="text-center py-4">
-						<p className="text-red-500">Error: {poolStats.error}</p>
+						<p className="text-red-500">Error: {poolData.error}</p>
 					</div>
 				)}
 
-				{!poolStats.isLoading && !poolStats.error && (
+				{!poolData.isLoading && !poolData.error && (
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
 						{/* Pool Balances */}
 						<div className="space-y-4">
@@ -44,27 +44,23 @@ export default function LiquidityPage() {
 								<div>
 									<p className="text-sm text-text-secondary">USDC Balance</p>
 									<p className="font-medium text-usdu-black">
-										{poolStats.usdcBalance
-											? formatValue((Number(poolStats.usdcBalance) / 1e6).toFixed(2), '', '')
+										{poolData.usdcBalance
+											? formatValue((Number(poolData.usdcBalance) / 1e6).toFixed(2), '', '')
 											: 'N/A'}
 									</p>
 									<p className="text-xs text-text-secondary">
-										{poolStats.usdcPercentage
-											? `${poolStats.usdcPercentage.toFixed(1)}% of 100%`
-											: ''}
+										{poolData.usdcRatio ? `${poolData.usdcRatio.toFixed(1)}% of 100%` : ''}
 									</p>
 								</div>
 								<div>
 									<p className="text-sm text-text-secondary">USDU Balance</p>
 									<p className="font-medium text-usdu-black">
-										{poolStats.usduBalance
-											? formatValue((Number(poolStats.usduBalance) / 1e18).toFixed(2), '', '')
+										{poolData.usduBalance
+											? formatValue((Number(poolData.usduBalance) / 1e18).toFixed(2), '', '')
 											: 'N/A'}
 									</p>
 									<p className="text-xs text-text-secondary">
-										{poolStats.usduPercentage
-											? `${poolStats.usduPercentage.toFixed(1)}% of 100%`
-											: ''}
+										{poolData.usduRatio ? `${poolData.usduRatio.toFixed(1)}% of 100%` : ''}
 									</p>
 								</div>
 							</div>
@@ -79,20 +75,16 @@ export default function LiquidityPage() {
 								<div>
 									<p className="text-sm text-text-secondary">Total LP Supply</p>
 									<p className="font-medium text-usdu-black">
-										{poolStats.totalSupply
-											? formatValue((Number(poolStats.totalSupply) / 1e18).toFixed(2), '', '')
+										{poolData.totalSupply
+											? formatValue((Number(poolData.totalSupply) / 1e18).toFixed(2), '', '')
 											: 'N/A'}
 									</p>
 								</div>
 								<div>
 									<p className="text-sm text-text-secondary">Adapter LP Holdings</p>
 									<p className="font-medium text-usdu-black">
-										{poolStats.adapterLPBalance
-											? formatValue(
-													(Number(poolStats.adapterLPBalance) / 1e18).toFixed(2),
-													'',
-													''
-												)
+										{poolData.adapterLPBalance
+											? formatValue((Number(poolData.adapterLPBalance) / 1e18).toFixed(2), '', '')
 											: 'N/A'}
 									</p>
 									<p className="text-xs text-text-secondary">100%</p>
@@ -110,45 +102,45 @@ export default function LiquidityPage() {
 									<div className="flex items-center space-x-2">
 										<div
 											className={`w-3 h-3 rounded-full ${
-												poolStats.usduPercentage && poolStats.usduPercentage < 50
+												poolData.usduRatio && poolData.usduRatio < 50
 													? 'bg-green-500'
-													: poolStats.usduPercentage &&
-														  poolStats.usduPercentage >= 50 &&
-														  poolStats.adapterLPPercentage &&
-														  poolStats.adapterLPPercentage > 0
+													: poolData.usduRatio &&
+														  poolData.usduRatio >= 50 &&
+														  poolData.adapterLPRatio &&
+														  poolData.adapterLPRatio > 0
 														? 'bg-blue-500'
 														: 'bg-gray-400'
 											}`}
 										></div>
 										<p
 											className={`font-medium ${
-												poolStats.usduPercentage && poolStats.usduPercentage < 50
+												poolData.usduRatio && poolData.usduRatio < 50
 													? 'text-green-600'
-													: poolStats.usduPercentage &&
-														  poolStats.usduPercentage >= 50 &&
-														  poolStats.adapterLPPercentage &&
-														  poolStats.adapterLPPercentage > 0
+													: poolData.usduRatio &&
+														  poolData.usduRatio >= 50 &&
+														  poolData.adapterLPRatio &&
+														  poolData.adapterLPRatio > 0
 														? 'text-blue-600'
 														: 'text-gray-600'
 											}`}
 										>
-											{poolStats.usduPercentage && poolStats.usduPercentage < 50
+											{poolData.usduRatio && poolData.usduRatio < 50
 												? 'Provide with Adapter'
-												: poolStats.usduPercentage &&
-													  poolStats.usduPercentage >= 50 &&
-													  poolStats.adapterLPPercentage &&
-													  poolStats.adapterLPPercentage > 0
+												: poolData.usduRatio &&
+													  poolData.usduRatio >= 50 &&
+													  poolData.adapterLPRatio &&
+													  poolData.adapterLPRatio > 0
 													? 'Remove with Adapter'
 													: 'Not Available'}
 										</p>
 									</div>
 									<p className="text-xs text-text-secondary">
-										{poolStats.usduPercentage && poolStats.usduPercentage < 50
+										{poolData.usduRatio && poolData.usduRatio < 50
 											? 'USDU < 50%, adapter can provide liquidity'
-											: poolStats.usduPercentage &&
-												  poolStats.usduPercentage >= 50 &&
-												  poolStats.adapterLPPercentage &&
-												  poolStats.adapterLPPercentage > 0
+											: poolData.usduRatio &&
+												  poolData.usduRatio >= 50 &&
+												  poolData.adapterLPRatio &&
+												  poolData.adapterLPRatio > 0
 												? 'USDC > 50%, adapter can remove if profitable'
 												: 'Adapter conditions not met'}
 									</p>
@@ -156,11 +148,11 @@ export default function LiquidityPage() {
 								<div>
 									<p className="text-sm text-text-secondary">Total Pool Value</p>
 									<p className="font-medium text-usdu-black">
-										{poolStats.usdcBalance && poolStats.usduBalance
+										{poolData.usdcBalance && poolData.usduBalance
 											? formatValue(
 													(
-														Number(poolStats.usdcBalance) / 1e6 +
-														Number(poolStats.usduBalance) / 1e18
+														Number(poolData.usdcBalance) / 1e6 +
+														Number(poolData.usduBalance) / 1e18
 													).toFixed(0),
 													'',
 													''
@@ -184,12 +176,12 @@ export default function LiquidityPage() {
 										<p className="font-medium text-usdu-black">Best Route</p>
 									</div>
 									<p className="text-sm text-text-secondary">
-										{poolStats.usduPercentage && poolStats.usduPercentage < 50
+										{poolData.usduRatio && poolData.usduRatio < 50
 											? 'Use Protocol Adapter for better balance and pricing'
-											: poolStats.usduPercentage &&
-												  poolStats.usduPercentage >= 50 &&
-												  poolStats.adapterLPPercentage &&
-												  poolStats.adapterLPPercentage > 0
+											: poolData.usduRatio &&
+												  poolData.usduRatio >= 50 &&
+												  poolData.adapterLPRatio &&
+												  poolData.adapterLPRatio > 0
 												? 'Use Protocol Adapter for profitable removal'
 												: 'Direct pool interaction available'}
 									</p>
@@ -245,11 +237,11 @@ export default function LiquidityPage() {
 					<div className="flex items-center space-x-3 mb-4">
 						<FontAwesomeIcon icon={faBalanceScale} className="w-6 h-6 text-usdu-orange" />
 						<h3 className="text-lg font-bold text-usdu-black">Protocol Adapter</h3>
-						{(poolStats.usduPercentage && poolStats.usduPercentage < 50) ||
-						(poolStats.usduPercentage &&
-							poolStats.usduPercentage >= 50 &&
-							poolStats.adapterLPPercentage &&
-							poolStats.adapterLPPercentage > 0) ? (
+						{(poolData.usduRatio && poolData.usduRatio < 50) ||
+						(poolData.usduRatio &&
+							poolData.usduRatio >= 50 &&
+							poolData.adapterLPRatio &&
+							poolData.adapterLPRatio > 0) ? (
 							<span className="bg-usdu-orange/10 text-usdu-orange px-2 py-1 rounded text-xs font-medium">
 								Recommended
 							</span>
