@@ -1,15 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import {
-	faCheckCircle,
-	faHourglass,
-	faTimesCircle,
-	faClock,
-	faExternalLinkAlt,
-} from '@fortawesome/free-solid-svg-icons';
+import { faCheckCircle, faHourglass, faTimesCircle, faClock } from '@fortawesome/free-solid-svg-icons';
 import Accordion from '@/components/ui/Accordion';
+import AddressLink from '@/components/ui/AddressLink';
 import type { StablecoinModule, StablecoinModuleHistoryItem } from '@/hooks/useModulesData';
-import { formatAddress, formatTimestampLocale, formatDateOnly, formatTimeOnly } from '@/lib/utils';
+import { formatTimestampLocale, formatDateOnly, formatTimeOnly } from '@/lib/utils';
 
 interface ModuleCardProps {
 	module: StablecoinModule;
@@ -104,15 +99,7 @@ export default function ModuleCard({ module, moduleHistory, status }: ModuleCard
 								{status.label}
 							</span>
 						</div>
-						<a
-							href={`https://etherscan.io/address/${module.module}`}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="text-usdu-orange hover:text-usdu-orange/80 flex items-center gap-1 font-mono"
-						>
-							{formatAddress(module.module)}
-							<FontAwesomeIcon icon={faExternalLinkAlt} className="w-3 h-3" />
-						</a>
+						<AddressLink address={module.module} type="address" />
 						{module.messageUpdated && (
 							<p className="text-sm text-usdu-black mb-2">
 								<span className="font-medium">Update:</span> {module.messageUpdated}
@@ -174,21 +161,11 @@ export default function ModuleCard({ module, moduleHistory, status }: ModuleCard
 										<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
 											<div className="order-1">
 												<p className="text-text-secondary mb-1">Transaction</p>
-												<a
-													href={`https://etherscan.io/tx/${historyItem.txHash}`}
-													target="_blank"
-													rel="noopener noreferrer"
-													className="text-usdu-orange hover:text-usdu-orange/80 flex items-center gap-1 font-mono"
-												>
-													{formatAddress(historyItem.txHash)}
-													<FontAwesomeIcon icon={faExternalLinkAlt} className="w-3 h-3" />
-												</a>
+												<AddressLink address={historyItem.txHash} type="tx" />
 											</div>
 											<div className="order-2">
 												<p className="text-text-secondary mb-1">Caller</p>
-												<p className="text-usdu-black font-mono">
-													{formatAddress(historyItem.caller)}
-												</p>
+												<AddressLink address={historyItem.caller} type="address" />
 											</div>
 											{historyItem.expiredAt && (
 												<div className="order-3">

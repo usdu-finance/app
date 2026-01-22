@@ -1,15 +1,15 @@
 import { useUSDUTermMaxMarkets } from '@/hooks/useTermMaxMarkets';
 import Tabs, { Tab } from '@/components/ui/Tabs';
+import AddressDisplay from '@/components/ui/AddressDisplay';
 import { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChevronDown, faChevronUp, faCopy, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faChevronUp } from '@fortawesome/free-solid-svg-icons';
 
 export default function BorrowPage() {
 	const { markets, isLoading, error } = useUSDUTermMaxMarkets();
 	const [selectedCollateralIndex, setSelectedCollateralIndex] = useState(0);
 	const [selectedMaturityIndex, setSelectedMaturityIndex] = useState(0);
 	const [isContractsExpanded, setIsContractsExpanded] = useState(false);
-	const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
 
 	// Get unique collaterals from markets
 	const uniqueCollaterals = markets.reduce(
@@ -72,17 +72,6 @@ export default function BorrowPage() {
 				return marketMaturityKey === selectedMaturity.key;
 			})
 		: collateralFilteredMarkets;
-
-	// Copy address to clipboard
-	const copyToClipboard = async (address: string) => {
-		try {
-			await navigator.clipboard.writeText(address);
-			setCopiedAddress(address);
-			setTimeout(() => setCopiedAddress(null), 2000);
-		} catch (err) {
-			console.error('Failed to copy address:', err);
-		}
-	};
 
 	return (
 		<div className="space-y-8">
@@ -432,202 +421,41 @@ export default function BorrowPage() {
 
 										{isContractsExpanded && (
 											<div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-												{/* Market Address */}
-												<div className="bg-gray-50 p-3 rounded-lg">
-													<p className="text-sm text-text-secondary mb-2">Market</p>
-													<div className="flex items-center justify-between">
-														<p className="font-mono text-xs text-usdu-black break-all mr-3">
-															{termMaxMarket.market.contracts.marketAddr}
-														</p>
-														<button
-															onClick={() =>
-																copyToClipboard(
-																	termMaxMarket.market.contracts.marketAddr
-																)
-															}
-															className="flex-shrink-0 p-2 hover:bg-white rounded transition-colors"
-															title="Copy address"
-														>
-															<FontAwesomeIcon
-																icon={
-																	copiedAddress ===
-																	termMaxMarket.market.contracts.marketAddr
-																		? faCheck
-																		: faCopy
-																}
-																className={`w-3 h-3 ${copiedAddress === termMaxMarket.market.contracts.marketAddr ? 'text-green-600' : 'text-usdu-black'}`}
-															/>
-														</button>
-													</div>
-												</div>
-
-												{/* Router Address */}
-												<div className="bg-gray-50 p-3 rounded-lg">
-													<p className="text-sm text-text-secondary mb-2">Router</p>
-													<div className="flex items-center justify-between">
-														<p className="font-mono text-xs text-usdu-black break-all mr-3">
-															{termMaxMarket.market.contracts.routerAddr}
-														</p>
-														<button
-															onClick={() =>
-																copyToClipboard(
-																	termMaxMarket.market.contracts.routerAddr
-																)
-															}
-															className="flex-shrink-0 p-2 hover:bg-white rounded transition-colors"
-															title="Copy address"
-														>
-															<FontAwesomeIcon
-																icon={
-																	copiedAddress ===
-																	termMaxMarket.market.contracts.routerAddr
-																		? faCheck
-																		: faCopy
-																}
-																className={`w-3 h-3 ${copiedAddress === termMaxMarket.market.contracts.routerAddr ? 'text-green-600' : 'text-usdu-black'}`}
-															/>
-														</button>
-													</div>
-												</div>
-
-												{/* Underlying Address */}
-												<div className="bg-gray-50 p-3 rounded-lg">
-													<p className="text-sm text-text-secondary mb-2">Underlying</p>
-													<div className="flex items-center justify-between">
-														<p className="font-mono text-xs text-usdu-black break-all mr-3">
-															{termMaxMarket.market.contracts.underlyingAddr}
-														</p>
-														<button
-															onClick={() =>
-																copyToClipboard(
-																	termMaxMarket.market.contracts.underlyingAddr
-																)
-															}
-															className="flex-shrink-0 p-2 hover:bg-white rounded transition-colors"
-															title="Copy address"
-														>
-															<FontAwesomeIcon
-																icon={
-																	copiedAddress ===
-																	termMaxMarket.market.contracts.underlyingAddr
-																		? faCheck
-																		: faCopy
-																}
-																className={`w-3 h-3 ${copiedAddress === termMaxMarket.market.contracts.underlyingAddr ? 'text-green-600' : 'text-usdu-black'}`}
-															/>
-														</button>
-													</div>
-												</div>
-
-												{/* Collateral Address */}
-												<div className="bg-gray-50 p-3 rounded-lg">
-													<p className="text-sm text-text-secondary mb-2">Collateral</p>
-													<div className="flex items-center justify-between">
-														<p className="font-mono text-xs text-usdu-black break-all mr-3">
-															{termMaxMarket.market.contracts.collateralAddr}
-														</p>
-														<button
-															onClick={() =>
-																copyToClipboard(
-																	termMaxMarket.market.contracts.collateralAddr
-																)
-															}
-															className="flex-shrink-0 p-2 hover:bg-white rounded transition-colors"
-															title="Copy address"
-														>
-															<FontAwesomeIcon
-																icon={
-																	copiedAddress ===
-																	termMaxMarket.market.contracts.collateralAddr
-																		? faCheck
-																		: faCopy
-																}
-																className={`w-3 h-3 ${copiedAddress === termMaxMarket.market.contracts.collateralAddr ? 'text-green-600' : 'text-usdu-black'}`}
-															/>
-														</button>
-													</div>
-												</div>
-
-												{/* FT Address */}
-												<div className="bg-gray-50 p-3 rounded-lg">
-													<p className="text-sm text-text-secondary mb-2">FT Token</p>
-													<div className="flex items-center justify-between">
-														<p className="font-mono text-xs text-usdu-black break-all mr-3">
-															{termMaxMarket.market.contracts.ftAddr}
-														</p>
-														<button
-															onClick={() =>
-																copyToClipboard(termMaxMarket.market.contracts.ftAddr)
-															}
-															className="flex-shrink-0 p-2 hover:bg-white rounded transition-colors"
-															title="Copy address"
-														>
-															<FontAwesomeIcon
-																icon={
-																	copiedAddress ===
-																	termMaxMarket.market.contracts.ftAddr
-																		? faCheck
-																		: faCopy
-																}
-																className={`w-3 h-3 ${copiedAddress === termMaxMarket.market.contracts.ftAddr ? 'text-green-600' : 'text-usdu-black'}`}
-															/>
-														</button>
-													</div>
-												</div>
-
-												{/* XT Address */}
-												<div className="bg-gray-50 p-3 rounded-lg">
-													<p className="text-sm text-text-secondary mb-2">XT Token</p>
-													<div className="flex items-center justify-between">
-														<p className="font-mono text-xs text-usdu-black break-all mr-3">
-															{termMaxMarket.market.contracts.xtAddr}
-														</p>
-														<button
-															onClick={() =>
-																copyToClipboard(termMaxMarket.market.contracts.xtAddr)
-															}
-															className="flex-shrink-0 p-2 hover:bg-white rounded transition-colors"
-															title="Copy address"
-														>
-															<FontAwesomeIcon
-																icon={
-																	copiedAddress ===
-																	termMaxMarket.market.contracts.xtAddr
-																		? faCheck
-																		: faCopy
-																}
-																className={`w-3 h-3 ${copiedAddress === termMaxMarket.market.contracts.xtAddr ? 'text-green-600' : 'text-usdu-black'}`}
-															/>
-														</button>
-													</div>
-												</div>
-
-												{/* GT Address */}
-												<div className="bg-gray-50 p-3 rounded-lg">
-													<p className="text-sm text-text-secondary mb-2">GT Token</p>
-													<div className="flex items-center justify-between">
-														<p className="font-mono text-xs text-usdu-black break-all mr-3">
-															{termMaxMarket.market.contracts.gtAddr}
-														</p>
-														<button
-															onClick={() =>
-																copyToClipboard(termMaxMarket.market.contracts.gtAddr)
-															}
-															className="flex-shrink-0 p-2 hover:bg-white rounded transition-colors"
-															title="Copy address"
-														>
-															<FontAwesomeIcon
-																icon={
-																	copiedAddress ===
-																	termMaxMarket.market.contracts.gtAddr
-																		? faCheck
-																		: faCopy
-																}
-																className={`w-3 h-3 ${copiedAddress === termMaxMarket.market.contracts.gtAddr ? 'text-green-600' : 'text-usdu-black'}`}
-															/>
-														</button>
-													</div>
-												</div>
+												<AddressDisplay
+													label="Market"
+													address={termMaxMarket.market.contracts.marketAddr}
+													type="address"
+												/>
+												<AddressDisplay
+													label="Router"
+													address={termMaxMarket.market.contracts.routerAddr}
+													type="address"
+												/>
+												<AddressDisplay
+													label="Underlying"
+													address={termMaxMarket.market.contracts.underlyingAddr}
+													type="address"
+												/>
+												<AddressDisplay
+													label="Collateral"
+													address={termMaxMarket.market.contracts.collateralAddr}
+													type="address"
+												/>
+												<AddressDisplay
+													label="FT Token"
+													address={termMaxMarket.market.contracts.ftAddr}
+													type="address"
+												/>
+												<AddressDisplay
+													label="XT Token"
+													address={termMaxMarket.market.contracts.xtAddr}
+													type="address"
+												/>
+												<AddressDisplay
+													label="GT Token"
+													address={termMaxMarket.market.contracts.gtAddr}
+													type="address"
+												/>
 											</div>
 										)}
 									</div>

@@ -86,6 +86,94 @@ All hooks return:
 - `Button.tsx` - Button component
 - `Tabs.tsx` - Tab navigation
 - `Accordion.tsx` - Collapsible content
+- `AddressDisplay.tsx` - Full address display box with label, copy button, and explorer link
+- `AddressLink.tsx` - Inline address link for use in tables and compact layouts
+- `StatsCard.tsx` - Statistics card component
+
+### Address Display Components
+
+Two components for displaying blockchain addresses with explorer links:
+
+**AddressDisplay** - Full-featured card display
+```tsx
+<AddressDisplay
+	label="Market Address"
+	address="0x1234..."
+	type="address"  // or "tx" or "block"
+	chainId={1}
+	shorten={false}
+	hideCopy={false}
+	hideExplorer={false}
+/>
+```
+- Use for: Prominent address displays, forms, detailed views
+- Features: Label, full address, copy button, explorer link
+- Styling: Gray background card with padding
+
+**AddressLink** - Compact inline link
+```tsx
+<AddressLink
+	address="0x1234..."
+	type="tx"
+	chainId={1}
+	displayText="Custom text"  // optional, defaults to shortened address
+	hideIcon={false}
+/>
+```
+- Use for: Tables, lists, inline mentions
+- Features: Shortened address, explorer link
+- Styling: Orange link with external icon
+
+**When to use which:**
+- `AddressDisplay`: Standalone address displays where address is the primary content
+- `AddressLink`: Inline address mentions within text, tables, or compact layouts
+
+**Important:** Never manually implement address links with `<a>` tags and hardcoded explorer URLs. Always use these components which:
+- Automatically use the correct block explorer for the chain
+- Handle different address types (address, tx, block)
+- Provide consistent styling across the app
+- Include proper accessibility attributes
+
+### Next.js Link Usage
+
+**CRITICAL: Always use Next.js Link component for URLs**
+
+Next.js provides optimized client-side navigation through its `Link` component. **Never use `<a>` tags directly** for any URL references.
+
+❌ **BAD - Regular anchor tags:**
+```tsx
+<a href="/dashboard" className="...">
+	Dashboard
+</a>
+
+<a href="https://etherscan.io/address/0x123" target="_blank" rel="noopener noreferrer">
+	View on Etherscan
+</a>
+```
+
+✅ **GOOD - Next.js Link:**
+```tsx
+import Link from 'next/link';
+
+// Internal links
+<Link href="/dashboard" className="...">
+	Dashboard
+</Link>
+
+// External links
+<Link href="https://etherscan.io/address/0x123" target="_blank" rel="noopener noreferrer">
+	View on Etherscan
+</Link>
+```
+
+**Benefits of using Link:**
+- Automatic prefetching for faster navigation
+- Client-side routing without full page reloads
+- Better performance and user experience
+- Proper handling of internal vs external links
+- Consistent with Next.js best practices
+
+**Note:** Our `AddressDisplay` and `AddressLink` components already use `Link` internally, so no need to wrap them.
 
 ### Layout Components (`components/layout/`)
 
@@ -269,3 +357,6 @@ export default function MyComponent() {
 7. Follow existing color scheme and spacing patterns
 8. Add `max-w-7xl mx-auto` for constrained content widths
 9. **Import utilities** from `@/lib/utils` (not individual files)
+10. **Always use Next.js `Link`** component for URLs (never `<a>` tags)
+11. **Never duplicate utility functions** in components - use or extend centralized utils
+12. **Use `AddressDisplay` or `AddressLink`** components for blockchain addresses

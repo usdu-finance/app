@@ -1,6 +1,6 @@
 import { cookieStorage, createStorage, http } from '@wagmi/core';
 import { injected, safe } from '@wagmi/connectors';
-import { mainnet, base, AppKitNetwork } from '@reown/appkit/networks';
+import { mainnet, AppKitNetwork } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { APP_DESCRIPTION, APP_NAME } from '../constants';
 
@@ -20,7 +20,7 @@ if (!CONFIG.rpc) {
 
 // Chain configuration
 export const WAGMI_CHAIN = mainnet;
-export const WAGMI_CHAINS = [mainnet, base] as const;
+export const WAGMI_CHAINS = [mainnet] as const;
 
 // Helper functions for chain operations
 export const getChainById = (chainId: number) => {
