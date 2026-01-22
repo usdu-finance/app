@@ -29,12 +29,6 @@ export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
 export const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL;
 
-// Chain IDs
-export const CHAIN_IDS = {
-	MAINNET: 1,
-	BASE: 8453,
-} as const;
-
 // Local storage keys
 export const STORAGE_KEYS = {
 	WALLET_CONNECT: 'walletconnect',
