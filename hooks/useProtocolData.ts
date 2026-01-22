@@ -5,6 +5,7 @@ import { ERC20ABI } from '@/lib/abis/erc/ERC20';
 import { ICurveStableSwapNG } from '@/lib/abis/curve/ICurveStableSwapNG';
 import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
+import { APP_REFETCH } from '@/lib/constants';
 
 interface ProtocolData {
 	usduSupply: string | null;
@@ -60,7 +61,7 @@ export function useProtocolData(): ProtocolData {
 		],
 		query: {
 			enabled: true,
-			refetchInterval: 30000, // Refresh every 30 seconds
+			refetchInterval: APP_REFETCH,
 		},
 	});
 

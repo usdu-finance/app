@@ -67,27 +67,32 @@ export function formatCurrencyStandard(amount: number | string, currency = 'USD'
  * @param value - The value to format
  * @param decimals - Number of decimal places (default: 2)
  */
-export const formatCompactNumber = (value: string | number, decimals = 2): string => {
+export const formatCompactNumber = (
+	value: string | number,
+	decimals = 2,
+	prefix: string = '$',
+	suffix: string = ''
+): string => {
 	const amount = typeof value === 'string' ? parseFloat(value) : value;
 
 	// Handle edge cases
-	if (amount === null || isNaN(amount)) return '0';
-	if (amount === 0) return '0';
+	if (amount === null || isNaN(amount)) return `${prefix}0${suffix}`;
+	if (amount === 0) return `${prefix}0${suffix}`;
 
 	// Handle very small numbers
 	if (amount > 0 && amount < 0.0001) {
-		return '< 0.0001';
+		return `< ${prefix}0.0001${suffix}`;
 	}
 
 	// Handle different ranges
 	if (amount >= 1000000) {
-		return (amount / 1000000).toFixed(decimals).replace(/\.?0+$/, '') + 'M';
+		return prefix + (amount / 1000000).toFixed(decimals).replace(/\.?0+$/, '') + 'M' + suffix;
 	} else if (amount >= 1000) {
-		return (amount / 1000).toFixed(decimals).replace(/\.?0+$/, '') + 'k';
+		return prefix + (amount / 1000).toFixed(decimals).replace(/\.?0+$/, '') + 'k' + suffix;
 	} else {
 		// For numbers < 1000, show up to 4 decimal places for precision
 		const precision = amount < 1 ? 4 : 2;
-		return amount.toFixed(precision).replace(/\.?0+$/, '');
+		return prefix + amount.toFixed(precision).replace(/\.?0+$/, '') + suffix;
 	}
 };
 
@@ -97,10 +102,10 @@ export const formatCompactNumber = (value: string | number, decimals = 2): strin
  * @param prefix - Prefix to add (default: '$')
  * @param suffix - Suffix to add (default: '')
  */
-export function formatValue(value: string | null, prefix: string = '$', suffix: string = ''): string {
+export function formatValue(value: number | string | null, prefix: string = '$', suffix: string = ''): string {
 	if (!value) return '...';
 
-	const num = parseFloat(value);
+	const num = typeof value != 'number' ? parseFloat(value) : value;
 	if (isNaN(num)) return 'Error';
 
 	if (num >= 1e6) {

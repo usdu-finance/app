@@ -4,6 +4,7 @@ import { ICurveStableSwapNG } from '@/lib/abis/curve/ICurveStableSwapNG';
 import { erc20Abi, formatUnits, parseEther, parseUnits } from 'viem';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { mainnet } from 'viem/chains';
+import { APP_REFETCH } from '@/lib/constants';
 
 interface PoolData {
 	// Pool balances
@@ -13,9 +14,11 @@ interface PoolData {
 
 	// LP token info
 	totalSupply: bigint | null;
+	virtualPrice: bigint | null;
 	adapterLPBalance: bigint | null;
 
 	// Pool stats
+	totalValue: number | null;
 	usduPrice: number | null;
 	poolImbalance: boolean | null;
 	usdcRatio: number | null;
@@ -34,6 +37,8 @@ export function usePoolData(): PoolData {
 		totalBalance: null,
 		totalSupply: null,
 		adapterLPBalance: null,
+		virtualPrice: null,
+		totalValue: null,
 		usduPrice: null,
 		poolImbalance: null,
 		usdcRatio: null,
@@ -82,9 +87,15 @@ export function usePoolData(): PoolData {
 				functionName: 'get_dy',
 				args: [1n, 0n, BigInt(1e18)], // from token 1 (USDU) to token 0 (USDC), 1 USDU (1e18 wei)
 			},
+			// Virtual Price for LP
+			{
+				address: poolAddress,
+				abi: ICurveStableSwapNG,
+				functionName: 'get_virtual_price',
+			},
 		],
 		query: {
-			refetchInterval: 30000, // Refetch in seconds
+			refetchInterval: APP_REFETCH,
 		},
 	});
 
@@ -103,7 +114,14 @@ export function usePoolData(): PoolData {
 			return;
 		}
 
-		const [usdcBalanceResult, usduBalanceResult, totalSupplyResult, adapterLPResult, priceResult] = data;
+		const [
+			usdcBalanceResult,
+			usduBalanceResult,
+			totalSupplyResult,
+			adapterLPResult,
+			priceResult,
+			virtualPriceResult,
+		] = data;
 
 		// Check if all calls succeeded
 		const allSuccess = [
@@ -112,6 +130,7 @@ export function usePoolData(): PoolData {
 			totalSupplyResult,
 			adapterLPResult,
 			priceResult,
+			virtualPriceResult,
 		].every((result) => result.status === 'success');
 
 		if (!allSuccess) {
@@ -136,10 +155,14 @@ export function usePoolData(): PoolData {
 
 		// Calculate pool imbalance (check if USDU > 50% of pool)
 		const totalBalance = BigInt(parseUnits(String(usdcBalance), 18 - 6)) + usduBalance; // Assuming 1:1 value ratio
+		const totalValue = parseFloat(formatUnits(totalBalance, 18));
 		const usdcRatio =
 			totalBalance > 0n ? parseFloat(formatUnits((usdcBalance * parseEther('1')) / totalBalance, 6)) : 0;
 		const usduRatio = 1 - usdcRatio;
 		const poolImbalance = usduRatio > 0.5;
+
+		// Virtual Price calculation
+		const virtualPrice = virtualPriceResult.result as bigint;
 
 		setPoolData({
 			usdcBalance,
@@ -149,41 +172,15 @@ export function usePoolData(): PoolData {
 			adapterLPBalance,
 			adapterLPRatio,
 			poolImbalance,
+			totalValue,
 			usduRatio,
 			usdcRatio,
 			usduPrice,
+			virtualPrice,
 			isLoading: false,
 			error: null,
 		});
 	}, [data, isError, isLoading]);
 
 	return poolData;
-}
-
-export function usePoolStats() {
-	const poolData = usePoolData();
-
-	// Calculate additional stats
-	const totalPoolValue =
-		poolData.usdcBalance && poolData.usduBalance ? poolData.usdcBalance + poolData.usduBalance : null;
-
-	const usduPercentage =
-		totalPoolValue && totalPoolValue > 0n && poolData.usduBalance
-			? Number((poolData.usduBalance * 10000n) / totalPoolValue) / 100 // 2 decimal precision
-			: null;
-
-	const usdcPercentage = usduPercentage !== null ? 100 - usduPercentage : null;
-
-	const adapterLPPercentage =
-		poolData.totalSupply && poolData.totalSupply > 0n && poolData.adapterLPBalance
-			? Number((poolData.adapterLPBalance * 10000n) / poolData.totalSupply) / 100
-			: null;
-
-	return {
-		...poolData,
-		totalPoolValue,
-		usduPercentage,
-		usdcPercentage,
-		adapterLPPercentage,
-	};
 }

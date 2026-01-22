@@ -60,6 +60,7 @@ export default function GovernancePage() {
 
 Custom hooks in `hooks/` directory:
 
+**Module Data Hooks (GraphQL)**
 ```tsx
 // useModulesData.ts - Governance module data
 export function useModulesData(chainId); // Current modules
@@ -68,16 +69,99 @@ export function useModuleHistory(chainId, module); // Specific module history
 export function useModuleByAddress(address, chainId); // Single module with history
 ```
 
-All hooks return:
+**Module Financials Hook (Blockchain)**
+```tsx
+// useModulesFinancials.ts - Fetch on-chain financial data for active modules
+export function useModulesFinancials(chainId);
+// Returns:
+{
+  byAddress: Map<string, ModuleFinancials>, // Data per module
+  totalAssets: number,                      // Total across all modules
+  totalMinted: number,                      // Total across all modules
+  totalAssetsRaw: bigint,                   // Raw values
+  totalMintedRaw: bigint,
+  isLoading: boolean,
+  error: string | null
+}
+// ModuleFinancials: { address, totalAssets, totalMinted, totalAssetsRaw, totalMintedRaw }
+// Note: totalAssets and totalMinted are numbers (parseFloat of formatted units)
+```
 
+**Curator Balances Hook (Blockchain)**
+```tsx
+// useCuratorBalances.ts - Fetch token balances from DAO curator address
+export function useCuratorBalances(chainId);
+// Returns:
+{
+  usdu: TokenBalance,  // USDU balance (18 decimals)
+  usdc: TokenBalance,  // USDC balance (6 decimals)
+  total: number,       // Combined total (USDC scaled to 18 decimals)
+  isLoading: boolean,
+  error: string | null
+}
+// TokenBalance: { token, address, balance, balanceRaw, decimals }
+// Note: USDC is scaled from 6 to 18 decimals before adding to total
+// balance is a number (parseFloat of formatted units)
+```
+
+**Protocol Data Hooks (Blockchain)**
+```tsx
+// useProtocolData.ts - USDU supply, DEX liquidity, price
+export function useProtocolData();
+```
+
+All hooks return standard format with:
 ```tsx
 {
   data: T[],
   isLoading: boolean,
   error: string | null,
-  refetch: () => void
+  refetch?: () => void
 }
 ```
+
+### Configuration and Constants
+
+**CRITICAL: Always use centralized constants, never hardcode configuration values**
+
+All configuration values should be defined in `lib/constants.ts` and sourced from environment variables where appropriate.
+
+**Refetch Intervals**
+
+```tsx
+// lib/constants.ts
+export const APP_REFETCH = parseInt(process.env.NEXT_PUBLIC_APP_REFETCH || '60000');
+
+// ✅ GOOD - Use the constant
+import { APP_REFETCH } from '@/lib/constants';
+
+const { data } = useReadContracts({
+  contracts,
+  query: {
+    refetchInterval: APP_REFETCH,
+  },
+});
+
+// ❌ BAD - Don't hardcode
+const { data } = useReadContracts({
+  contracts,
+  query: {
+    refetchInterval: 30000, // NO!
+  },
+});
+```
+
+**Benefits:**
+- Centralized configuration management
+- Environment-specific values (dev vs production)
+- Easy to change behavior without code modifications
+- Consistent values across all hooks
+
+**Pattern:**
+1. Add constant to `lib/constants.ts`
+2. Use environment variable with sensible default
+3. Use `parseInt` for numeric values
+4. Import and use the constant throughout the app
 
 ## UI Components
 
@@ -411,3 +495,4 @@ export const SEO = {
 11. **Never duplicate utility functions** in components - use or extend centralized utils
 12. **Use `AddressDisplay` or `AddressLink`** components for blockchain addresses
 13. **Use centralized SEO constants** from `lib/constants.ts` (never hardcode metadata)
+14. **Use centralized configuration constants** like `APP_REFETCH` (never hardcode config values)
