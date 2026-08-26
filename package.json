@@ -36,7 +36,7 @@
 		"@reown/appkit": "^1.6.4",
 		"@reown/appkit-adapter-wagmi": "^1.6.4",
 		"@tanstack/react-query": "^5.84.0",
-		"@usdu-finance/usdu-core": "^0.0.7",
+		"@usdu-finance/usdu-core": "^0.1.1",
 		"clsx": "^2.1.1",
 		"framer-motion": "^12.23.12",
 		"graphql": "^16.11.0",

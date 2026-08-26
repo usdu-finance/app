@@ -9,7 +9,9 @@ interface LayoutProps {
 
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter()
-  const isDashboard = router.pathname.startsWith('/dashboard')
+  // asPath (not pathname) so a mistyped /dashboard/* URL still gets the
+  // dashboard chrome when Next.js falls back to pages/404.tsx
+  const isDashboard = router.asPath.startsWith('/dashboard')
 
   if (isDashboard) {
     return <DashboardLayout>{children}</DashboardLayout>

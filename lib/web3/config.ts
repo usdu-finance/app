@@ -1,6 +1,6 @@
 import { cookieStorage, createStorage, http } from '@wagmi/core';
 import { injected, safe } from '@wagmi/connectors';
-import { mainnet, AppKitNetwork } from '@reown/appkit/networks';
+import { mainnet, arbitrum, base, optimism, polygon, AppKitNetwork } from '@reown/appkit/networks';
 import { WagmiAdapter } from '@reown/appkit-adapter-wagmi';
 import { APP_DESCRIPTION, APP_NAME } from '../constants';
 
@@ -20,7 +20,7 @@ if (!CONFIG.rpc) {
 
 // Chain configuration
 export const WAGMI_CHAIN = mainnet;
-export const WAGMI_CHAINS = [mainnet] as const;
+export const WAGMI_CHAINS = [mainnet, arbitrum, base, optimism, polygon] as const;
 
 // Helper functions for chain operations
 export const getChainById = (chainId: number) => {
@@ -53,7 +53,10 @@ export const WAGMI_ADAPTER = new WagmiAdapter({
 	networks: WAGMI_CHAINS as unknown as AppKitNetwork[],
 	transports: {
 		[mainnet.id]: http(`https://eth-mainnet.g.alchemy.com/v2/${CONFIG.rpc}`),
-		// [base.id]: http(`https://base-mainnet.g.alchemy.com/v2/${CONFIG.rpc}`),
+		[arbitrum.id]: http(`https://arb-mainnet.g.alchemy.com/v2/${CONFIG.rpc}`),
+		[base.id]: http(`https://base-mainnet.g.alchemy.com/v2/${CONFIG.rpc}`),
+		[optimism.id]: http(`https://opt-mainnet.g.alchemy.com/v2/${CONFIG.rpc}`),
+		[polygon.id]: http(`https://polygon-mainnet.g.alchemy.com/v2/${CONFIG.rpc}`),
 	},
 	batch: {
 		multicall: {

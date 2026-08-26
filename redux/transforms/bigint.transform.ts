@@ -1,4 +1,5 @@
 import { createTransform } from 'redux-persist';
+import { onChainApi } from '../api/onChainApi';
 
 // Helper functions for BigInt serialization
 const serializeBigInt = (obj: any): any => {
@@ -59,8 +60,8 @@ export const bigIntTransform = createTransform(
   (outboundState: any) => {
     return deserializeBigInt(outboundState);
   },
-  // Apply to app reducer
-  { whitelist: ['app'] }
+  // Apply to app reducer and any on-chain query cache (bigint balances/amounts)
+  { whitelist: ['app', onChainApi.reducerPath] }
 );
 
 // Export helper functions for use in other places

@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useReadContracts } from 'wagmi';
-import { formatUnits } from 'viem';
-import { ERC20ABI } from '@/lib/abis/erc/ERC20';
-import { ICurveStableSwapNG } from '@/lib/abis/curve/ICurveStableSwapNG';
+import { erc20Abi, formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
-import { ADDRESS } from '@usdu-finance/usdu-core';
+import { ADDRESS, ICurveStableSwapNG_ABI } from '@usdu-finance/usdu-core';
 import { APP_REFETCH } from '@/lib/constants';
+import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
 
 interface ProtocolData {
 	usduSupply: string | null;
@@ -25,8 +24,8 @@ export function useProtocolData(): ProtocolData {
 	});
 
 	const USDU = ADDRESS[mainnet.id].usduStable;
-	const USDC = ADDRESS[mainnet.id].usdc;
-	const poolAddress = ADDRESS[mainnet.id].curveStableSwapNG_USDUUSDC_2;
+	const USDC = USDC_MAINNET;
+	const poolAddress = ADDRESS[mainnet.id].curveStableSwapNG_USDCUSDU;
 
 	// Contract read calls
 	const { data, error, isLoading } = useReadContracts({
@@ -34,27 +33,27 @@ export function useProtocolData(): ProtocolData {
 			// USDU Total Supply
 			{
 				address: USDU,
-				abi: ERC20ABI,
+				abi: erc20Abi,
 				functionName: 'totalSupply',
 			},
 			// USDU balance in Curve pool (DEX Liquidity)
 			{
 				address: USDU,
-				abi: ERC20ABI,
+				abi: erc20Abi,
 				functionName: 'balanceOf',
 				args: [poolAddress],
 			},
 			// USDC balance in Curve pool (for total liquidity calculation)
 			{
 				address: USDC,
-				abi: ERC20ABI,
+				abi: erc20Abi,
 				functionName: 'balanceOf',
 				args: [poolAddress],
 			},
 			// USDU price from Curve (get_dy: from USDU to USDC, 1 USDU = ? USDC)
 			{
 				address: poolAddress,
-				abi: ICurveStableSwapNG,
+				abi: ICurveStableSwapNG_ABI,
 				functionName: 'get_dy',
 				args: [1n, 0n, BigInt(1e18)], // from token 1 (USDU) to token 0 (USDC), 1 USDU (1e18 wei)
 			},
