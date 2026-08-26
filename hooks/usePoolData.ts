@@ -1,11 +1,5 @@
-import { useState, useEffect } from 'react';
-import { useReadContracts } from 'wagmi';
-import { ICurveStableSwapNG } from '@/lib/abis/curve/ICurveStableSwapNG';
-import { erc20Abi, formatUnits, parseEther, parseUnits } from 'viem';
-import { ADDRESS } from '@usdu-finance/usdu-core';
-import { mainnet } from 'viem/chains';
+import { useGetPoolDataQuery } from '@/redux/api/onChainApi';
 import { APP_REFETCH } from '@/lib/constants';
-import { USDU_CURVE_ADAPTER_V1_1_USDC_2 } from '@/lib/whitelisted-tokens';
 
 interface PoolData {
 	// Pool balances
@@ -31,157 +25,29 @@ interface PoolData {
 	error: string | null;
 }
 
+// Thin wrapper around the Redux-cached on-chain query: data survives navigation and
+// page refreshes (via redux-persist), painting instantly from cache while
+// `refetchOnMountOrArgChange` confirms freshness in the background.
 export function usePoolData(): PoolData {
-	const [poolData, setPoolData] = useState<PoolData>({
-		usdcBalance: null,
-		usduBalance: null,
-		totalBalance: null,
-		totalSupply: null,
-		adapterLPBalance: null,
-		virtualPrice: null,
-		totalValue: null,
-		usduPrice: null,
-		poolImbalance: null,
-		usdcRatio: null,
-		usduRatio: null,
-		adapterLPRatio: null,
-		isLoading: true,
-		error: null,
+	const { data, error, isLoading } = useGetPoolDataQuery(undefined, {
+		pollingInterval: APP_REFETCH,
+		refetchOnMountOrArgChange: 30,
 	});
 
-	const poolAddress = ADDRESS[mainnet.id].curveStableSwapNG_USDCUSDU;
-	const adapterAddress = USDU_CURVE_ADAPTER_V1_1_USDC_2;
-
-	// Contract read calls
-	const { data, isError, isLoading } = useReadContracts({
-		contracts: [
-			// Pool balances
-			{
-				address: poolAddress,
-				abi: ICurveStableSwapNG,
-				functionName: 'balances',
-				args: [0n], // USDC balance (index 0)
-			},
-			{
-				address: poolAddress,
-				abi: ICurveStableSwapNG,
-				functionName: 'balances',
-				args: [1n], // USDU balance (index 1)
-			},
-			// LP token total supply
-			{
-				address: poolAddress,
-				abi: ICurveStableSwapNG,
-				functionName: 'totalSupply',
-			},
-			// Adapter LP balance
-			{
-				address: poolAddress,
-				abi: erc20Abi,
-				functionName: 'balanceOf',
-				args: [adapterAddress],
-			},
-			// USDU price from Curve (get_dy: from USDU to USDC, 1 USDU = ? USDC)
-			{
-				address: poolAddress,
-				abi: ICurveStableSwapNG,
-				functionName: 'get_dy',
-				args: [1n, 0n, BigInt(1e18)], // from token 1 (USDU) to token 0 (USDC), 1 USDU (1e18 wei)
-			},
-			// Virtual Price for LP
-			{
-				address: poolAddress,
-				abi: ICurveStableSwapNG,
-				functionName: 'get_virtual_price',
-			},
-		],
-		query: {
-			refetchInterval: APP_REFETCH,
-		},
-	});
-
-	useEffect(() => {
-		if (isLoading) {
-			setPoolData((prev) => ({ ...prev, isLoading: true, error: null }));
-			return;
-		}
-
-		if (isError || !data) {
-			setPoolData((prev) => ({
-				...prev,
-				isLoading: false,
-				error: 'Failed to fetch pool data',
-			}));
-			return;
-		}
-
-		const [
-			usdcBalanceResult,
-			usduBalanceResult,
-			totalSupplyResult,
-			adapterLPResult,
-			priceResult,
-			virtualPriceResult,
-		] = data;
-
-		// Check if all calls succeeded
-		const allSuccess = [
-			usdcBalanceResult,
-			usduBalanceResult,
-			totalSupplyResult,
-			adapterLPResult,
-			priceResult,
-			virtualPriceResult,
-		].every((result) => result.status === 'success');
-
-		if (!allSuccess) {
-			setPoolData((prev) => ({
-				...prev,
-				isLoading: false,
-				error: 'Some contract calls failed',
-			}));
-			return;
-		}
-
-		const usdcBalance = usdcBalanceResult.result as bigint;
-		const usduBalance = usduBalanceResult.result as bigint;
-		const totalSupply = totalSupplyResult.result as bigint;
-		const adapterLPBalance = adapterLPResult.result as bigint;
-
-		// Calculate USDU price (how much USDC for 1 USDU)
-		const usduPrice = priceResult.result ? parseFloat(formatUnits(priceResult.result as bigint, 6)) : null;
-
-		// Calculate ratio for adapter
-		const adapterLPRatio = parseFloat(formatUnits((adapterLPBalance * parseEther('1')) / totalSupply, 18));
-
-		// Calculate pool imbalance (check if USDU > 50% of pool)
-		const totalBalance = BigInt(parseUnits(String(usdcBalance), 18 - 6)) + usduBalance; // Assuming 1:1 value ratio
-		const totalValue = parseFloat(formatUnits(totalBalance, 18));
-		const usdcRatio =
-			totalBalance > 0n ? parseFloat(formatUnits((usdcBalance * parseEther('1')) / totalBalance, 6)) : 0;
-		const usduRatio = 1 - usdcRatio;
-		const poolImbalance = usduRatio > 0.5;
-
-		// Virtual Price calculation
-		const virtualPrice = virtualPriceResult.result as bigint;
-
-		setPoolData({
-			usdcBalance,
-			usduBalance,
-			totalBalance,
-			totalSupply,
-			adapterLPBalance,
-			adapterLPRatio,
-			poolImbalance,
-			totalValue,
-			usduRatio,
-			usdcRatio,
-			usduPrice,
-			virtualPrice,
-			isLoading: false,
-			error: null,
-		});
-	}, [data, isError, isLoading]);
-
-	return poolData;
+	return {
+		usdcBalance: data?.usdcBalance ?? null,
+		usduBalance: data?.usduBalance ?? null,
+		totalBalance: data?.totalBalance ?? null,
+		totalSupply: data?.totalSupply ?? null,
+		virtualPrice: data?.virtualPrice ?? null,
+		adapterLPBalance: data?.adapterLPBalance ?? null,
+		totalValue: data?.totalValue ?? null,
+		usduPrice: data?.usduPrice ?? null,
+		poolImbalance: data?.poolImbalance ?? null,
+		usdcRatio: data?.usdcRatio ?? null,
+		usduRatio: data?.usduRatio ?? null,
+		adapterLPRatio: data?.adapterLPRatio ?? null,
+		isLoading,
+		error: error ? (typeof error === 'string' ? error : 'Failed to fetch pool data') : null,
+	};
 }

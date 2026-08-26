@@ -1,4 +1,5 @@
 import { configureStore } from '@reduxjs/toolkit';
+import { setupListeners } from '@reduxjs/toolkit/query';
 import { combineReducers } from 'redux';
 import { persistStore, persistReducer } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
@@ -6,12 +7,16 @@ import { FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist
 
 // slices
 import { appReducer } from './slices/app.slice';
+// apis
+import { onChainApi } from './api/onChainApi';
 // transforms
 import { bigIntTransform } from './transforms/bigint.transform';
+import { createApiCacheTransform } from './transforms/apiCache.transform';
 
 // Combine reducers
 const rootReducer = combineReducers({
 	app: appReducer,
+	[onChainApi.reducerPath]: onChainApi.reducer,
 });
 
 // Redux Persist configuration
@@ -19,10 +24,10 @@ const persistConfig = {
 	key: 'usdu_finance_redux_store',
 	version: 1,
 	storage,
-	// Persist app preferences and notifications
-	whitelist: ['app'],
-	// Add BigInt transform
-	transforms: [bigIntTransform],
+	// Persist app preferences/notifications and the on-chain data cache
+	whitelist: ['app', onChainApi.reducerPath],
+	// Add BigInt transform, then trim the on-chain cache down to just its query results
+	transforms: [bigIntTransform, createApiCacheTransform(onChainApi)],
 };
 
 // Create persisted reducer
@@ -64,8 +69,11 @@ export const store = configureStore({
 					);
 				},
 			},
-		}),
+		}).concat(onChainApi.middleware),
 });
+
+// Enables refetchOnFocus/refetchOnReconnect behavior for RTK Query
+setupListeners(store.dispatch);
 
 // Create persistor
 export const persistor = persistStore(store);
