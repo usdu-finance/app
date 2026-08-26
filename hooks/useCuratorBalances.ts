@@ -4,6 +4,7 @@ import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { ERC20ABI } from '@/lib/abis/erc/ERC20';
 import { APP_REFETCH } from '@/lib/constants';
+import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
 
 export interface TokenBalance {
 	token: string;
@@ -27,11 +28,11 @@ export interface CuratorBalancesData {
  * @returns Token balances for USDU and USDC held by the curator/DAO
  */
 export function useCuratorBalances(chainId: number = mainnet.id): CuratorBalancesData {
-	// Only mainnet has curator, usduStable, and usdc addresses
-	const addresses = ADDRESS[chainId as keyof typeof ADDRESS];
-	const curatorAddress = 'curator' in addresses ? addresses.curator : undefined;
-	const usduAddress = 'usduStable' in addresses ? addresses.usduStable : undefined;
-	const usdcAddress = 'usdc' in addresses ? addresses.usdc : undefined;
+	// Only mainnet has curator and usduStable addresses; USDC is the same on every chain
+	const mainnetAddresses = chainId === mainnet.id ? ADDRESS[mainnet.id] : undefined;
+	const curatorAddress = mainnetAddresses?.curator;
+	const usduAddress = mainnetAddresses?.usduStable;
+	const usdcAddress = mainnetAddresses ? USDC_MAINNET : undefined;
 
 	// Build contract calls for balanceOf
 	const contracts = [

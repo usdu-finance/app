@@ -5,6 +5,7 @@ import { erc20Abi, formatUnits, parseEther, parseUnits } from 'viem';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { mainnet } from 'viem/chains';
 import { APP_REFETCH } from '@/lib/constants';
+import { USDU_CURVE_ADAPTER_V1_1_USDC_2 } from '@/lib/whitelisted-tokens';
 
 interface PoolData {
 	// Pool balances
@@ -48,8 +49,8 @@ export function usePoolData(): PoolData {
 		error: null,
 	});
 
-	const poolAddress = ADDRESS[mainnet.id].curveStableSwapNG_USDUUSDC_2;
-	const adapterAddress = ADDRESS[mainnet.id].usduCurveAdapterV1_1_USDC_2;
+	const poolAddress = ADDRESS[mainnet.id].curveStableSwapNG_USDCUSDU;
+	const adapterAddress = USDU_CURVE_ADAPTER_V1_1_USDC_2;
 
 	// Contract read calls
 	const { data, isError, isLoading } = useReadContracts({

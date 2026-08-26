@@ -6,6 +6,7 @@ import { ICurveStableSwapNG } from '@/lib/abis/curve/ICurveStableSwapNG';
 import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { APP_REFETCH } from '@/lib/constants';
+import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
 
 interface ProtocolData {
 	usduSupply: string | null;
@@ -25,8 +26,8 @@ export function useProtocolData(): ProtocolData {
 	});
 
 	const USDU = ADDRESS[mainnet.id].usduStable;
-	const USDC = ADDRESS[mainnet.id].usdc;
-	const poolAddress = ADDRESS[mainnet.id].curveStableSwapNG_USDUUSDC_2;
+	const USDC = USDC_MAINNET;
+	const poolAddress = ADDRESS[mainnet.id].curveStableSwapNG_USDCUSDU;
 
 	// Contract read calls
 	const { data, error, isLoading } = useReadContracts({
