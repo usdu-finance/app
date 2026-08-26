@@ -1,7 +1,7 @@
 import { useReadContracts } from 'wagmi';
-import { formatUnits } from 'viem';
+import { erc20Abi, formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
-import { ADDRESS, ERC20_ABI } from '@usdu-finance/usdu-core';
+import { ADDRESS } from '@usdu-finance/usdu-core';
 import { APP_REFETCH } from '@/lib/constants';
 import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
 
@@ -37,13 +37,13 @@ export function useCuratorBalances(chainId: number = mainnet.id): CuratorBalance
 	const contracts = [
 		{
 			address: usduAddress as `0x${string}`,
-			abi: ERC20_ABI,
+			abi: erc20Abi,
 			functionName: 'balanceOf' as const,
 			args: [curatorAddress as `0x${string}`],
 		},
 		{
 			address: usdcAddress as `0x${string}`,
-			abi: ERC20_ABI,
+			abi: erc20Abi,
 			functionName: 'balanceOf' as const,
 			args: [curatorAddress as `0x${string}`],
 		},
