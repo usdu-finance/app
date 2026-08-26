@@ -1,5 +1,5 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faDroplet, faPlus, faMinus, faRoute, faBalanceScale, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
+import { faPlus, faMinus, faRoute, faBalanceScale, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
 import { usePoolData } from '@/hooks/usePoolData';
 import { formatValue } from '@/lib/utils';
 
