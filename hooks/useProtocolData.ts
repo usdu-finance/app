@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
-import { ERC20ABI } from '@/lib/abis/erc/ERC20';
-import { ICurveStableSwapNG } from '@/lib/abis/curve/ICurveStableSwapNG';
 import { mainnet } from 'viem/chains';
-import { ADDRESS } from '@usdu-finance/usdu-core';
+import { ADDRESS, ERC20_ABI, ICurveStableSwapNG_ABI } from '@usdu-finance/usdu-core';
 import { APP_REFETCH } from '@/lib/constants';
 import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
 
@@ -35,27 +33,27 @@ export function useProtocolData(): ProtocolData {
 			// USDU Total Supply
 			{
 				address: USDU,
-				abi: ERC20ABI,
+				abi: ERC20_ABI,
 				functionName: 'totalSupply',
 			},
 			// USDU balance in Curve pool (DEX Liquidity)
 			{
 				address: USDU,
-				abi: ERC20ABI,
+				abi: ERC20_ABI,
 				functionName: 'balanceOf',
 				args: [poolAddress],
 			},
 			// USDC balance in Curve pool (for total liquidity calculation)
 			{
 				address: USDC,
-				abi: ERC20ABI,
+				abi: ERC20_ABI,
 				functionName: 'balanceOf',
 				args: [poolAddress],
 			},
 			// USDU price from Curve (get_dy: from USDU to USDC, 1 USDU = ? USDC)
 			{
 				address: poolAddress,
-				abi: ICurveStableSwapNG,
+				abi: ICurveStableSwapNG_ABI,
 				functionName: 'get_dy',
 				args: [1n, 0n, BigInt(1e18)], // from token 1 (USDU) to token 0 (USDC), 1 USDU (1e18 wei)
 			},

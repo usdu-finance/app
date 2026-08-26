@@ -3,7 +3,7 @@ import { useReadContracts } from 'wagmi';
 import { formatUnits, parseUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { useModulesData } from './useModulesData';
-import { IModuleFinancialsABI } from '@/lib/abis/module/IModuleFinancials';
+import { IModuleRevenueV1_ABI } from '@usdu-finance/usdu-core';
 import { APP_REFETCH } from '@/lib/constants';
 import { usePoolData } from './usePoolData';
 import { USDU_CURVE_ADAPTER_V1_1_USDC_2 } from '@/lib/whitelisted-tokens';
@@ -42,12 +42,12 @@ export function useModulesFinancials(chainId: number = mainnet.id): ModulesFinan
 			activeModules.flatMap((module) => [
 				{
 					address: module.module as `0x${string}`,
-					abi: IModuleFinancialsABI,
+					abi: IModuleRevenueV1_ABI,
 					functionName: 'totalAssets' as const,
 				},
 				{
 					address: module.module as `0x${string}`,
-					abi: IModuleFinancialsABI,
+					abi: IModuleRevenueV1_ABI,
 					functionName: 'totalMinted' as const,
 				},
 			]),
