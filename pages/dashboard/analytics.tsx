@@ -1,5 +1,5 @@
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChartColumn } from '@fortawesome/free-solid-svg-icons';
+import ComingSoon from '@/components/ui/ComingSoon';
 
 export default function AnalyticsPage() {
 	return (
@@ -15,26 +15,10 @@ export default function AnalyticsPage() {
 				</p>
 			</div>
 
-			{/* Coming Soon Section */}
-			<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface">
-				<div className="text-center">
-					<div className="w-16 h-16 bg-usdu-orange/10 rounded-full flex items-center justify-center mx-auto mb-4">
-						<FontAwesomeIcon
-							icon={faChartColumn}
-							className="w-8 h-8 text-usdu-orange"
-						/>
-					</div>
-					<h2 className="text-xl font-bold text-usdu-black mb-2">
-						Coming Soon
-					</h2>
-					<p className="text-text-secondary">
-						Advanced analytics dashboard with interactive charts,
-						protocol performance metrics, yield tracking, and
-						comprehensive market analysis tools are being developed
-						for enhanced decision-making.
-					</p>
-				</div>
-			</div>
+			<ComingSoon
+				icon={faChartColumn}
+				description="Advanced analytics dashboard with interactive charts, protocol performance metrics, yield tracking, and comprehensive market analysis tools are being developed for enhanced decision-making."
+			/>
 		</div>
 	);
 }

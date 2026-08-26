@@ -1,12 +1,5 @@
 import { NavigationItem } from '@/components/layout/Layout.types';
-import {
-	faChartColumn,
-	faHome,
-	faDroplet,
-	faPercentage,
-	faCalendarAlt,
-	faEye,
-} from '@fortawesome/free-solid-svg-icons';
+import { faChartColumn, faHome, faDroplet, faPercentage, faEye } from '@fortawesome/free-solid-svg-icons';
 
 export const homeNavigation: NavigationItem[] = [
 	{ name: 'Maturities', href: '/maturities' },
@@ -21,11 +14,6 @@ export const dashboardNavigation = [
 		name: 'Borrow',
 		href: '/dashboard/borrow',
 		icon: faPercentage,
-	},
-	{
-		name: 'Maturity',
-		href: '/dashboard/maturity',
-		icon: faCalendarAlt,
 	},
 	{
 		name: 'Transparency',
