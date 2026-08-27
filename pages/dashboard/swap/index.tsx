@@ -38,8 +38,8 @@ export default function SwapListPage() {
 			<div>
 				<h1 className="text-3xl font-bold text-usdu-black mb-2">Swap</h1>
 				<p className="text-usdu-black">
-					Mint USDU from USDC/USDT or redeem USDU back to the underlying coin through the USDU swap router.
-					Select a coin to get started.
+					Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get
+					started.
 				</p>
 			</div>
 

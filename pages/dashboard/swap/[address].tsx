@@ -4,7 +4,7 @@ import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWallet, faGaugeHigh, faCoins, faUnlock, faSackDollar } from '@fortawesome/free-solid-svg-icons';
+import { faWallet, faGaugeHigh, faUnlock, faPercent, faSackDollar } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSwapModules } from '@/hooks/useSwapModules';
@@ -13,13 +13,12 @@ import { useSwap } from '@/hooks/useSwap';
 import { PageHeader } from '@/components/ui/layout';
 import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
 import { StatGrid } from '@/components/ui/stats';
+import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
-import Accordion from '@/components/ui/Accordion';
 import NotFound from '@/components/ui/NotFound';
-import { formatCompactNumber } from '@/lib/utils';
+import { formatCompactNumber, formatTimestampLocale, formatAddress } from '@/lib/utils';
 
-const fmtUsdu = (value: bigint, round: boolean = true) =>
-	`${formatCompactNumber(formatUnits(value, 18), 1, '', '', round)} USDU`;
+const fmtUsdu = (value: bigint, round: boolean = true) => `${formatCompactNumber(formatUnits(value, 18), 1, '', '', round)} USDU`;
 
 type SwapDirection = 'in' | 'out';
 
@@ -29,8 +28,7 @@ const usduAddress = addresses.usduStable as `0x${string}`;
 
 export default function SwapDetailPage() {
 	const router = useRouter();
-	const moduleAddressParam =
-		typeof router.query.address === 'string' ? router.query.address.toLowerCase() : undefined;
+	const moduleAddressParam = typeof router.query.address === 'string' ? router.query.address.toLowerCase() : undefined;
 
 	const { isConnected, address } = useAuth();
 	const { open } = useAppKit();
@@ -38,9 +36,7 @@ export default function SwapDetailPage() {
 	const { modules, isLoading: isLoadingModules, error: modulesError } = useSwapModules();
 	const selectedModule = modules.find((m) => m.moduleAddress.toLowerCase() === moduleAddressParam);
 
-	const directionTabs = selectedModule
-		? [`${selectedModule.coinSymbol} → USDU`, `USDU → ${selectedModule.coinSymbol}`]
-		: [];
+	const directionTabs = selectedModule ? [`${selectedModule.coinSymbol} → USDU`, `USDU → ${selectedModule.coinSymbol}`] : [];
 	const [directionTab, setDirectionTab] = useState('');
 	const direction: SwapDirection = directionTab === directionTabs[1] ? 'out' : 'in';
 
@@ -53,11 +49,7 @@ export default function SwapDetailPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [selectedModule?.key]);
 
-	const balances = useSwapBalances(
-		selectedModule?.coinAddress,
-		selectedModule?.coinDecimals ?? 6,
-		address as `0x${string}` | undefined
-	);
+	const balances = useSwapBalances(selectedModule?.coinAddress, selectedModule?.coinDecimals ?? 6, address as `0x${string}` | undefined);
 
 	const { approve, swapIn, swapOut, isPending, isConfirming, isConfirmed, reset } = useSwap();
 	const [pendingStep, setPendingStep] = useState<'approve' | 'swap' | null>(null);
@@ -102,8 +94,7 @@ export default function SwapDetailPage() {
 	// amount that can be swapped in is bounded by remaining module capacity, not just wallet balance.
 	const maxMintableCoinRaw = useMemo(() => {
 		if (!selectedModule || selectedModule.swapInFeePPM >= 1_000_000) return 0n;
-		const maxMintableStable =
-			(selectedModule.mintable * 1_000_000n) / BigInt(1_000_000 - selectedModule.swapInFeePPM);
+		const maxMintableStable = (selectedModule.mintable * 1_000_000n) / BigInt(1_000_000 - selectedModule.swapInFeePPM);
 		return (maxMintableStable * 10n ** BigInt(selectedModule.coinDecimals)) / 10n ** 18n;
 	}, [selectedModule]);
 
@@ -189,24 +180,31 @@ export default function SwapDetailPage() {
 		);
 	}
 
+	const moduleLabel = `${selectedModule.coinSymbol} · ${selectedModule.vaultName || formatAddress(selectedModule.moduleAddress)}`;
+
 	return (
 		<div className="space-y-8">
 			<PageHeader
-				title={selectedModule.coinSymbol}
-				description="Mint USDU from USDC/USDT or redeem USDU back to the underlying coin through the USDU swap router."
-				breadcrumbs={[{ label: 'Swap', href: '/dashboard/swap' }, { label: selectedModule.coinSymbol }]}
+				title={moduleLabel}
+				description="Mint fresh stablecoins for an equal amount of backed asset, or redeem them back into the backed asset, through this swap router."
+				breadcrumbs={[{ label: 'Swap', href: '/dashboard/swap' }, { label: moduleLabel }]}
 			/>
 
 			<StatGrid
 				columns={{ base: 1, sm: 2, lg: 4 }}
 				stats={[
-					{ icon: faGaugeHigh, label: 'Mint Cap', value: fmtUsdu(selectedModule.mintCap), color: 'orange' },
-					{ icon: faCoins, label: 'Total Minted', value: fmtUsdu(selectedModule.totalMinted), color: 'blue' },
 					{
 						icon: faUnlock,
 						label: 'Available',
 						value: fmtUsdu(selectedModule.mintable, false),
 						color: 'green',
+					},
+					{ icon: faGaugeHigh, label: 'Mint Cap', value: fmtUsdu(selectedModule.mintCap), color: 'orange' },
+					{
+						icon: faPercent,
+						label: 'Fees In / Fees Out',
+						value: `${(selectedModule.swapInFeePPM / 10_000).toFixed(2)}% / ${(selectedModule.swapOutFeePPM / 10_000).toFixed(2)}%`,
+						color: 'blue',
 					},
 					{
 						icon: faSackDollar,
@@ -217,71 +215,75 @@ export default function SwapDetailPage() {
 				]}
 			/>
 
-			<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface max-w-2xl space-y-6">
-				{/* Direction toggle */}
-				<TabInput tabs={directionTabs} tab={directionTab} setTab={setDirectionTab} />
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				{/* Swap */}
+				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface space-y-6">
+					<h3 className="font-semibold text-usdu-black text-lg">Swap</h3>
 
-				{/* Amount input */}
-				<TokenInput
-					label="You pay"
-					symbol={inputSymbol}
-					digit={inputDecimals}
-					value={amountRawInput}
-					onChange={setAmountRawInput}
-					max={maxRaw}
-					error={
-						insufficientBalance
-							? `Insufficient ${inputSymbol} balance.`
-							: exceedsMintCap
-								? `Exceeds module capacity — max ${formatUnits(maxMintableCoinRaw, inputDecimals)} ${inputSymbol}.`
+					{/* Direction toggle */}
+					<TabInput tabs={directionTabs} tab={directionTab} setTab={setDirectionTab} />
+
+					{/* Amount input */}
+					<TokenInput
+						label="You pay"
+						symbol={inputSymbol}
+						digit={inputDecimals}
+						value={amountRawInput}
+						onChange={setAmountRawInput}
+						max={maxRaw}
+						error={
+							insufficientBalance
+								? `Insufficient ${inputSymbol} balance.`
+								: exceedsMintCap
+									? `Exceeds module capacity — max ${formatUnits(maxMintableCoinRaw, inputDecimals)} ${inputSymbol}.`
+									: undefined
+						}
+					/>
+
+					{/* Output preview */}
+					<TokenInput
+						label="You receive (estimated)"
+						symbol={outputSymbol}
+						output={outputPreview ? formatUnits(outputPreview.output, outputPreview.decimals) : '0.0'}
+						disabled
+						note={
+							outputPreview
+								? `Fee: ${(outputPreview.feePPM / 10_000).toFixed(2)}% (${formatUnits(outputPreview.fee, outputPreview.decimals)} ${outputSymbol})`
 								: undefined
-					}
-				/>
+						}
+					/>
 
-				{/* Output preview */}
-				<TokenInput
-					label="You receive (estimated)"
-					symbol={outputSymbol}
-					output={outputPreview ? formatUnits(outputPreview.output, outputPreview.decimals) : '0.0'}
-					disabled
-					note={
-						outputPreview
-							? `Fee: ${(outputPreview.feePPM / 10_000).toFixed(2)}% (${formatUnits(outputPreview.fee, outputPreview.decimals)} ${outputSymbol})`
-							: undefined
-					}
-				/>
+					<ButtonInput
+						label={actionLabel}
+						size="lg"
+						className="w-full"
+						disabled={isConnected && (amountRaw === 0n || insufficientBalance || exceedsMintCap || isBusy)}
+						loading={isConnected && isBusy}
+						onClick={isConnected ? handleAction : () => open()}
+						icon={!isConnected ? <FontAwesomeIcon icon={faWallet} className="w-4 h-4" /> : undefined}
+					/>
+				</div>
 
-				<ButtonInput
-					label={actionLabel}
-					size="lg"
-					className="w-full"
-					disabled={isConnected && (amountRaw === 0n || insufficientBalance || exceedsMintCap || isBusy)}
-					loading={isConnected && isBusy}
-					onClick={isConnected ? handleAction : () => open()}
-					icon={!isConnected ? <FontAwesomeIcon icon={faWallet} className="w-4 h-4" /> : undefined}
-				/>
+				{/* Details */}
+				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface space-y-1">
+					<h3 className="font-semibold text-usdu-black text-lg mb-3">Details</h3>
 
-				{/* Contract addresses */}
-				<Accordion title="Contract Addresses">
-					<div className="grid grid-cols-1 gap-3">
-						<AddressRow label="Swap Router" address={routerAddress} />
-						<AddressRow
-							label={`${selectedModule.coinSymbol} Bridge Module`}
-							address={selectedModule.moduleAddress}
-						/>
-						<AddressRow label={selectedModule.coinSymbol} address={selectedModule.coinAddress} />
-					</div>
-				</Accordion>
+					<DetailRow label="Strategy" value={selectedModule.vaultName || '—'} />
+					<DetailRow label="Expiration" value={formatTimestampLocale(selectedModule.expiresAt)} />
+					<DetailRow label="Swap Router">
+						<AddressLink address={routerAddress} />
+					</DetailRow>
+					<DetailRow label="Bridge Module">
+						<AddressLink address={selectedModule.moduleAddress} />
+					</DetailRow>
+					<DetailRow label={selectedModule.coinSymbol}>
+						<AddressLink address={selectedModule.coinAddress} />
+					</DetailRow>
+					<DetailRow label="Strategy Vault">
+						<AddressLink address={selectedModule.vaultAddress} />
+					</DetailRow>
+				</div>
 			</div>
-		</div>
-	);
-}
-
-function AddressRow({ label, address }: { label: string; address: string }) {
-	return (
-		<div className="flex items-center justify-between gap-2 bg-white p-3 rounded-lg border border-usdu-surface">
-			<span className="text-sm text-text-secondary">{label}</span>
-			<AddressLink address={address} />
 		</div>
 	);
 }

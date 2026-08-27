@@ -2,10 +2,11 @@ import { useMemo } from 'react';
 import { useReadContracts } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { mainnet } from 'viem/chains';
-import { ADDRESS, ISwapBridgeMorphoV1_ABI } from '@usdu-finance/usdu-core';
+import { ADDRESS, ISwapBridgeMorphoV1_ABI, Stablecoin_ABI } from '@usdu-finance/usdu-core';
 import { APP_REFETCH } from '@/lib/constants';
 
-const CALLS_PER_MODULE = 7; // coin, swapInFeePPM, swapOutFeePPM, mintCap, totalMinted, totalRevenue, vault
+// coin, swapInFeePPM, swapOutFeePPM, mintCap, totalMinted, totalRevenue, vault, expiresAt
+const CALLS_PER_MODULE = 8;
 
 export interface SwapModule {
 	key: string;
@@ -28,6 +29,8 @@ export interface SwapModule {
 	vaultAddress: `0x${string}`;
 	/** The vault's ERC20 name, shown as the module's strategy. */
 	vaultName: string;
+	/** Unix timestamp (seconds) at which the USDU stablecoin contract's module role expires. */
+	expiresAt: bigint;
 }
 
 export interface SwapModulesData {
@@ -43,6 +46,7 @@ export interface SwapModulesData {
  */
 export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 	const addresses = chainId === mainnet.id ? ADDRESS[mainnet.id] : undefined;
+	const usduAddress = addresses?.usduStable as `0x${string}` | undefined;
 
 	const moduleConfigs = useMemo(
 		() =>
@@ -65,16 +69,40 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 
 	const moduleContracts = useMemo(
 		() =>
-			moduleConfigs.flatMap((m) => [
-				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'coin' as const },
-				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'swapInFeePPM' as const },
-				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'swapOutFeePPM' as const },
-				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'mintCap' as const },
-				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'totalMinted' as const },
-				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'totalRevenue' as const },
-				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'vault' as const },
-			]),
-		[moduleConfigs]
+			!usduAddress
+				? []
+				: moduleConfigs.flatMap((m) => [
+						{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'coin' as const },
+						{
+							address: m.moduleAddress,
+							abi: ISwapBridgeMorphoV1_ABI,
+							functionName: 'swapInFeePPM' as const,
+						},
+						{
+							address: m.moduleAddress,
+							abi: ISwapBridgeMorphoV1_ABI,
+							functionName: 'swapOutFeePPM' as const,
+						},
+						{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'mintCap' as const },
+						{
+							address: m.moduleAddress,
+							abi: ISwapBridgeMorphoV1_ABI,
+							functionName: 'totalMinted' as const,
+						},
+						{
+							address: m.moduleAddress,
+							abi: ISwapBridgeMorphoV1_ABI,
+							functionName: 'totalRevenue' as const,
+						},
+						{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'vault' as const },
+						{
+							address: usduAddress,
+							abi: Stablecoin_ABI,
+							functionName: 'modules' as const,
+							args: [m.moduleAddress],
+						},
+					]),
+		[moduleConfigs, usduAddress]
 	);
 
 	const {
@@ -176,6 +204,7 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 				const totalRevenue = (moduleData[base + 5]?.result as bigint) ?? 0n;
 				const mintable = mintCap > totalMinted ? mintCap - totalMinted : 0n;
 				const vaultAddress = moduleData[base + 6]?.result as `0x${string}`;
+				const expiresAt = (moduleData[base + 7]?.result as bigint) ?? 0n;
 
 				const coinIndex = coinAddresses.findIndex((addr) => addr === coinAddress);
 				const coinDecimals = coinIndex >= 0 ? Number(coinData?.[coinIndex * 2]?.result ?? 6) : 6;
@@ -200,6 +229,7 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 					mintable,
 					vaultAddress,
 					vaultName,
+					expiresAt,
 				};
 			});
 
