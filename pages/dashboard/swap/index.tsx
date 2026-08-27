@@ -1,14 +1,39 @@
+import { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { formatUnits } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCoins, faScaleBalanced, faBolt } from '@fortawesome/free-solid-svg-icons';
-import { useSwapModules } from '@/hooks/useSwapModules';
+import { useSwapModules, type SwapModule } from '@/hooks/useSwapModules';
+import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
 
 const HEADERS = ['Coin', 'Available', 'Cap', 'Fees In', 'Fees Out', 'Revenue', 'Strategy'];
+
+function compareBigint(a: bigint, b: bigint): number {
+	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function compareModules(tab: string, a: SwapModule, b: SwapModule): number {
+	switch (tab) {
+		case 'Available':
+			return compareBigint(b.mintable, a.mintable);
+		case 'Cap':
+			return compareBigint(b.mintCap, a.mintCap);
+		case 'Fees In':
+			return b.swapInFeePPM - a.swapInFeePPM;
+		case 'Fees Out':
+			return b.swapOutFeePPM - a.swapOutFeePPM;
+		case 'Revenue':
+			return compareBigint(b.totalRevenue, a.totalRevenue);
+		case 'Strategy':
+			return a.vaultName.localeCompare(b.vaultName);
+		default:
+			return a.coinSymbol.localeCompare(b.coinSymbol);
+	}
+}
 
 const STEPS = [
 	{
@@ -31,6 +56,12 @@ const STEPS = [
 export default function SwapListPage() {
 	const router = useRouter();
 	const { modules, isLoading, error } = useSwapModules();
+	const { sortTab, sortReverse, handleSort } = useSort('Coin');
+
+	const sortedModules = useMemo(() => {
+		const dir = sortReverse ? -1 : 1;
+		return [...modules].sort((a, b) => dir * compareModules(sortTab, a, b));
+	}, [modules, sortTab, sortReverse]);
 
 	return (
 		<div className="space-y-8">
@@ -46,20 +77,21 @@ export default function SwapListPage() {
 			<HeroSteps steps={STEPS} />
 
 			<Table>
-				<TableHead headers={HEADERS} colSpan={7} logoPadding />
+				<TableHead headers={HEADERS} colSpan={7} logoPadding tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
 				<TableBody>
 					{isLoading ? (
 						<TableRowEmpty>Loading swap modules...</TableRowEmpty>
 					) : error ? (
 						<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
-					) : modules.length === 0 ? (
+					) : sortedModules.length === 0 ? (
 						<TableRowEmpty>No swap modules available.</TableRowEmpty>
 					) : (
-						modules.map((m) => (
+						sortedModules.map((m) => (
 							<TableRow
 								key={m.key}
 								headers={HEADERS}
 								colSpan={7}
+								tab={sortTab}
 								onClick={() => router.push(`/dashboard/swap/${m.moduleAddress}`)}
 							>
 								<div className="flex items-center gap-2">
