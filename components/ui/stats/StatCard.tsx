@@ -2,7 +2,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowUp, faArrowDown } from '@fortawesome/free-solid-svg-icons';
 import { IconDefinition } from '@fortawesome/fontawesome-svg-core';
 import { cn } from '@/lib/utils';
-import Card from '@/components/ui/Card';
+
+const CARD_SURFACE = 'bg-usdu-bg border border-usdu-surface rounded-lg p-4 transition-all duration-300';
 
 interface StatCardProps {
 	icon: IconDefinition;
@@ -44,28 +45,19 @@ function formatValue(val: string | number): string {
 
 export function StatCardSkeleton({ className }: { className?: string }) {
 	return (
-		<Card className={cn('animate-pulse', className)}>
+		<div className={cn(CARD_SURFACE, 'animate-pulse', className)}>
 			<div className="flex items-center justify-between">
 				<div className="flex-1">
-					<div className="w-20 h-4 bg-surface/30 rounded mb-2"></div>
-					<div className="w-16 h-8 bg-surface/30 rounded"></div>
+					<div className="w-20 h-4 bg-usdu-surface rounded mb-2"></div>
+					<div className="w-16 h-8 bg-usdu-surface rounded"></div>
 				</div>
-				<div className="w-12 h-12 bg-surface/30 rounded-lg flex-shrink-0"></div>
+				<div className="w-12 h-12 bg-usdu-surface rounded-lg flex-shrink-0"></div>
 			</div>
-		</Card>
+		</div>
 	);
 }
 
-export function StatCard({
-	icon,
-	label,
-	value,
-	trend,
-	color = 'orange',
-	loading = false,
-	className,
-	onClick,
-}: StatCardProps) {
+export function StatCard({ icon, label, value, trend, color = 'orange', loading = false, className, onClick }: StatCardProps) {
 	if (loading) return <StatCardSkeleton className={className} />;
 
 	const cardContent = (
@@ -73,27 +65,17 @@ export function StatCard({
 			<div className="flex-1">
 				<p className="text-text-secondary text-sm font-medium mb-1">{label}</p>
 				<div>
-					<p className="text-3xl font-bold text-text-primary mb-1">{formatValue(value)}</p>
+					<p className="text-3xl font-bold text-usdu-black mb-1">{formatValue(value)}</p>
 					{trend && (
-						<div
-							className={cn('flex items-center gap-1 text-sm font-medium', TREND_COLORS[trend.direction])}
-						>
-							<FontAwesomeIcon
-								icon={trend.direction === 'up' ? faArrowUp : faArrowDown}
-								className="w-3 h-3"
-							/>
+						<div className={cn('flex items-center gap-1 text-sm font-medium', TREND_COLORS[trend.direction])}>
+							<FontAwesomeIcon icon={trend.direction === 'up' ? faArrowUp : faArrowDown} className="w-3 h-3" />
 							<span>{Math.abs(trend.value)}%</span>
 							{trend.label && <span className="text-text-secondary ml-1">{trend.label}</span>}
 						</div>
 					)}
 				</div>
 			</div>
-			<div
-				className={cn(
-					'w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0',
-					COLOR_VARIANTS[color]
-				)}
-			>
+			<div className={cn('w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0', COLOR_VARIANTS[color])}>
 				<FontAwesomeIcon icon={icon} className="w-6 h-6" />
 			</div>
 		</div>
@@ -102,7 +84,7 @@ export function StatCard({
 	if (onClick) {
 		return (
 			<div
-				className={cn('cursor-pointer', className)}
+				className={cn(CARD_SURFACE, 'cursor-pointer', className)}
 				onClick={onClick}
 				role="button"
 				tabIndex={0}
@@ -113,12 +95,12 @@ export function StatCard({
 					}
 				}}
 			>
-				<Card>{cardContent}</Card>
+				{cardContent}
 			</div>
 		);
 	}
 
-	return <Card className={className}>{cardContent}</Card>;
+	return <div className={cn(CARD_SURFACE, className)}>{cardContent}</div>;
 }
 
 export default StatCard;

@@ -15,7 +15,7 @@ export { TokenLogo, ChainLogo, IconLogo, FiatLogo } from './logo';
 export { PageHeader, PageTitle, Section, Breadcrumb } from './layout';
 
 // Stats Components
-export { StatCard, StatCardSkeleton, StatGrid } from './stats';
+export { StatCard, StatCardSkeleton, StatGrid, StatsCard } from './stats';
 
 // Modal Components
 export { Modal, ConfirmModal, DetailRow } from './modal';
