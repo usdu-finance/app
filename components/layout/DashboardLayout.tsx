@@ -29,6 +29,11 @@ export default function DashboardLayout({ children }: LayoutProps) {
 		setIsMobileMenuOpen(!isMobileMenuOpen);
 	};
 
+	// '/dashboard' itself only matches exactly (else it'd stay active on every dashboard subpage);
+	// every other nav item also matches its own subpages, e.g. '/dashboard/swap/[address]'.
+	const isNavActive = (href: string) =>
+		href === '/dashboard' ? router.pathname === href : router.pathname === href || router.pathname.startsWith(`${href}/`);
+
 	const closeMobileMenu = () => {
 		setIsMobileMenuOpen(false);
 	};
@@ -106,7 +111,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 										key={item.name}
 										href={item.href}
 										className={`flex items-center gap-3 transition-colors text-sm rounded-lg px-3 py-2 ${
-											router.pathname === item.href
+											isNavActive(item.href)
 												? 'bg-usdu-surface'
 												: 'text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface'
 										}`}
@@ -174,7 +179,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 								key={item.name}
 								href={item.href}
 								className={`flex items-center gap-3 transition-colors rounded-lg px-3 py-2 ${
-									router.pathname === item.href
+									isNavActive(item.href)
 										? 'bg-usdu-surface border'
 										: 'text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface'
 								}`}
