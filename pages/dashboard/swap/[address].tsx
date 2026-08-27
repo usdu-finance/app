@@ -68,9 +68,11 @@ export default function SwapDetailPage() {
 	}, [isConfirmed]);
 
 	const inputDecimals = direction === 'in' ? (selectedModule?.coinDecimals ?? 6) : 18;
+	const outputDecimals = direction === 'in' ? 18 : (selectedModule?.coinDecimals ?? 6);
 	const inputSymbol = direction === 'in' ? (selectedModule?.coinSymbol ?? '') : 'USDU';
 	const outputSymbol = direction === 'in' ? 'USDU' : (selectedModule?.coinSymbol ?? '');
 	const inputBalanceRaw = direction === 'in' ? balances.coinBalanceRaw : balances.usduBalanceRaw;
+	const outputBalanceRaw = direction === 'in' ? balances.usduBalanceRaw : balances.coinBalanceRaw;
 
 	const amountRaw = amountRawInput ? BigInt(amountRawInput) : 0n;
 
@@ -84,10 +86,18 @@ export default function SwapDetailPage() {
 			return { output: amountStable - fee, fee, feePPM: selectedModule.swapInFeePPM, decimals: 18 };
 		}
 
-		// fee = amount * feePPM / 1e6; amountCoin = (amount - fee) * 10**coinDecimals / 1e18
-		const fee = (amountRaw * BigInt(selectedModule.swapOutFeePPM)) / 1_000_000n;
-		const amountCoin = ((amountRaw - fee) * 10n ** BigInt(selectedModule.coinDecimals)) / 10n ** 18n;
-		return { output: amountCoin, fee, feePPM: selectedModule.swapOutFeePPM, decimals: selectedModule.coinDecimals };
+		// fee (18-decimal USDU) = amount * feePPM / 1e6; both the payout and the fee itself are then
+		// converted from USDU to coin decimals, mirroring SwapBridgeMorphoV1._swapOut's feeCoin calc —
+		// fee must not be formatted with coinDecimals while still in 18-decimal USDU units.
+		const feeStable = (amountRaw * BigInt(selectedModule.swapOutFeePPM)) / 1_000_000n;
+		const amountCoin = ((amountRaw - feeStable) * 10n ** BigInt(selectedModule.coinDecimals)) / 10n ** 18n;
+		const feeCoin = (feeStable * 10n ** BigInt(selectedModule.coinDecimals)) / 10n ** 18n;
+		return {
+			output: amountCoin,
+			fee: feeCoin,
+			feePPM: selectedModule.swapOutFeePPM,
+			decimals: selectedModule.coinDecimals,
+		};
 	}, [selectedModule, amountRaw, direction]);
 
 	// Swap-in mints (amountStable - fee) against mintCap (see SwapBridgeMorphoV1._swapIn), so the max coin
@@ -231,6 +241,11 @@ export default function SwapDetailPage() {
 						value={amountRawInput}
 						onChange={setAmountRawInput}
 						max={maxRaw}
+						reset={0n}
+						onReset={() => setAmountRawInput('')}
+						limitLabel={isConnected ? 'Balance' : undefined}
+						limit={inputBalanceRaw}
+						limitDigit={inputDecimals}
 						error={
 							insufficientBalance
 								? `Insufficient ${inputSymbol} balance.`
@@ -246,6 +261,9 @@ export default function SwapDetailPage() {
 						symbol={outputSymbol}
 						output={outputPreview ? formatUnits(outputPreview.output, outputPreview.decimals) : '0.0'}
 						disabled
+						limitLabel={isConnected ? 'Balance' : undefined}
+						limit={outputBalanceRaw}
+						limitDigit={outputDecimals}
 						note={
 							outputPreview
 								? `Fee: ${(outputPreview.feePPM / 10_000).toFixed(2)}% (${formatUnits(outputPreview.fee, outputPreview.decimals)} ${outputSymbol})`
