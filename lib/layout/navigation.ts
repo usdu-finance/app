@@ -1,5 +1,5 @@
 import { NavigationItem } from '@/components/layout/Layout.types';
-import { faChartColumn, faHome, faDroplet, faPercentage, faEye, faRightLeft } from '@fortawesome/free-solid-svg-icons';
+import { faFileContract, faHome, faDroplet, faPercentage, faLayerGroup, faRightLeft } from '@fortawesome/free-solid-svg-icons';
 
 export const homeNavigation: NavigationItem[] = [
 	{ name: 'Maturities', href: '/maturities' },
@@ -12,14 +12,14 @@ export const dashboardNavigation = [
 	{ name: 'Swap', href: '/dashboard/swap', icon: faRightLeft },
 	{ name: 'Liquidity', href: '/dashboard/liquidity', icon: faDroplet },
 	{
+		name: 'Strategy',
+		href: '/dashboard/strategy',
+		icon: faLayerGroup,
+	},
+	{
 		name: 'Borrow',
 		href: '/dashboard/borrow',
 		icon: faPercentage,
 	},
-	{
-		name: 'Transparency',
-		href: '/dashboard/transparency',
-		icon: faEye,
-	},
-	{ name: 'Analytics', href: '/dashboard/analytics', icon: faChartColumn },
+	{ name: 'Obligation', href: '/dashboard/obligation', icon: faFileContract },
 ];
