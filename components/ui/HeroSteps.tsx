@@ -22,7 +22,7 @@ export default function HeroSteps({ steps, className }: Props) {
 	return (
 		<div className={`grid grid-cols-1 ${GRID_COLS[steps.length] ?? 'md:grid-cols-3'} gap-4 ${className ?? ''}`}>
 			{steps.map((step, i) => (
-				<div key={i} className="flex items-start gap-4 bg-card rounded-lg p-4 border border-surface">
+				<div key={i} className="flex items-start gap-4 bg-usdu-bg rounded-lg p-4 border border-usdu-surface">
 					<div className="flex-shrink-0 w-6 h-6 rounded-full bg-text-primary text-base flex items-center justify-center text-sm font-bold">
 						{step.icon}
 					</div>

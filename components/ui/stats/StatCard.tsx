@@ -14,6 +14,7 @@ interface StatCardProps {
 		direction: 'up' | 'down';
 		label?: string;
 	};
+	/** Icon chip color. Defaults to the black-and-white style used on the landing page. */
 	color?: 'orange' | 'green' | 'blue' | 'purple' | 'yellow';
 	loading?: boolean;
 	className?: string;
@@ -21,11 +22,11 @@ interface StatCardProps {
 }
 
 const COLOR_VARIANTS = {
-	orange: 'text-brand bg-brand/20',
-	green: 'text-success bg-success-bg',
-	blue: 'text-info bg-info/20',
-	purple: 'text-purple-400 bg-purple-400/20',
-	yellow: 'text-yellow-400 bg-yellow-400/20',
+	orange: 'bg-brand/20 text-brand',
+	green: 'bg-success-bg text-success',
+	blue: 'bg-info/20 text-info',
+	purple: 'bg-purple-400/20 text-purple-400',
+	yellow: 'bg-yellow-400/20 text-yellow-400',
 };
 
 const TREND_COLORS = {
@@ -57,7 +58,7 @@ export function StatCardSkeleton({ className }: { className?: string }) {
 	);
 }
 
-export function StatCard({ icon, label, value, trend, color = 'orange', loading = false, className, onClick }: StatCardProps) {
+export function StatCard({ icon, label, value, trend, color, loading = false, className, onClick }: StatCardProps) {
 	if (loading) return <StatCardSkeleton className={className} />;
 
 	const cardContent = (
@@ -75,7 +76,12 @@ export function StatCard({ icon, label, value, trend, color = 'orange', loading 
 					)}
 				</div>
 			</div>
-			<div className={cn('w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0', COLOR_VARIANTS[color])}>
+			<div
+				className={cn(
+					'w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0',
+					color ? COLOR_VARIANTS[color] : 'bg-usdu-black text-usdu-card'
+				)}
+			>
 				<FontAwesomeIcon icon={icon} className="w-6 h-6" />
 			</div>
 		</div>
