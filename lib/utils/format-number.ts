@@ -63,15 +63,35 @@ export function formatCurrencyStandard(amount: number | string, currency = 'USD'
 }
 
 /**
+ * Trims trailing zeros off a fixed-decimal string, but always keeps at least one digit after the
+ * decimal point (e.g. "100.00" -> "100.0", "123.40" -> "123.4", "123.45" -> "123.45").
+ */
+function trimTrailingZeros(fixed: string): string {
+	if (!fixed.includes('.')) return fixed;
+	const trimmed = fixed.replace(/0+$/, '');
+	return trimmed.endsWith('.') ? `${trimmed}0` : trimmed;
+}
+
+/** Formats `num` to `decimals` places, truncating (never rounding up) when `round` is false. */
+function toFixedOrTruncated(num: number, decimals: number, round: boolean): string {
+	if (round) return num.toFixed(decimals);
+	const factor = 10 ** decimals;
+	return (Math.floor(num * factor) / factor).toFixed(decimals);
+}
+
+/**
  * Format large numbers with K/M suffixes
  * @param value - The value to format
  * @param decimals - Number of decimal places (default: 2)
+ * @param round - When false, truncates instead of rounding — useful for a remaining/available
+ *                figure that shouldn't visually round up to look identical to its cap (default: true)
  */
 export const formatCompactNumber = (
 	value: string | number,
 	decimals = 2,
 	prefix: string = '$',
-	suffix: string = ''
+	suffix: string = '',
+	round: boolean = true
 ): string => {
 	const amount = typeof value === 'string' ? parseFloat(value) : value;
 
@@ -86,13 +106,13 @@ export const formatCompactNumber = (
 
 	// Handle different ranges
 	if (amount >= 1000000) {
-		return prefix + (amount / 1000000).toFixed(decimals).replace(/\.?0+$/, '') + 'M' + suffix;
+		return prefix + trimTrailingZeros(toFixedOrTruncated(amount / 1000000, decimals, round)) + 'M' + suffix;
 	} else if (amount >= 1000) {
-		return prefix + (amount / 1000).toFixed(decimals).replace(/\.?0+$/, '') + 'k' + suffix;
+		return prefix + trimTrailingZeros(toFixedOrTruncated(amount / 1000, decimals, round)) + 'k' + suffix;
 	} else {
 		// For numbers < 1000, show up to 4 decimal places for precision
 		const precision = amount < 1 ? 4 : 2;
-		return prefix + amount.toFixed(precision).replace(/\.?0+$/, '') + suffix;
+		return prefix + trimTrailingZeros(amount.toFixed(precision)) + suffix;
 	}
 };
 

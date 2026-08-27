@@ -1,0 +1,230 @@
+import { useMemo } from 'react';
+import { useReadContracts } from 'wagmi';
+import { erc20Abi } from 'viem';
+import { mainnet } from 'viem/chains';
+import { ADDRESS, ISwapBridgeMorphoV1_ABI } from '@usdu-finance/usdu-core';
+import { APP_REFETCH } from '@/lib/constants';
+
+const CALLS_PER_MODULE = 7; // coin, swapInFeePPM, swapOutFeePPM, mintCap, totalMinted, totalRevenue, vault
+
+export interface SwapModule {
+	key: string;
+	label: string;
+	moduleAddress: `0x${string}`;
+	coinAddress: `0x${string}`;
+	coinSymbol: string;
+	coinDecimals: number;
+	swapInFeePPM: number;
+	swapOutFeePPM: number;
+	/** Maximum USDU (18 decimals) this module may mint against new deposits. */
+	mintCap: bigint;
+	/** USDU (18 decimals) currently minted/outstanding against this module. */
+	totalMinted: bigint;
+	/** Lifetime protocol revenue accrued by this module, in USDU (18 decimals). */
+	totalRevenue: bigint;
+	/** Remaining swap-in capacity, i.e. max(mintCap - totalMinted, 0). */
+	mintable: bigint;
+	/** The ERC4626 vault this module deposits the coin into (the underlying yield strategy). */
+	vaultAddress: `0x${string}`;
+	/** The vault's ERC20 name, shown as the module's strategy. */
+	vaultName: string;
+}
+
+export interface SwapModulesData {
+	modules: SwapModule[];
+	isLoading: boolean;
+	error: string | null;
+}
+
+/**
+ * Hook to fetch the swap router's registered bridge modules (coin, decimals, symbol, fees)
+ * @param chainId - Chain ID to query (defaults to mainnet)
+ * @returns Available swap modules with their coin metadata and fee rates
+ */
+export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
+	const addresses = chainId === mainnet.id ? ADDRESS[mainnet.id] : undefined;
+
+	const moduleConfigs = useMemo(
+		() =>
+			addresses
+				? [
+						{
+							key: 'steakUSDC',
+							label: 'USDC',
+							moduleAddress: addresses.swapBridgeMorphoV1_steakUSDC_module as `0x${string}`,
+						},
+						{
+							key: 'steakUSDT',
+							label: 'USDT',
+							moduleAddress: addresses.swapBridgeMorphoV1_steakUSDT_module as `0x${string}`,
+						},
+					]
+				: [],
+		[addresses]
+	);
+
+	const moduleContracts = useMemo(
+		() =>
+			moduleConfigs.flatMap((m) => [
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'coin' as const },
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'swapInFeePPM' as const },
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'swapOutFeePPM' as const },
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'mintCap' as const },
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'totalMinted' as const },
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'totalRevenue' as const },
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'vault' as const },
+			]),
+		[moduleConfigs]
+	);
+
+	const {
+		data: moduleData,
+		isLoading: isLoadingModules,
+		error: moduleError,
+	} = useReadContracts({
+		contracts: moduleContracts,
+		query: {
+			enabled: moduleContracts.length > 0,
+			refetchInterval: APP_REFETCH,
+		},
+	});
+
+	const coinAddresses = useMemo(
+		() =>
+			moduleConfigs.map(
+				(_, index) => moduleData?.[index * CALLS_PER_MODULE]?.result as `0x${string}` | undefined
+			),
+		[moduleData, moduleConfigs]
+	);
+
+	const coinContracts = useMemo(
+		() =>
+			coinAddresses
+				.filter((addr): addr is `0x${string}` => !!addr)
+				.flatMap((addr) => [
+					{ address: addr, abi: erc20Abi, functionName: 'decimals' as const },
+					{ address: addr, abi: erc20Abi, functionName: 'symbol' as const },
+				]),
+		[coinAddresses]
+	);
+
+	const {
+		data: coinData,
+		isLoading: isLoadingCoins,
+		error: coinError,
+	} = useReadContracts({
+		contracts: coinContracts,
+		query: {
+			enabled: coinContracts.length > 0,
+		},
+	});
+
+	const vaultAddresses = useMemo(
+		() =>
+			moduleConfigs.map(
+				(_, index) => moduleData?.[index * CALLS_PER_MODULE + 6]?.result as `0x${string}` | undefined
+			),
+		[moduleData, moduleConfigs]
+	);
+
+	const vaultContracts = useMemo(
+		() =>
+			vaultAddresses
+				.filter((addr): addr is `0x${string}` => !!addr)
+				.map((addr) => ({ address: addr, abi: erc20Abi, functionName: 'name' as const })),
+		[vaultAddresses]
+	);
+
+	const {
+		data: vaultData,
+		isLoading: isLoadingVaults,
+		error: vaultError,
+	} = useReadContracts({
+		contracts: vaultContracts,
+		query: {
+			enabled: vaultContracts.length > 0,
+		},
+	});
+
+	return useMemo(() => {
+		if (moduleError) {
+			return { modules: [], isLoading: false, error: moduleError.message };
+		}
+
+		if (coinError) {
+			return { modules: [], isLoading: false, error: coinError.message };
+		}
+
+		if (vaultError) {
+			return { modules: [], isLoading: false, error: vaultError.message };
+		}
+
+		const waitingOnCoins = coinContracts.length > 0 && (!coinData || isLoadingCoins);
+		const waitingOnVaults = vaultContracts.length > 0 && (!vaultData || isLoadingVaults);
+		if (!moduleData || isLoadingModules || waitingOnCoins || waitingOnVaults) {
+			return { modules: [], isLoading: true, error: null };
+		}
+
+		try {
+			const modules: SwapModule[] = moduleConfigs.map((config, index) => {
+				const base = index * CALLS_PER_MODULE;
+				const coinAddress = moduleData[base]?.result as `0x${string}`;
+				const swapInFeePPM = Number(moduleData[base + 1]?.result ?? 0n);
+				const swapOutFeePPM = Number(moduleData[base + 2]?.result ?? 0n);
+				const mintCap = (moduleData[base + 3]?.result as bigint) ?? 0n;
+				const totalMinted = (moduleData[base + 4]?.result as bigint) ?? 0n;
+				const totalRevenue = (moduleData[base + 5]?.result as bigint) ?? 0n;
+				const mintable = mintCap > totalMinted ? mintCap - totalMinted : 0n;
+				const vaultAddress = moduleData[base + 6]?.result as `0x${string}`;
+
+				const coinIndex = coinAddresses.findIndex((addr) => addr === coinAddress);
+				const coinDecimals = coinIndex >= 0 ? Number(coinData?.[coinIndex * 2]?.result ?? 6) : 6;
+				const coinSymbol =
+					coinIndex >= 0 ? ((coinData?.[coinIndex * 2 + 1]?.result as string) ?? config.label) : config.label;
+
+				const vaultIndex = vaultAddresses.findIndex((addr) => addr === vaultAddress);
+				const vaultName = vaultIndex >= 0 ? ((vaultData?.[vaultIndex]?.result as string) ?? '') : '';
+
+				return {
+					key: config.key,
+					label: config.label,
+					moduleAddress: config.moduleAddress,
+					coinAddress,
+					coinSymbol,
+					coinDecimals,
+					swapInFeePPM,
+					swapOutFeePPM,
+					mintCap,
+					totalMinted,
+					totalRevenue,
+					mintable,
+					vaultAddress,
+					vaultName,
+				};
+			});
+
+			return { modules, isLoading: false, error: null };
+		} catch (err) {
+			return {
+				modules: [],
+				isLoading: false,
+				error: `Error processing swap modules: ${err instanceof Error ? err.message : 'Unknown error'}`,
+			};
+		}
+	}, [
+		moduleData,
+		coinData,
+		vaultData,
+		moduleError,
+		coinError,
+		vaultError,
+		isLoadingModules,
+		isLoadingCoins,
+		isLoadingVaults,
+		moduleConfigs,
+		coinAddresses,
+		coinContracts.length,
+		vaultAddresses,
+		vaultContracts.length,
+	]);
+}
