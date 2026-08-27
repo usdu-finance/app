@@ -108,19 +108,17 @@ export default function SwapDetailPage() {
 		return (maxMintableStable * 10n ** BigInt(selectedModule.coinDecimals)) / 10n ** 18n;
 	}, [selectedModule]);
 
-	const capacityRaw = direction === 'in' ? maxMintableCoinRaw : undefined;
+	// Swap-out burns `amount` USDU and decrements totalMinted (see SwapBridgeMorphoV1._swapOut), which would
+	// underflow/revert past totalMinted — so the max USDU that can be swapped out is capped by totalMinted,
+	// not just wallet balance.
+	const moduleCapacityRaw = direction === 'in' ? maxMintableCoinRaw : (selectedModule?.totalMinted ?? 0n);
 	const walletMaxRaw = isConnected ? inputBalanceRaw : undefined;
-	const maxRaw =
-		walletMaxRaw !== undefined && capacityRaw !== undefined
-			? walletMaxRaw < capacityRaw
-				? walletMaxRaw
-				: capacityRaw
-			: (walletMaxRaw ?? capacityRaw);
+	const maxRaw = walletMaxRaw !== undefined ? (walletMaxRaw < moduleCapacityRaw ? walletMaxRaw : moduleCapacityRaw) : undefined;
 
 	const allowanceRaw = direction === 'in' ? balances.coinAllowanceRaw : balances.usduAllowanceRaw;
 	const needsApproval = amountRaw > 0n && allowanceRaw < amountRaw;
 	const insufficientBalance = amountRaw > 0n && amountRaw > inputBalanceRaw;
-	const exceedsMintCap = amountRaw > 0n && direction === 'in' && amountRaw > maxMintableCoinRaw;
+	const exceedsCapacity = amountRaw > 0n && amountRaw > moduleCapacityRaw;
 	const isBusy = isPending || isConfirming;
 
 	const handleAction = async () => {
@@ -207,20 +205,17 @@ export default function SwapDetailPage() {
 						icon: faUnlock,
 						label: 'Available',
 						value: fmtUsdu(selectedModule.mintable, false),
-						color: 'green',
 					},
-					{ icon: faGaugeHigh, label: 'Mint Cap', value: fmtUsdu(selectedModule.mintCap), color: 'orange' },
+					{ icon: faGaugeHigh, label: 'Mint Cap', value: fmtUsdu(selectedModule.mintCap) },
 					{
 						icon: faPercent,
 						label: 'Fees In / Fees Out',
 						value: `${(selectedModule.swapInFeePPM / 10_000).toFixed(2)}% / ${(selectedModule.swapOutFeePPM / 10_000).toFixed(2)}%`,
-						color: 'blue',
 					},
 					{
 						icon: faSackDollar,
 						label: 'Revenue',
 						value: fmtUsdu(selectedModule.totalRevenue),
-						color: 'purple',
 					},
 				]}
 			/>
@@ -241,16 +236,16 @@ export default function SwapDetailPage() {
 						value={amountRawInput}
 						onChange={setAmountRawInput}
 						max={maxRaw}
-						reset={0n}
+						reset={isConnected ? 0n : undefined}
 						onReset={() => setAmountRawInput('')}
 						limitLabel={isConnected ? 'Balance' : undefined}
 						limit={inputBalanceRaw}
 						limitDigit={inputDecimals}
 						error={
-							insufficientBalance
-								? `Insufficient ${inputSymbol} balance.`
-								: exceedsMintCap
-									? `Exceeds module capacity — max ${formatUnits(maxMintableCoinRaw, inputDecimals)} ${inputSymbol}.`
+							exceedsCapacity
+								? `Exceeds module capacity — max ${formatUnits(moduleCapacityRaw, inputDecimals)} ${inputSymbol}.`
+								: insufficientBalance
+									? `Insufficient ${inputSymbol} balance.`
 									: undefined
 						}
 					/>
@@ -275,7 +270,7 @@ export default function SwapDetailPage() {
 						label={actionLabel}
 						size="lg"
 						className="w-full"
-						disabled={isConnected && (amountRaw === 0n || insufficientBalance || exceedsMintCap || isBusy)}
+						disabled={isConnected && (amountRaw === 0n || insufficientBalance || exceedsCapacity || isBusy)}
 						loading={isConnected && isBusy}
 						onClick={isConnected ? handleAction : () => open()}
 						icon={!isConnected ? <FontAwesomeIcon icon={faWallet} className="w-4 h-4" /> : undefined}
@@ -283,23 +278,30 @@ export default function SwapDetailPage() {
 				</div>
 
 				{/* Details */}
-				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface space-y-1">
+				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface h-full flex flex-col">
 					<h3 className="font-semibold text-usdu-black text-lg mb-3">Details</h3>
 
 					<DetailRow label="Strategy" value={selectedModule.vaultName || '—'} />
 					<DetailRow label="Expiration" value={formatTimestampLocale(selectedModule.expiresAt)} />
+
+					<h3 className="font-semibold text-usdu-black text-lg mt-10 mb-3">Addresses</h3>
+
 					<DetailRow label="Swap Router">
 						<AddressLink address={routerAddress} />
 					</DetailRow>
 					<DetailRow label="Bridge Module">
 						<AddressLink address={selectedModule.moduleAddress} />
 					</DetailRow>
-					<DetailRow label={selectedModule.coinSymbol}>
+					<DetailRow label="Input Token">
 						<AddressLink address={selectedModule.coinAddress} />
 					</DetailRow>
 					<DetailRow label="Strategy Vault">
 						<AddressLink address={selectedModule.vaultAddress} />
 					</DetailRow>
+
+					<p className="mt-10 lg:mt-auto text-sm text-text-secondary">
+						The input token is deposited into the strategy vault, generating additional revenue for the protocol.
+					</p>
 				</div>
 			</div>
 		</div>
