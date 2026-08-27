@@ -87,7 +87,7 @@ export function PageHeader({
 						)}
 						{userInfo && <div className="flex items-center">{userInfo}</div>}
 					</div>
-					{description && <p className="text-text-secondary leading-relaxed max-w-3xl">{description}</p>}
+					{description && <p className="text-text-secondary leading-relaxed">{description}</p>}
 				</div>
 				{actions && <div className="flex items-center gap-3 flex-shrink-0">{actions}</div>}
 			</div>
