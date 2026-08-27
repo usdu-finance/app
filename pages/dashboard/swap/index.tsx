@@ -10,7 +10,7 @@ import { TokenLogo } from '@/components/ui/logo';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
 
-const HEADERS = ['Coin', 'Available', 'Cap', 'Fees In', 'Fees Out', 'Revenue', 'Strategy'];
+const HEADERS = ['Coin', 'Available In', 'Available Out', 'Fees In', 'Fees Out', 'Revenue', 'Strategy'];
 
 function compareBigint(a: bigint, b: bigint): number {
 	return a < b ? -1 : a > b ? 1 : 0;
@@ -18,10 +18,10 @@ function compareBigint(a: bigint, b: bigint): number {
 
 function compareModules(tab: string, a: SwapModule, b: SwapModule): number {
 	switch (tab) {
-		case 'Available':
+		case 'Available In':
 			return compareBigint(b.mintable, a.mintable);
-		case 'Cap':
-			return compareBigint(b.mintCap, a.mintCap);
+		case 'Available Out':
+			return compareBigint(b.totalMinted, a.totalMinted);
 		case 'Fees In':
 			return b.swapInFeePPM - a.swapInFeePPM;
 		case 'Fees Out':
@@ -77,7 +77,7 @@ export default function SwapListPage() {
 			<HeroSteps steps={STEPS} />
 
 			<Table>
-				<TableHead headers={HEADERS} colSpan={7} logoPadding tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+				<TableHead headers={HEADERS} colSpan={7} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
 				<TableBody>
 					{isLoading ? (
 						<TableRowEmpty>Loading swap modules...</TableRowEmpty>
@@ -95,11 +95,12 @@ export default function SwapListPage() {
 								onClick={() => router.push(`/dashboard/swap/${m.moduleAddress}`)}
 							>
 								<div className="flex items-center gap-2">
-									<TokenLogo currency={m.coinSymbol} size={6} />
-									<span className="font-semibold text-usdu-black">{m.coinSymbol}</span>
+									<TokenLogo currency={m.coinSymbol} size={6} className="-mr-2" />
+									<TokenLogo currency="USDU" size={6} />
+									<span className="font-semibold text-usdu-black">{m.coinSymbol} / USDU</span>
 								</div>
 								<span>{formatCompactNumber(formatUnits(m.mintable, 18), 1, '', '', false)} USDU</span>
-								<span>{formatCompactNumber(formatUnits(m.mintCap, 18), 1, '')} USDU</span>
+								<span>{formatCompactNumber(formatUnits(m.totalMinted, 18), 1, '')} {m.coinSymbol}</span>
 								<span>{(m.swapInFeePPM / 10_000).toFixed(2)}%</span>
 								<span>{(m.swapOutFeePPM / 10_000).toFixed(2)}%</span>
 								<span>{formatCompactNumber(formatUnits(m.totalRevenue, 18), 1, '')} USDU</span>

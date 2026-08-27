@@ -4,7 +4,7 @@ import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWallet, faGaugeHigh, faUnlock, faPercent, faSackDollar } from '@fortawesome/free-solid-svg-icons';
+import { faWallet, faArrowRightToBracket, faArrowRightFromBracket, faPercent, faSackDollar } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSwapModules } from '@/hooks/useSwapModules';
@@ -202,15 +202,19 @@ export default function SwapDetailPage() {
 				columns={{ base: 1, sm: 2, lg: 4 }}
 				stats={[
 					{
-						icon: faUnlock,
-						label: 'Available',
+						icon: faArrowRightToBracket,
+						label: 'Available In',
 						value: fmtUsdu(selectedModule.mintable, false),
 					},
-					{ icon: faGaugeHigh, label: 'Mint Cap', value: fmtUsdu(selectedModule.mintCap) },
+					{
+						icon: faArrowRightFromBracket,
+						label: 'Available Out',
+						value: `${formatCompactNumber(formatUnits(selectedModule.totalMinted, 18), 1, '')} ${selectedModule.coinSymbol}`,
+					},
 					{
 						icon: faPercent,
 						label: 'Fees In / Fees Out',
-						value: `${(selectedModule.swapInFeePPM / 10_000).toFixed(2)}% / ${(selectedModule.swapOutFeePPM / 10_000).toFixed(2)}%`,
+						value: `${(selectedModule.swapInFeePPM / 10_000).toFixed(2)} / ${(selectedModule.swapOutFeePPM / 10_000).toFixed(2)}`,
 					},
 					{
 						icon: faSackDollar,
