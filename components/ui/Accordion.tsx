@@ -24,11 +24,7 @@ export default function Accordion({ title, children, defaultOpen = false, classN
 					className={`w-4 h-4 text-usdu-black transition-transform ${isOpen ? 'rotate-180' : ''}`}
 				/>
 			</button>
-			{isOpen && (
-				<div className="px-6 py-4 bg-white border-t border-usdu-surface">
-					{children}
-				</div>
-			)}
+			{isOpen && <div className="px-6 py-4 bg-white border-t border-usdu-surface">{children}</div>}
 		</div>
 	);
 }
