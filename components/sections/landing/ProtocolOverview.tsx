@@ -1,10 +1,18 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faShield, faExchangeAlt, faChartLine, faUsers } from '@fortawesome/free-solid-svg-icons';
+import {
+	faShield,
+	faExchangeAlt,
+	faChartLine,
+	faUsers,
+	faCoins,
+	faDroplet,
+	faLayerGroup,
+} from '@fortawesome/free-solid-svg-icons';
 import { useProtocolData } from '@/hooks/useProtocolData';
 import { formatValueWithState, formatPriceWithState } from '@/lib/utils';
-import StatsCard from '@/components/ui/StatsCard';
+import { StatGrid } from '@/components/ui/stats';
 import { useModulesData } from '@/hooks/useModulesData';
 
 const features = [
@@ -78,23 +86,31 @@ export default function ProtocolOverview() {
 					viewport={{ once: true }}
 					className="mt-16"
 				>
-					<StatsCard
+					<StatGrid
 						stats={[
 							{
+								icon: faCoins,
 								value: formatValueWithState(usduSupply, isLoading, error, '$', ''),
 								label: 'USDU Supply',
+								color: 'orange',
 							},
 							{
+								icon: faDroplet,
 								value: formatValueWithState(dexLiquidity, isLoading, error, '$', ''),
 								label: 'DEX Liquidity',
+								color: 'blue',
 							},
 							{
+								icon: faChartLine,
 								value: formatPriceWithState(usduPrice, isLoading, error, 4),
 								label: 'USDU Price',
+								color: 'green',
 							},
 							{
+								icon: faLayerGroup,
 								value: activeModules.length || 0,
 								label: 'Protocol Adapters',
+								color: 'purple',
 							},
 						]}
 					/>

@@ -1,8 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faClock, faShieldAlt, faSync, faCogs } from '@fortawesome/free-solid-svg-icons';
-import StatsCard from '@/components/ui/StatsCard';
+import {
+	faClock,
+	faShieldAlt,
+	faSync,
+	faCogs,
+	faLayerGroup,
+	faCheckCircle,
+	faHourglass,
+	faTimesCircle,
+} from '@fortawesome/free-solid-svg-icons';
+import { StatGrid } from '@/components/ui/stats';
 import type { StablecoinModule } from '@/hooks/useModulesData';
 
 const features = [
@@ -79,27 +88,31 @@ export default function ModulesOverview({ allModules, activeModules, getModuleSt
 					viewport={{ once: true }}
 					className="mt-16"
 				>
-					<StatsCard
+					<StatGrid
 						stats={[
 							{
+								icon: faLayerGroup,
 								value: allModules.length,
 								label: 'Total Modules',
-								color: 'text-usdu-card',
+								color: 'purple',
 							},
 							{
+								icon: faCheckCircle,
 								value: activeModules.length,
 								label: 'Active Modules',
-								color: 'text-green-400',
+								color: 'green',
 							},
 							{
+								icon: faHourglass,
 								value: allModules.filter((m) => getModuleStatus(m).status === 'pending').length,
 								label: 'Pending Proposals',
-								color: 'text-yellow-400',
+								color: 'yellow',
 							},
 							{
+								icon: faTimesCircle,
 								value: allModules.filter((m) => m.isExpired).length,
 								label: 'Expired Modules',
-								color: 'text-gray-400',
+								color: 'orange',
 							},
 						]}
 					/>

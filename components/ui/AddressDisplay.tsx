@@ -1,85 +1,62 @@
-import React, { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCopy, faCheck, faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
-import { copyToClipboard, formatAddress } from '@/lib/utils';
-import { getBlockExplorerUrl } from '@/lib/web3/config';
-import Link from 'next/link';
+import { faCopy, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
 
 interface AddressDisplayProps {
-	/** Label/title for the address */
-	label: string;
-	/** The address to display */
 	address: string;
-	/** Type of address for block explorer (address, tx, block, etc.) */
-	type?: 'address' | 'tx' | 'block';
-	/** Chain ID for block explorer link */
-	chainId?: number;
-	/** Whether to shorten the address display */
-	shorten?: boolean;
-	/** Additional CSS classes for container */
+	/** Characters to show at the start. Default 6. */
+	prefixLength?: number;
+	/** Characters to show at the end. Default 4. */
+	suffixLength?: number;
+	/** Copy the full address (default) or a custom value. */
+	copyValue?: string;
+	/** Extra classes on the wrapper. */
 	className?: string;
-	/** Hide the copy button */
-	hideCopy?: boolean;
-	/** Hide the external link */
-	hideExplorer?: boolean;
+	/** Show the copy icon. Default true. */
+	showCopy?: boolean;
 }
 
-export default function AddressDisplay({
-	label,
+export function AddressDisplay({
 	address,
-	type = 'address',
-	chainId,
-	shorten = true,
+	prefixLength = 6,
+	suffixLength = 4,
+	copyValue,
 	className = '',
-	hideCopy = false,
-	hideExplorer = false,
+	showCopy = true,
 }: AddressDisplayProps) {
 	const [copied, setCopied] = useState(false);
 
-	const handleCopy = async () => {
-		const success = await copyToClipboard(address);
-		if (success) {
-			setCopied(true);
-			setTimeout(() => setCopied(false), 2000);
-		}
-	};
+	const short =
+		address.length > prefixLength + suffixLength + 3
+			? `${address.slice(0, prefixLength)}...${address.slice(-suffixLength)}`
+			: address;
 
-	const explorerUrl = getBlockExplorerUrl(`${type}/${address}`, chainId);
-
-	// Use custom shortened or full address
-	const displayAddress = shorten ? formatAddress(address) : address;
+	const handleCopy = useCallback(
+		(e: React.MouseEvent) => {
+			e.stopPropagation();
+			navigator.clipboard.writeText(copyValue ?? address).then(() => {
+				setCopied(true);
+				setTimeout(() => setCopied(false), 2000);
+			});
+		},
+		[address, copyValue]
+	);
 
 	return (
-		<div className={`bg-gray-50 p-3 rounded-lg ${className}`}>
-			<p className="text-sm text-text-secondary mb-2">{label}</p>
-			<div className="flex items-center justify-between gap-2">
-				<p className="font-mono text-xs text-usdu-black break-all flex-1">{displayAddress}</p>
-				<div className="flex items-center gap-1 flex-shrink-0">
-					{!hideExplorer && (
-						<Link
-							href={explorerUrl}
-							target="_blank"
-							rel="noopener noreferrer"
-							className="p-2 hover:bg-white rounded transition-colors"
-							title="View on block explorer"
-						>
-							<FontAwesomeIcon icon={faExternalLinkAlt} className="w-3 h-3 text-usdu-orange" />
-						</Link>
-					)}
-					{!hideCopy && (
-						<button
-							onClick={handleCopy}
-							className="p-2 hover:bg-white rounded transition-colors"
-							title="Copy address"
-						>
-							<FontAwesomeIcon
-								icon={copied ? faCheck : faCopy}
-								className={`w-3 h-3 ${copied ? 'text-green-600' : 'text-usdu-orange'}`}
-							/>
-						</button>
-					)}
-				</div>
-			</div>
-		</div>
+		<span className={`inline-flex items-center gap-1.5 font-mono text-sm ${className}`} title={address}>
+			{short}
+			{showCopy && (
+				<button
+					onClick={handleCopy}
+					className="text-text-muted hover:text-brand transition-colors focus:outline-none"
+					aria-label="Copy address"
+				>
+					<FontAwesomeIcon
+						icon={copied ? faCheckCircle : faCopy}
+						className={`text-xs ${copied ? 'text-success' : ''}`}
+					/>
+				</button>
+			)}
+		</span>
 	);
 }

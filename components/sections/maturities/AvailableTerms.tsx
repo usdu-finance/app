@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowRight } from '@fortawesome/free-solid-svg-icons';
-import Button from '@/components/ui/Button';
+import ButtonInput from '@/components/ui/input/ButtonInput';
 
 const maturities = [
 	{
@@ -101,13 +101,12 @@ export default function AvailableTerms() {
 								</div>
 							</div>
 
-							<Button
+							<ButtonInput
+								label="Get Funding"
 								href="/dashboard"
 								className="w-full"
 								icon={<FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />}
-							>
-								Get Funding
-							</Button>
+							/>
 						</motion.div>
 					))}
 				</div>

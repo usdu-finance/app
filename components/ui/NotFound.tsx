@@ -1,6 +1,6 @@
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCompass } from '@fortawesome/free-solid-svg-icons';
-import Button from './Button';
+import ButtonInput from './input/ButtonInput';
 
 interface NotFoundProps {
 	title?: string;
@@ -23,7 +23,7 @@ export default function NotFound({
 			<p className="text-5xl font-bold text-usdu-black mb-2">404</p>
 			<h2 className="text-xl font-bold text-usdu-black mb-2">{title}</h2>
 			<p className="text-text-secondary mb-6">{description}</p>
-			<Button href={ctaHref}>{ctaLabel}</Button>
+			<ButtonInput label={ctaLabel} href={ctaHref} />
 		</div>
 	);
 }

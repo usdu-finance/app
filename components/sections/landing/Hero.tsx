@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowRight } from '@fortawesome/free-solid-svg-icons';
-import Button from '@/components/ui/Button';
+import ButtonInput from '@/components/ui/input/ButtonInput';
 import { PROJECT } from '@/lib/constants';
 
 export default function Hero() {
@@ -76,22 +76,20 @@ export default function Hero() {
 						transition={{ duration: 0.8, delay: 0.8 }}
 						className="flex flex-col sm:flex-row gap-4 justify-center items-center max-md:pb-32"
 					>
-						<Button
+						<ButtonInput
+							label="Provide Liquidity"
 							size="lg"
 							href="/dashboard/liquidity"
 							icon={<FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />}
 							className="bg-usdu-orange hover:bg-opacity-90 text-white shadow-lg"
-						>
-							Provide Liquidity
-						</Button>
-						<Button
+						/>
+						<ButtonInput
+							label="View Transparency"
 							variant="outline"
 							size="lg"
 							href="/transparency"
 							className="border-usdu-card text-usdu-card hover:bg-usdu-orange hover:text-white"
-						>
-							View Transparency
-						</Button>
+						/>
 					</motion.div>
 				</motion.div>
 			</div>

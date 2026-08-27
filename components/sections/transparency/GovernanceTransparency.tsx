@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUsers } from '@fortawesome/free-solid-svg-icons';
-import Button from '@/components/ui/Button';
+import ButtonInput from '@/components/ui/input/ButtonInput';
 
 const governanceMetrics = [
 	{ label: 'Total Proposals', value: '23' },
@@ -79,14 +79,13 @@ export default function GovernanceTransparency() {
 					viewport={{ once: true }}
 					className="text-center"
 				>
-					<Button
+					<ButtonInput
+						label="Participate in Governance"
 						href="https://aragon.usdu.finance"
 						target="_blank"
 						size="lg"
 						icon={<FontAwesomeIcon icon={faUsers} className="w-4 h-4" />}
-					>
-						Participate in Governance
-					</Button>
+					/>
 				</motion.div>
 			</div>
 		</section>

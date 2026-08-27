@@ -4,7 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGithub, faTelegram, faXTwitter } from '@fortawesome/free-brands-svg-icons';
 import { faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import { SOCIAL } from '@/lib/constants';
-import Button from '@/components/ui/Button';
+import ButtonInput from '@/components/ui/input/ButtonInput';
 import Link from 'next/link';
 
 const communityLinks = [
@@ -89,16 +89,13 @@ export default function Contact() {
 						institutional-grade stablecoin infrastructure.
 					</p>
 					<div className="flex flex-col sm:flex-row gap-4 justify-center">
-						<Button
+						<ButtonInput
+							label="Launch App"
 							size="lg"
 							href="/dashboard"
 							icon={<FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />}
-						>
-							Launch App
-						</Button>
-						<Button variant="outline" size="lg" href="/transparency">
-							View Documentation
-						</Button>
+						/>
+						<ButtonInput label="View Documentation" variant="outline" size="lg" href="/transparency" />
 					</div>
 				</motion.div>
 			</div>
