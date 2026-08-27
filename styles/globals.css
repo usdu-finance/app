@@ -57,10 +57,17 @@ html {
 	background: #f16325;
 }
 
-/* Focus styles for accessibility */
-:focus-visible {
+/* Focus styles for accessibility — skip inputs/textareas/selects, their
+   parent card-input container already shows focus via border color */
+:focus-visible:not(input):not(textarea):not(select) {
 	outline: 2px solid #f16325;
 	outline-offset: 2px;
+}
+
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+	outline: none;
 }
 
 /* Animation keyframes */

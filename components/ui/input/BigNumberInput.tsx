@@ -29,11 +29,11 @@ export function BigNumberInput({
 	const inputRefFallback = React.useRef<HTMLInputElement>(null);
 	const inputRef = inputRefChild || inputRefFallback;
 
-	const [inputValue, setInputvalue] = React.useState('0');
+	const [inputValue, setInputvalue] = React.useState('');
 
 	React.useEffect(() => {
 		if (value.length === 0) {
-			setInputvalue('0');
+			setInputvalue('');
 		} else {
 			let parseInputValue: bigint | undefined;
 			try {
