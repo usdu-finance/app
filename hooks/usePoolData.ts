@@ -1,5 +1,4 @@
-import { useGetPoolDataQuery } from '@/redux/api/onChainApi';
-import { APP_REFETCH } from '@/lib/constants';
+import { usePoolModules } from '@/hooks/usePoolModules';
 
 interface PoolData {
 	// Pool balances
@@ -25,29 +24,26 @@ interface PoolData {
 	error: string | null;
 }
 
-// Thin wrapper around the Redux-cached on-chain query: data survives navigation and
-// page refreshes (via redux-persist), painting instantly from cache while
-// `refetchOnMountOrArgChange` confirms freshness in the background.
+// Convenience wrapper around usePoolModules() for the primary USDC/USDU pool, kept for
+// consumers that only care about the single default pool (e.g. dashboard-wide financial rollups).
 export function usePoolData(): PoolData {
-	const { data, error, isLoading } = useGetPoolDataQuery(undefined, {
-		pollingInterval: APP_REFETCH,
-		refetchOnMountOrArgChange: 30,
-	});
+	const { modules, isLoading, error } = usePoolModules();
+	const pool = modules[0];
 
 	return {
-		usdcBalance: data?.usdcBalance ?? null,
-		usduBalance: data?.usduBalance ?? null,
-		totalBalance: data?.totalBalance ?? null,
-		totalSupply: data?.totalSupply ?? null,
-		virtualPrice: data?.virtualPrice ?? null,
-		adapterLPBalance: data?.adapterLPBalance ?? null,
-		totalValue: data?.totalValue ?? null,
-		usduPrice: data?.usduPrice ?? null,
-		poolImbalance: data?.poolImbalance ?? null,
-		usdcRatio: data?.usdcRatio ?? null,
-		usduRatio: data?.usduRatio ?? null,
-		adapterLPRatio: data?.adapterLPRatio ?? null,
+		usdcBalance: pool?.usdcBalance ?? null,
+		usduBalance: pool?.usduBalance ?? null,
+		totalBalance: pool?.totalBalance ?? null,
+		totalSupply: pool?.totalSupply ?? null,
+		virtualPrice: pool?.virtualPrice ?? null,
+		adapterLPBalance: pool?.adapterLPBalance ?? null,
+		totalValue: pool?.totalValue ?? null,
+		usduPrice: pool?.usduPrice ?? null,
+		poolImbalance: pool?.poolImbalance ?? null,
+		usdcRatio: pool?.usdcRatio ?? null,
+		usduRatio: pool?.usduRatio ?? null,
+		adapterLPRatio: pool?.adapterLPRatio ?? null,
 		isLoading,
-		error: error ? (typeof error === 'string' ? error : 'Failed to fetch pool data') : null,
+		error,
 	};
 }
