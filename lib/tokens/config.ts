@@ -53,6 +53,22 @@ export const TOKENS: Record<string, TokenConfig> = {
 		chainId: 1,
 		logoURI: '/coin/usdu.png',
 	},
+	EURU: {
+		address: '0x6e30d56cb23068dE5A084D4A4f2A909823424F06',
+		symbol: 'EURU',
+		name: 'EURU',
+		decimals: 18,
+		chainId: 1,
+		logoURI: '/coin/euru.png',
+	},
+	CHFU: {
+		address: '0x4B43F48A665E2F15C4913a76CF67509672396146',
+		symbol: 'CHFU',
+		name: 'CHFU',
+		decimals: 18,
+		chainId: 1,
+		logoURI: '/coin/chfu.png',
+	},
 
 	// Crypto
 	ETH: {
@@ -90,7 +106,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 };
 
 // Custom tokens for CoW list (tokens not on CoW or needing overrides)
-export const CUSTOM_TOKENS: TokenConfig[] = [TOKENS.ZCHF, TOKENS.USDU, TOKENS.FPS];
+export const CUSTOM_TOKENS: TokenConfig[] = [TOKENS.ZCHF, TOKENS.USDU, TOKENS.EURU, TOKENS.CHFU, TOKENS.FPS];
 
 export const getTokenBySymbol = (symbol: string): TokenConfig | undefined => {
 	return TOKENS[symbol];

@@ -1,41 +1,37 @@
 import { useMemo } from 'react';
 import { useReadContracts } from 'wagmi';
 import { erc20Abi, formatUnits } from 'viem';
-import { mainnet } from 'viem/chains';
-import { ADDRESS } from '@usdu-finance/usdu-core';
 import { APP_REFETCH } from '@/lib/constants';
 
 export interface SwapBalancesData {
 	coinBalance: number;
 	coinBalanceRaw: bigint;
 	coinAllowanceRaw: bigint;
-	usduBalance: number;
-	usduBalanceRaw: bigint;
-	usduAllowanceRaw: bigint;
+	targetBalance: number;
+	targetBalanceRaw: bigint;
+	targetAllowanceRaw: bigint;
 	isLoading: boolean;
 	error: string | null;
 	refetch: () => void;
 }
 
 /**
- * Hook to fetch a connected wallet's coin/USDU balances and their allowance to the swap router
- * @param coinAddress - The bridge module's source coin (e.g. USDC/USDT)
+ * Hook to fetch a connected wallet's coin/target-stablecoin balances and their allowance to the swap router
+ * @param coinAddress - The bridge module's source coin (e.g. USDC/USDT/EURC/ZCHF)
  * @param coinDecimals - Decimals of the source coin
  * @param ownerAddress - Connected wallet address
- * @param chainId - Chain ID to query (defaults to mainnet)
+ * @param routerAddress - The module's currency's swap router
+ * @param targetAddress - The stablecoin minted/burned by the module (USDU/EURU/CHFU/...)
  */
 export function useSwapBalances(
 	coinAddress: `0x${string}` | undefined,
 	coinDecimals: number,
 	ownerAddress: `0x${string}` | undefined,
-	chainId: number = mainnet.id
+	routerAddress: `0x${string}` | undefined,
+	targetAddress: `0x${string}` | undefined
 ): SwapBalancesData {
-	const addresses = chainId === mainnet.id ? ADDRESS[mainnet.id] : undefined;
-	const routerAddress = addresses?.swapRouterV1 as `0x${string}` | undefined;
-	const usduAddress = addresses?.usduStable as `0x${string}` | undefined;
-
 	const contracts = useMemo(() => {
-		if (!coinAddress || !ownerAddress || !routerAddress || !usduAddress) return [];
+		if (!coinAddress || !ownerAddress || !routerAddress || !targetAddress) return [];
 		return [
 			{ address: coinAddress, abi: erc20Abi, functionName: 'balanceOf' as const, args: [ownerAddress] },
 			{
@@ -44,15 +40,15 @@ export function useSwapBalances(
 				functionName: 'allowance' as const,
 				args: [ownerAddress, routerAddress],
 			},
-			{ address: usduAddress, abi: erc20Abi, functionName: 'balanceOf' as const, args: [ownerAddress] },
+			{ address: targetAddress, abi: erc20Abi, functionName: 'balanceOf' as const, args: [ownerAddress] },
 			{
-				address: usduAddress,
+				address: targetAddress,
 				abi: erc20Abi,
 				functionName: 'allowance' as const,
 				args: [ownerAddress, routerAddress],
 			},
 		];
-	}, [coinAddress, ownerAddress, routerAddress, usduAddress]);
+	}, [coinAddress, ownerAddress, routerAddress, targetAddress]);
 
 	const { data, isLoading, error, refetch } = useReadContracts({
 		contracts,
@@ -67,9 +63,9 @@ export function useSwapBalances(
 			coinBalance: 0,
 			coinBalanceRaw: 0n,
 			coinAllowanceRaw: 0n,
-			usduBalance: 0,
-			usduBalanceRaw: 0n,
-			usduAllowanceRaw: 0n,
+			targetBalance: 0,
+			targetBalanceRaw: 0n,
+			targetAllowanceRaw: 0n,
 			refetch,
 		};
 
@@ -83,16 +79,16 @@ export function useSwapBalances(
 
 		const coinBalanceRaw = (data[0]?.result as bigint) ?? 0n;
 		const coinAllowanceRaw = (data[1]?.result as bigint) ?? 0n;
-		const usduBalanceRaw = (data[2]?.result as bigint) ?? 0n;
-		const usduAllowanceRaw = (data[3]?.result as bigint) ?? 0n;
+		const targetBalanceRaw = (data[2]?.result as bigint) ?? 0n;
+		const targetAllowanceRaw = (data[3]?.result as bigint) ?? 0n;
 
 		return {
 			coinBalance: parseFloat(formatUnits(coinBalanceRaw, coinDecimals)),
 			coinBalanceRaw,
 			coinAllowanceRaw,
-			usduBalance: parseFloat(formatUnits(usduBalanceRaw, 18)),
-			usduBalanceRaw,
-			usduAllowanceRaw,
+			targetBalance: parseFloat(formatUnits(targetBalanceRaw, 18)),
+			targetBalanceRaw,
+			targetAllowanceRaw,
 			isLoading: false,
 			error: null,
 			refetch,

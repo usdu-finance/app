@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { formatUnits } from 'viem';
-import { mainnet } from 'viem/chains';
-import { ADDRESS } from '@usdu-finance/usdu-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faWallet, faArrowRightToBracket, faArrowRightFromBracket, faPercent, faSackDollar } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
@@ -18,13 +16,10 @@ import AddressLink from '@/components/ui/AddressLink';
 import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber, formatTimestampLocale, formatAddress } from '@/lib/utils';
 
-const fmtUsdu = (value: bigint, round: boolean = true) => `${formatCompactNumber(formatUnits(value, 18), 1, '', '', round)} USDU`;
+const fmtStable = (currency: string, value: bigint, round: boolean = true) =>
+	`${formatCompactNumber(formatUnits(value, 18), 1, '', '', round)} ${currency}`;
 
 type SwapDirection = 'in' | 'out';
-
-const addresses = ADDRESS[mainnet.id];
-const routerAddress = addresses.swapRouterV1 as `0x${string}`;
-const usduAddress = addresses.usduStable as `0x${string}`;
 
 export default function SwapDetailPage() {
 	const router = useRouter();
@@ -36,7 +31,9 @@ export default function SwapDetailPage() {
 	const { modules, isLoading: isLoadingModules, error: modulesError } = useSwapModules();
 	const selectedModule = modules.find((m) => m.moduleAddress.toLowerCase() === moduleAddressParam);
 
-	const directionTabs = selectedModule ? [`${selectedModule.coinSymbol} → USDU`, `USDU → ${selectedModule.coinSymbol}`] : [];
+	const directionTabs = selectedModule
+		? [`${selectedModule.coinSymbol} → ${selectedModule.currency}`, `${selectedModule.currency} → ${selectedModule.coinSymbol}`]
+		: [];
 	const [directionTab, setDirectionTab] = useState('');
 	const direction: SwapDirection = directionTab === directionTabs[1] ? 'out' : 'in';
 
@@ -49,7 +46,13 @@ export default function SwapDetailPage() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [selectedModule?.key]);
 
-	const balances = useSwapBalances(selectedModule?.coinAddress, selectedModule?.coinDecimals ?? 6, address as `0x${string}` | undefined);
+	const balances = useSwapBalances(
+		selectedModule?.coinAddress,
+		selectedModule?.coinDecimals ?? 6,
+		address as `0x${string}` | undefined,
+		selectedModule?.routerAddress,
+		selectedModule?.targetAddress
+	);
 
 	const { approve, swapIn, swapOut, isPending, isConfirming, isConfirmed, reset } = useSwap();
 	const [pendingStep, setPendingStep] = useState<'approve' | 'swap' | null>(null);
@@ -69,10 +72,10 @@ export default function SwapDetailPage() {
 
 	const inputDecimals = direction === 'in' ? (selectedModule?.coinDecimals ?? 6) : 18;
 	const outputDecimals = direction === 'in' ? 18 : (selectedModule?.coinDecimals ?? 6);
-	const inputSymbol = direction === 'in' ? (selectedModule?.coinSymbol ?? '') : 'USDU';
-	const outputSymbol = direction === 'in' ? 'USDU' : (selectedModule?.coinSymbol ?? '');
-	const inputBalanceRaw = direction === 'in' ? balances.coinBalanceRaw : balances.usduBalanceRaw;
-	const outputBalanceRaw = direction === 'in' ? balances.usduBalanceRaw : balances.coinBalanceRaw;
+	const inputSymbol = direction === 'in' ? (selectedModule?.coinSymbol ?? '') : (selectedModule?.currency ?? '');
+	const outputSymbol = direction === 'in' ? (selectedModule?.currency ?? '') : (selectedModule?.coinSymbol ?? '');
+	const inputBalanceRaw = direction === 'in' ? balances.coinBalanceRaw : balances.targetBalanceRaw;
+	const outputBalanceRaw = direction === 'in' ? balances.targetBalanceRaw : balances.coinBalanceRaw;
 
 	const amountRaw = amountRawInput ? BigInt(amountRawInput) : 0n;
 
@@ -86,9 +89,9 @@ export default function SwapDetailPage() {
 			return { output: amountStable - fee, fee, feePPM: selectedModule.swapInFeePPM, decimals: 18 };
 		}
 
-		// fee (18-decimal USDU) = amount * feePPM / 1e6; both the payout and the fee itself are then
-		// converted from USDU to coin decimals, mirroring SwapBridgeMorphoV1._swapOut's feeCoin calc —
-		// fee must not be formatted with coinDecimals while still in 18-decimal USDU units.
+		// fee (18-decimal stablecoin) = amount * feePPM / 1e6; both the payout and the fee itself are then
+		// converted from the stablecoin to coin decimals, mirroring SwapBridgeMorphoV1._swapOut's feeCoin calc —
+		// fee must not be formatted with coinDecimals while still in 18-decimal stablecoin units.
 		const feeStable = (amountRaw * BigInt(selectedModule.swapOutFeePPM)) / 1_000_000n;
 		const amountCoin = ((amountRaw - feeStable) * 10n ** BigInt(selectedModule.coinDecimals)) / 10n ** 18n;
 		const feeCoin = (feeStable * 10n ** BigInt(selectedModule.coinDecimals)) / 10n ** 18n;
@@ -108,14 +111,14 @@ export default function SwapDetailPage() {
 		return (maxMintableStable * 10n ** BigInt(selectedModule.coinDecimals)) / 10n ** 18n;
 	}, [selectedModule]);
 
-	// Swap-out burns `amount` USDU and decrements totalMinted (see SwapBridgeMorphoV1._swapOut), which would
-	// underflow/revert past totalMinted — so the max USDU that can be swapped out is capped by totalMinted,
-	// not just wallet balance.
+	// Swap-out burns `amount` of the target stablecoin and decrements totalMinted (see
+	// SwapBridgeMorphoV1._swapOut), which would underflow/revert past totalMinted — so the max amount that
+	// can be swapped out is capped by totalMinted, not just wallet balance.
 	const moduleCapacityRaw = direction === 'in' ? maxMintableCoinRaw : (selectedModule?.totalMinted ?? 0n);
 	const walletMaxRaw = isConnected ? inputBalanceRaw : undefined;
 	const maxRaw = walletMaxRaw !== undefined ? (walletMaxRaw < moduleCapacityRaw ? walletMaxRaw : moduleCapacityRaw) : undefined;
 
-	const allowanceRaw = direction === 'in' ? balances.coinAllowanceRaw : balances.usduAllowanceRaw;
+	const allowanceRaw = direction === 'in' ? balances.coinAllowanceRaw : balances.targetAllowanceRaw;
 	const needsApproval = amountRaw > 0n && allowanceRaw < amountRaw;
 	const insufficientBalance = amountRaw > 0n && amountRaw > inputBalanceRaw;
 	const exceedsCapacity = amountRaw > 0n && amountRaw > moduleCapacityRaw;
@@ -127,16 +130,16 @@ export default function SwapDetailPage() {
 		try {
 			if (needsApproval) {
 				setPendingStep('approve');
-				const token = direction === 'in' ? selectedModule.coinAddress : usduAddress;
-				await approve(token, routerAddress, amountRaw);
+				const token = direction === 'in' ? selectedModule.coinAddress : selectedModule.targetAddress;
+				await approve(token, selectedModule.routerAddress, amountRaw);
 				return;
 			}
 
 			setPendingStep('swap');
 			if (direction === 'in') {
-				await swapIn(routerAddress, selectedModule.moduleAddress, amountRaw);
+				await swapIn(selectedModule.routerAddress, selectedModule.moduleAddress, amountRaw);
 			} else {
-				await swapOut(routerAddress, selectedModule.moduleAddress, amountRaw);
+				await swapOut(selectedModule.routerAddress, selectedModule.moduleAddress, amountRaw);
 			}
 		} catch {
 			setPendingStep(null);
@@ -204,7 +207,7 @@ export default function SwapDetailPage() {
 					{
 						icon: faArrowRightToBracket,
 						label: 'Available In',
-						value: fmtUsdu(selectedModule.mintable, false),
+						value: fmtStable(selectedModule.currency, selectedModule.mintable, false),
 					},
 					{
 						icon: faArrowRightFromBracket,
@@ -219,7 +222,7 @@ export default function SwapDetailPage() {
 					{
 						icon: faSackDollar,
 						label: 'Revenue',
-						value: fmtUsdu(selectedModule.totalRevenue),
+						value: fmtStable(selectedModule.currency, selectedModule.totalRevenue),
 					},
 				]}
 			/>
@@ -291,7 +294,7 @@ export default function SwapDetailPage() {
 					<h3 className="font-semibold text-usdu-black text-lg mt-10 mb-3">Addresses</h3>
 
 					<DetailRow label="Swap Router">
-						<AddressLink address={routerAddress} />
+						<AddressLink address={selectedModule.routerAddress} />
 					</DetailRow>
 					<DetailRow label="Bridge Module">
 						<AddressLink address={selectedModule.moduleAddress} />

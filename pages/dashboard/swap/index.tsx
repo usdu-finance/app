@@ -39,7 +39,7 @@ const STEPS = [
 	{
 		icon: <FontAwesomeIcon icon={faCoins} className="w-3 h-3 text-usdu-card" />,
 		title: 'Pick a currency',
-		description: 'USDU today — EUR and other currencies are coming, each with their own set of swap modules.',
+		description: 'USDU, EURU, and CHFU are all live today, each with their own set of swap modules.',
 	},
 	{
 		icon: <FontAwesomeIcon icon={faScaleBalanced} className="w-3 h-3 text-usdu-card" />,
@@ -96,14 +96,22 @@ export default function SwapListPage() {
 							>
 								<div className="flex items-center gap-2">
 									<TokenLogo currency={m.coinSymbol} size={6} className="-mr-2" />
-									<TokenLogo currency="USDU" size={6} />
-									<span className="font-semibold text-usdu-black">{m.coinSymbol} / USDU</span>
+									<TokenLogo currency={m.currency} size={6} />
+									<span className="font-semibold text-usdu-black">
+										{m.coinSymbol} / {m.currency}
+									</span>
 								</div>
-								<span>{formatCompactNumber(formatUnits(m.mintable, 18), 1, '', '', false)} USDU</span>
-								<span>{formatCompactNumber(formatUnits(m.totalMinted, 18), 1, '')} {m.coinSymbol}</span>
+								<span>
+									{formatCompactNumber(formatUnits(m.mintable, 18), 1, '', '', false)} {m.currency}
+								</span>
+								<span>
+									{formatCompactNumber(formatUnits(m.totalMinted, 18), 1, '')} {m.coinSymbol}
+								</span>
 								<span>{(m.swapInFeePPM / 10_000).toFixed(2)}%</span>
 								<span>{(m.swapOutFeePPM / 10_000).toFixed(2)}%</span>
-								<span>{formatCompactNumber(formatUnits(m.totalRevenue, 18), 1, '')} USDU</span>
+								<span>
+									{formatCompactNumber(formatUnits(m.totalRevenue, 18), 1, '')} {m.currency}
+								</span>
 								<span>{m.vaultName || '—'}</span>
 							</TableRow>
 						))

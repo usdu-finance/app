@@ -2,26 +2,71 @@ import { useMemo } from 'react';
 import { useReadContracts } from 'wagmi';
 import { erc20Abi } from 'viem';
 import { mainnet } from 'viem/chains';
-import { ADDRESS, ISwapBridgeMorphoV1_ABI, Stablecoin_ABI } from '@usdu-finance/usdu-core';
+import { ADDRESS, ISwapBridgeMorphoV1_ABI, Stablecoin_ABI, type ChainAddressMainnet } from '@usdu-finance/usdu-core';
 import { APP_REFETCH } from '@/lib/constants';
 
 // coin, swapInFeePPM, swapOutFeePPM, mintCap, totalMinted, totalRevenue, vault, expiresAt
 const CALLS_PER_MODULE = 8;
 
+interface CurrencyModuleConfig {
+	key: string;
+	label: string;
+	moduleAddressKey: keyof ChainAddressMainnet;
+}
+
+interface CurrencyConfig {
+	currency: string;
+	stableKey: keyof ChainAddressMainnet;
+	routerKey: keyof ChainAddressMainnet;
+	modules: CurrencyModuleConfig[];
+}
+
+// Each stablecoin (USDU, EURU, CHFU, ...) runs its own swap router and its own set of
+// bridge modules, but they're all instances of the same router/module contracts.
+const CURRENCIES: CurrencyConfig[] = [
+	{
+		currency: 'USDU',
+		stableKey: 'usduStable',
+		routerKey: 'usduSwapRouterV1',
+		modules: [
+			{ key: 'usdu-steakUSDC', label: 'USDC', moduleAddressKey: 'usduSwapBridgeMorphoV1_steakUSDC_module' },
+			{ key: 'usdu-steakUSDT', label: 'USDT', moduleAddressKey: 'usduSwapBridgeMorphoV1_steakUSDT_module' },
+		],
+	},
+	{
+		currency: 'EURU',
+		stableKey: 'euruStable',
+		routerKey: 'euruSwapRouterV1',
+		modules: [{ key: 'euru-steakEURC', label: 'EURC', moduleAddressKey: 'euruSwapBridgeMorphoV1_steakEURC_module' }],
+	},
+	{
+		currency: 'CHFU',
+		stableKey: 'chfuStable',
+		routerKey: 'chfuSwapRouterV1',
+		modules: [{ key: 'chfu-ZCHF', label: 'ZCHF', moduleAddressKey: 'chfuSwapBridgeMorphoV1_ZCHF_module' }],
+	},
+];
+
 export interface SwapModule {
 	key: string;
 	label: string;
+	/** Symbol of the stablecoin this module mints/redeems (USDU, EURU, CHFU, ...). */
+	currency: string;
+	/** The currency's swap router, used for approvals and swapIn/swapOut calls. */
+	routerAddress: `0x${string}`;
+	/** The currency's stablecoin contract, minted/burned by this module. */
+	targetAddress: `0x${string}`;
 	moduleAddress: `0x${string}`;
 	coinAddress: `0x${string}`;
 	coinSymbol: string;
 	coinDecimals: number;
 	swapInFeePPM: number;
 	swapOutFeePPM: number;
-	/** Maximum USDU (18 decimals) this module may mint against new deposits. */
+	/** Maximum stablecoin (18 decimals) this module may mint against new deposits. */
 	mintCap: bigint;
-	/** USDU (18 decimals) currently minted/outstanding against this module. */
+	/** Stablecoin (18 decimals) currently minted/outstanding against this module. */
 	totalMinted: bigint;
-	/** Lifetime protocol revenue accrued by this module, in USDU (18 decimals). */
+	/** Lifetime protocol revenue accrued by this module, in the target stablecoin (18 decimals). */
 	totalRevenue: bigint;
 	/** Remaining swap-in capacity, i.e. max(mintCap - totalMinted, 0). */
 	mintable: bigint;
@@ -29,7 +74,7 @@ export interface SwapModule {
 	vaultAddress: `0x${string}`;
 	/** The vault's ERC20 name, shown as the module's strategy. */
 	vaultName: string;
-	/** Unix timestamp (seconds) at which the USDU stablecoin contract's module role expires. */
+	/** Unix timestamp (seconds) at which the stablecoin contract's module role expires. */
 	expiresAt: bigint;
 }
 
@@ -40,69 +85,64 @@ export interface SwapModulesData {
 }
 
 /**
- * Hook to fetch the swap router's registered bridge modules (coin, decimals, symbol, fees)
+ * Hook to fetch every currency's registered bridge modules (coin, decimals, symbol, fees)
  * @param chainId - Chain ID to query (defaults to mainnet)
- * @returns Available swap modules with their coin metadata and fee rates
+ * @returns Available swap modules, across all currencies, with their coin metadata and fee rates
  */
 export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 	const addresses = chainId === mainnet.id ? ADDRESS[mainnet.id] : undefined;
-	const usduAddress = addresses?.usduStable as `0x${string}` | undefined;
 
 	const moduleConfigs = useMemo(
 		() =>
 			addresses
-				? [
-						{
-							key: 'steakUSDC',
-							label: 'USDC',
-							moduleAddress: addresses.swapBridgeMorphoV1_steakUSDC_module as `0x${string}`,
-						},
-						{
-							key: 'steakUSDT',
-							label: 'USDT',
-							moduleAddress: addresses.swapBridgeMorphoV1_steakUSDT_module as `0x${string}`,
-						},
-					]
+				? CURRENCIES.flatMap((currency) =>
+						currency.modules.map((m) => ({
+							key: m.key,
+							label: m.label,
+							currency: currency.currency,
+							moduleAddress: addresses[m.moduleAddressKey] as `0x${string}`,
+							routerAddress: addresses[currency.routerKey] as `0x${string}`,
+							targetAddress: addresses[currency.stableKey] as `0x${string}`,
+						}))
+					)
 				: [],
 		[addresses]
 	);
 
 	const moduleContracts = useMemo(
 		() =>
-			!usduAddress
-				? []
-				: moduleConfigs.flatMap((m) => [
-						{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'coin' as const },
-						{
-							address: m.moduleAddress,
-							abi: ISwapBridgeMorphoV1_ABI,
-							functionName: 'swapInFeePPM' as const,
-						},
-						{
-							address: m.moduleAddress,
-							abi: ISwapBridgeMorphoV1_ABI,
-							functionName: 'swapOutFeePPM' as const,
-						},
-						{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'mintCap' as const },
-						{
-							address: m.moduleAddress,
-							abi: ISwapBridgeMorphoV1_ABI,
-							functionName: 'totalMinted' as const,
-						},
-						{
-							address: m.moduleAddress,
-							abi: ISwapBridgeMorphoV1_ABI,
-							functionName: 'totalRevenue' as const,
-						},
-						{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'vault' as const },
-						{
-							address: usduAddress,
-							abi: Stablecoin_ABI,
-							functionName: 'modules' as const,
-							args: [m.moduleAddress],
-						},
-					]),
-		[moduleConfigs, usduAddress]
+			moduleConfigs.flatMap((m) => [
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'coin' as const },
+				{
+					address: m.moduleAddress,
+					abi: ISwapBridgeMorphoV1_ABI,
+					functionName: 'swapInFeePPM' as const,
+				},
+				{
+					address: m.moduleAddress,
+					abi: ISwapBridgeMorphoV1_ABI,
+					functionName: 'swapOutFeePPM' as const,
+				},
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'mintCap' as const },
+				{
+					address: m.moduleAddress,
+					abi: ISwapBridgeMorphoV1_ABI,
+					functionName: 'totalMinted' as const,
+				},
+				{
+					address: m.moduleAddress,
+					abi: ISwapBridgeMorphoV1_ABI,
+					functionName: 'totalRevenue' as const,
+				},
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'vault' as const },
+				{
+					address: m.targetAddress,
+					abi: Stablecoin_ABI,
+					functionName: 'modules' as const,
+					args: [m.moduleAddress],
+				},
+			]),
+		[moduleConfigs]
 	);
 
 	const {
@@ -118,10 +158,7 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 	});
 
 	const coinAddresses = useMemo(
-		() =>
-			moduleConfigs.map(
-				(_, index) => moduleData?.[index * CALLS_PER_MODULE]?.result as `0x${string}` | undefined
-			),
+		() => moduleConfigs.map((_, index) => moduleData?.[index * CALLS_PER_MODULE]?.result as `0x${string}` | undefined),
 		[moduleData, moduleConfigs]
 	);
 
@@ -148,10 +185,7 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 	});
 
 	const vaultAddresses = useMemo(
-		() =>
-			moduleConfigs.map(
-				(_, index) => moduleData?.[index * CALLS_PER_MODULE + 6]?.result as `0x${string}` | undefined
-			),
+		() => moduleConfigs.map((_, index) => moduleData?.[index * CALLS_PER_MODULE + 6]?.result as `0x${string}` | undefined),
 		[moduleData, moduleConfigs]
 	);
 
@@ -208,8 +242,7 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 
 				const coinIndex = coinAddresses.findIndex((addr) => addr === coinAddress);
 				const coinDecimals = coinIndex >= 0 ? Number(coinData?.[coinIndex * 2]?.result ?? 6) : 6;
-				const coinSymbol =
-					coinIndex >= 0 ? ((coinData?.[coinIndex * 2 + 1]?.result as string) ?? config.label) : config.label;
+				const coinSymbol = coinIndex >= 0 ? ((coinData?.[coinIndex * 2 + 1]?.result as string) ?? config.label) : config.label;
 
 				const vaultIndex = vaultAddresses.findIndex((addr) => addr === vaultAddress);
 				const vaultName = vaultIndex >= 0 ? ((vaultData?.[vaultIndex]?.result as string) ?? '') : '';
@@ -217,6 +250,9 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 				return {
 					key: config.key,
 					label: config.label,
+					currency: config.currency,
+					routerAddress: config.routerAddress,
+					targetAddress: config.targetAddress,
 					moduleAddress: config.moduleAddress,
 					coinAddress,
 					coinSymbol,
