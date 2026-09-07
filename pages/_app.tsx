@@ -1,6 +1,7 @@
 import '../styles/globals.css';
 import type { AppProps } from 'next/app';
 import { Inter } from 'next/font/google';
+import Script from 'next/script';
 import { Toaster } from 'react-hot-toast';
 import { Provider as ReduxProvider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
@@ -17,33 +18,42 @@ const inter = Inter({
 
 export default function App({ Component, pageProps }: AppProps) {
 	return (
-		<div className={`${inter.variable} font-sans`}>
-			<ReduxProvider store={store}>
-				<PersistGate loading={null} persistor={persistor}>
-					<AppKitProvider>
-						<ApolloProvider>
-							<AuthProvider>
-								<Layout>
-									<Component {...pageProps} />
-								</Layout>
-								<Toaster
-									position="bottom-right"
-									toastOptions={{
-										style: {
-											display: 'flex',
-											alignItems: 'center',
-											gap: '16px',
-											padding: '16px',
-											position: 'relative',
-										},
-										duration: 6000,
-									}}
-								/>
-							</AuthProvider>
-						</ApolloProvider>
-					</AppKitProvider>
-				</PersistGate>
-			</ReduxProvider>
-		</div>
+		<>
+			{process.env.NEXT_PUBLIC_UMAMI_URL && (
+				<Script
+					src={`${process.env.NEXT_PUBLIC_UMAMI_URL}/script.js`}
+					data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+					strategy="afterInteractive"
+				/>
+			)}
+			<div className={`${inter.variable} font-sans`}>
+				<ReduxProvider store={store}>
+					<PersistGate loading={null} persistor={persistor}>
+						<AppKitProvider>
+							<ApolloProvider>
+								<AuthProvider>
+									<Layout>
+										<Component {...pageProps} />
+									</Layout>
+									<Toaster
+										position="bottom-right"
+										toastOptions={{
+											style: {
+												display: 'flex',
+												alignItems: 'center',
+												gap: '16px',
+												padding: '16px',
+												position: 'relative',
+											},
+											duration: 6000,
+										}}
+									/>
+								</AuthProvider>
+							</ApolloProvider>
+						</AppKitProvider>
+					</PersistGate>
+				</ReduxProvider>
+			</div>
+		</>
 	);
 }
