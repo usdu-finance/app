@@ -1,0 +1,43 @@
+services:
+    app:
+        image: node:22
+        command: bash -c "
+            git clone --depth=1 ${GIT_URL} /app &&
+            cd /app &&
+            git checkout ${GIT_BRANCH:-main} &&
+            yarn install --frozen-lockfile &&
+            yarn run build &&
+            yarn run start"
+        healthcheck:
+            test: ['CMD-SHELL', 'curl -f http://localhost:${VIRTUAL_PORT:-3000} || exit 1']
+            interval: 15s
+            timeout: 5s
+            retries: 3
+            start_period: 240s
+        deploy:
+            replicas: 1
+            update_config:
+                order: start-first
+                failure_action: rollback
+            restart_policy:
+                condition: on-failure
+        environment:
+            - GIT_URL=${GIT_URL}
+            - GIT_BRANCH=${GIT_BRANCH}
+            - LETSENCRYPT_HOST=${LETSENCRYPT_HOST}
+            - VIRTUAL_HOST=${VIRTUAL_HOST}
+            - VIRTUAL_PORT=${VIRTUAL_PORT}
+            - NEXT_PUBLIC_UMAMI_URL=${NEXT_PUBLIC_UMAMI_URL}
+            - NEXT_PUBLIC_UMAMI_WEBSITE_ID=${NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+            - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+            - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+            - NEXT_PUBLIC_INDEXER_URL=${NEXT_PUBLIC_INDEXER_URL}
+            - NEXT_PUBLIC_REOWN_PROJECT_ID=${NEXT_PUBLIC_REOWN_PROJECT_ID}
+            - NEXT_PUBLIC_RPC_URL=${NEXT_PUBLIC_RPC_URL}
+        networks:
+            - frontend
+
+networks:
+    frontend:
+        driver: overlay
+        attachable: true
