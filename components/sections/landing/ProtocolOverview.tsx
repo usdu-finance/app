@@ -46,8 +46,9 @@ export default function ProtocolOverview() {
 				>
 					<h2 className="text-4xl md:text-5xl font-bold text-usdu-black mb-6">Protocol Overview</h2>
 					<p className="text-xl text-text-secondary max-w-3xl mx-auto">
-						USDU represents a new paradigm in decentralized stablecoins, designed specifically for
-						institutional-grade credit and structured finance applications.
+						USDU anchors a new paradigm in decentralized stablecoins, designed specifically for
+						institutional-grade credit and structured finance applications. EURU and CHFU extend the same
+						model to EUR and CHF, trading directly against USDU as the protocol&apos;s base currency.
 					</p>
 				</motion.div>
 

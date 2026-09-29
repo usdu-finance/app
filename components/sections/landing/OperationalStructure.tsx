@@ -15,7 +15,8 @@ const operationalItems = [
 	},
 	{
 		title: 'LIQUIDITY',
-		description: 'USDU is traded and converted via the USDC/USDU pool and approved lending venues.',
+		description:
+			'USDU is traded and converted via the USDC/USDU pool and approved lending venues. EURU and CHFU pair against USDU as the base currency on dedicated Curve pools.',
 		image: '/assets/liquidity-icon-300x300.png',
 	},
 ];
