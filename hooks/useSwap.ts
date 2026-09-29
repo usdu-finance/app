@@ -2,12 +2,14 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import toast from 'react-hot-toast';
-import { ISwapRouterV1_ABI } from '@usdu-finance/usdu-core';
+import type { CurvePoolKind } from '@/redux/api/onChainApi';
+import { ICurveStableSwapNG_ABI, ISwapRouterV1_ABI, ITwocrypto_ABI } from '@usdu-finance/usdu-core';
 
 export interface SwapData {
 	approve: (token: `0x${string}`, spender: `0x${string}`, amount: bigint) => Promise<`0x${string}`>;
 	swapIn: (router: `0x${string}`, module: `0x${string}`, amount: bigint) => Promise<`0x${string}`>;
 	swapOut: (router: `0x${string}`, module: `0x${string}`, amount: bigint) => Promise<`0x${string}`>;
+	curveExchange: (kind: CurvePoolKind, pool: `0x${string}`, i: bigint, j: bigint, dx: bigint, minDy: bigint) => Promise<`0x${string}`>;
 	isPending: boolean;
 	isConfirming: boolean;
 	isConfirmed: boolean;
@@ -88,8 +90,37 @@ export function useSwap(): SwapData {
 		[writeContractAsync]
 	);
 
+	const curveExchange = useCallback(
+		async (kind: CurvePoolKind, pool: `0x${string}`, i: bigint, j: bigint, dx: bigint, minDy: bigint) => {
+			try {
+				// StableSwapNG takes int128 indices, Twocrypto uint256; both accept bigint here
+				const txHash =
+					kind === 'stable'
+						? await writeContractAsync({
+								address: pool,
+								abi: ICurveStableSwapNG_ABI,
+								functionName: 'exchange',
+								args: [i, j, dx, minDy],
+							})
+						: await writeContractAsync({
+								address: pool,
+								abi: ITwocrypto_ABI,
+								functionName: 'exchange',
+								args: [i, j, dx, minDy],
+							});
+				toastIdRef.current = toast.loading('Confirming swap...');
+				return txHash;
+			} catch (err) {
+				toast.error(err instanceof Error ? err.message : 'Swap failed');
+				throw err;
+			}
+		},
+		[writeContractAsync]
+	);
+
 	return {
 		approve,
+		curveExchange,
 		swapIn,
 		swapOut,
 		isPending,

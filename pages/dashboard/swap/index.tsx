@@ -4,7 +4,7 @@ import { formatUnits } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCoins, faScaleBalanced, faBolt } from '@fortawesome/free-solid-svg-icons';
 import { useSwapModules, type SwapModule } from '@/hooks/useSwapModules';
-import { usePoolModules, type PoolModule } from '@/hooks/usePoolModules';
+import { useCurvePools, type CurvePool } from '@/hooks/useCurvePools';
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
@@ -12,7 +12,7 @@ import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
 
 const HEADERS = ['Coin', 'Available In', 'Available Out', 'Fees In', 'Fees Out', 'Revenue', 'Strategy'];
-const POOL_HEADERS = ['Pool', 'TVL', 'USDC / USDU', 'LP Supply', 'Adapter Status'];
+const POOL_HEADERS = ['Pool', 'First Token', 'Second Token', 'TVL'];
 
 function compareBigint(a: bigint, b: bigint): number {
 	return a < b ? -1 : a > b ? 1 : 0;
@@ -37,26 +37,22 @@ function compareModules(tab: string, a: SwapModule, b: SwapModule): number {
 	}
 }
 
-function adapterStatus(m: PoolModule): string {
-	if (m.usduRatio < 0.5) return 'Provide with Adapter';
-	if (m.usduRatio >= 0.5 && m.adapterLPRatio > 0) return 'Remove with Adapter';
-	return 'Not Available';
-}
-
 function compareNumber(a: number, b: number): number {
 	return a - b;
 }
 
-function comparePools(tab: string, a: PoolModule, b: PoolModule): number {
+function tokenAmount(p: CurvePool, index: 0 | 1): number {
+	return parseFloat(formatUnits(p.balances[index], p.tokens[index].decimals));
+}
+
+function comparePools(tab: string, a: CurvePool, b: CurvePool): number {
 	switch (tab) {
 		case 'TVL':
 			return compareNumber(b.totalValue, a.totalValue);
-		case 'USDC / USDU':
-			return compareNumber(b.usduRatio, a.usduRatio);
-		case 'LP Supply':
-			return compareBigint(b.totalSupply, a.totalSupply);
-		case 'Adapter Status':
-			return adapterStatus(a).localeCompare(adapterStatus(b));
+		case 'First Token':
+			return compareNumber(tokenAmount(b, 0), tokenAmount(a, 0));
+		case 'Second Token':
+			return compareNumber(tokenAmount(b, 1), tokenAmount(a, 1));
 		default:
 			return a.label.localeCompare(b.label); // 'Pool'
 	}
@@ -90,13 +86,13 @@ export default function SwapListPage() {
 		return [...modules].sort((a, b) => dir * compareModules(sortTab, a, b));
 	}, [modules, sortTab, sortReverse]);
 
-	const { modules: poolModules, isLoading: isLoadingPools, error: poolError } = usePoolModules();
+	const { pools, isLoading: isLoadingPools, error: poolError } = useCurvePools();
 	const { sortTab: poolSortTab, sortReverse: poolSortReverse, handleSort: handlePoolSort } = useSort('Pool');
 
-	const sortedPoolModules = useMemo(() => {
+	const sortedPools = useMemo(() => {
 		const dir = poolSortReverse ? -1 : 1;
-		return [...poolModules].sort((a, b) => dir * comparePools(poolSortTab, a, b));
-	}, [poolModules, poolSortTab, poolSortReverse]);
+		return [...pools].sort((a, b) => dir * comparePools(poolSortTab, a, b));
+	}, [pools, poolSortTab, poolSortReverse]);
 
 	return (
 		<div className="space-y-8">
@@ -158,46 +154,37 @@ export default function SwapListPage() {
 			<div>
 				<h2 className="text-2xl font-bold text-usdu-black mb-2">Curve Pools</h2>
 				<p className="text-usdu-black">
-					Swap directly against Curve pools backing USDU. For now, only pools whose Curve address we&apos;ve manually
-					checked are listed here.
+					Swap directly against Curve pools backing USDU. For now, only pools whose Curve address we&apos;ve manually checked are
+					listed here.
 				</p>
 			</div>
 
 			<Table>
-				<TableHead
-					headers={POOL_HEADERS}
-					colSpan={5}
-					tab={poolSortTab}
-					reverse={poolSortReverse}
-					tabOnChange={handlePoolSort}
-				/>
+				<TableHead headers={POOL_HEADERS} colSpan={4} tab={poolSortTab} reverse={poolSortReverse} tabOnChange={handlePoolSort} />
 				<TableBody>
 					{isLoadingPools ? (
 						<TableRowEmpty>Loading curve pools...</TableRowEmpty>
 					) : poolError ? (
 						<TableRowEmpty>{`Error: ${poolError}`}</TableRowEmpty>
-					) : sortedPoolModules.length === 0 ? (
+					) : sortedPools.length === 0 ? (
 						<TableRowEmpty>No curve pools available.</TableRowEmpty>
 					) : (
-						sortedPoolModules.map((m) => (
+						sortedPools.map((m) => (
 							<TableRow
 								key={m.key}
 								headers={POOL_HEADERS}
-								colSpan={5}
+								colSpan={4}
 								tab={poolSortTab}
 								onClick={() => router.push(`/dashboard/swap/${m.poolAddress}/curve`)}
 							>
 								<div className="flex items-center gap-2">
-									<TokenLogo currency="USDC" size={6} className="-mr-2" />
-									<TokenLogo currency="USDU" size={6} />
+									<TokenLogo currency={m.tokens[0].symbol} size={6} className="-mr-2" />
+									<TokenLogo currency={m.tokens[1].symbol} size={6} />
 									<span className="font-semibold text-usdu-black">{m.label}</span>
 								</div>
+								<span>{formatCompactNumber(tokenAmount(m, 0), 1, '', ` ${m.tokens[0].symbol}`)}</span>
+								<span>{formatCompactNumber(tokenAmount(m, 1), 1, '', ` ${m.tokens[1].symbol}`)}</span>
 								<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
-								<span>
-									{(m.usdcRatio * 100).toFixed(1)}% / {(m.usduRatio * 100).toFixed(1)}%
-								</span>
-								<span>{formatCompactNumber(formatUnits(m.totalSupply, 18), 1, '', ' LP')}</span>
-								<span>{adapterStatus(m)}</span>
 							</TableRow>
 						))
 					)}
