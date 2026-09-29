@@ -94,7 +94,7 @@ export default function BorrowListPage() {
 							>
 								<div className="flex items-center gap-2">
 									<TokenLogo currency={o.collateralSymbol} size={6} />
-									<span className="font-semibold text-usdu-black">{o.collateralSymbol}</span>
+									<span>{o.collateralSymbol}</span>
 								</div>
 								<span>{formatTimestampLocale(o.maturity)}</span>
 								<span>{(o.ratePPM / 10_000).toFixed(2)}%</span>

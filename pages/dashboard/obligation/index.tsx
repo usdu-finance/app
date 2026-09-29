@@ -93,7 +93,7 @@ export default function ObligationListPage() {
 							>
 								<div className="flex items-center gap-2">
 									<TokenLogo currency={o.collateralSymbol} size={6} />
-									<span className="font-semibold text-usdu-black">{o.collateralSymbol}</span>
+									<span>{o.collateralSymbol}</span>
 								</div>
 								<span>{o.debtRaw.toString()}</span>
 								<span>{o.healthFactor.toFixed(2)}</span>

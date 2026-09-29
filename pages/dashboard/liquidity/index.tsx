@@ -102,7 +102,7 @@ export default function LiquidityListPage() {
 								<div className="flex items-center gap-2">
 									<TokenLogo currency="USDC" size={6} className="-mr-2" />
 									<TokenLogo currency="USDU" size={6} />
-									<span className="font-semibold text-usdu-black">{m.label}</span>
+									<span>{m.label}</span>
 								</div>
 								<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
 								<span>
