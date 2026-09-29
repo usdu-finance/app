@@ -63,6 +63,7 @@ export function useCurvePools(chainId: number = mainnet.id): CurvePoolsData {
 	const {
 		data: poolsData,
 		isLoading,
+		isUninitialized,
 		error,
 	} = useGetCurvePoolsDataQuery(configs, {
 		skip: configs.length === 0,
@@ -75,12 +76,14 @@ export function useCurvePools(chainId: number = mainnet.id): CurvePoolsData {
 			return { pools: [], isLoading: false, error: typeof error === 'string' ? error : 'Failed to fetch pool data' };
 		}
 
+		// RTK reports isLoading=false for the first render before the query subscribes (isUninitialized), which
+		// would flash "not found" on a hard reload; treat that as loading too.
 		if (!poolsData) {
-			return { pools: [], isLoading, error: null };
+			return { pools: [], isLoading: isLoading || (isUninitialized && configs.length > 0), error: null };
 		}
 
 		const pools: CurvePool[] = registry.filter((entry) => poolsData[entry.key]).map((entry) => ({ ...entry, ...poolsData[entry.key] }));
 
 		return { pools, isLoading: false, error: null };
-	}, [poolsData, isLoading, error, registry]);
+	}, [poolsData, isLoading, isUninitialized, error, registry, configs.length]);
 }
