@@ -12,7 +12,7 @@ import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
 
 const HEADERS = ['Coin', 'Available In', 'Available Out', 'Fees In', 'Fees Out', 'Revenue', 'Strategy'];
-const POOL_HEADERS = ['Pool', 'First Token', 'Second Token', 'TVL'];
+const POOL_HEADERS = ['Pool', 'TVL', 'First Token', 'Second Token'];
 
 function compareBigint(a: bigint, b: bigint): number {
 	return a < b ? -1 : a > b ? 1 : 0;
@@ -79,7 +79,7 @@ const STEPS = [
 export default function SwapListPage() {
 	const router = useRouter();
 	const { modules, isLoading, error } = useSwapModules();
-	const { sortTab, sortReverse, handleSort } = useSort('Coin');
+	const { sortTab, sortReverse, handleSort } = useSort('Available In');
 
 	const sortedModules = useMemo(() => {
 		const dir = sortReverse ? -1 : 1;
@@ -87,7 +87,7 @@ export default function SwapListPage() {
 	}, [modules, sortTab, sortReverse]);
 
 	const { pools, isLoading: isLoadingPools, error: poolError } = useCurvePools();
-	const { sortTab: poolSortTab, sortReverse: poolSortReverse, handleSort: handlePoolSort } = useSort('Pool');
+	const { sortTab: poolSortTab, sortReverse: poolSortReverse, handleSort: handlePoolSort } = useSort('TVL');
 
 	const sortedPools = useMemo(() => {
 		const dir = poolSortReverse ? -1 : 1;
@@ -128,7 +128,7 @@ export default function SwapListPage() {
 								<div className="flex items-center gap-2">
 									<TokenLogo currency={m.coinSymbol} size={6} className="-mr-2" />
 									<TokenLogo currency={m.currency} size={6} />
-									<span className="font-semibold text-usdu-black">
+									<span>
 										{m.coinSymbol} / {m.currency}
 									</span>
 								</div>
@@ -180,11 +180,11 @@ export default function SwapListPage() {
 								<div className="flex items-center gap-2">
 									<TokenLogo currency={m.tokens[0].symbol} size={6} className="-mr-2" />
 									<TokenLogo currency={m.tokens[1].symbol} size={6} />
-									<span className="font-semibold text-usdu-black">{m.label}</span>
+									<span>{m.label}</span>
 								</div>
+								<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
 								<span>{formatCompactNumber(tokenAmount(m, 0), 1, '', ` ${m.tokens[0].symbol}`)}</span>
 								<span>{formatCompactNumber(tokenAmount(m, 1), 1, '', ` ${m.tokens[1].symbol}`)}</span>
-								<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
 							</TableRow>
 						))
 					)}
