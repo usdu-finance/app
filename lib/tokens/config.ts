@@ -53,6 +53,15 @@ export const TOKENS: Record<string, TokenConfig> = {
 		chainId: 1,
 		logoURI: '/coin/usdu.png',
 	},
+	LP: {
+		// Placeholder entry: Curve LP tokens are pool-specific, this only supplies the shared logo
+		address: '0x0000000000000000000000000000000000000000',
+		symbol: 'LP',
+		name: 'Curve LP Token',
+		decimals: 18,
+		chainId: 1,
+		logoURI: '/coin/lp.svg',
+	},
 	EURU: {
 		address: '0x6e30d56cb23068dE5A084D4A4f2A909823424F06',
 		symbol: 'EURU',

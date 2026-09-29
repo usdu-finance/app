@@ -82,7 +82,7 @@ export default function StrategyListPage() {
 								tab={sortTab}
 								onClick={() => router.push(`/dashboard/strategy/${s.key}`)}
 							>
-								<span className="font-semibold text-usdu-black">{s.name}</span>
+								<span>{s.name}</span>
 								<span>{s.tvl.toString()}</span>
 								<span>{(s.apyPPM / 10_000).toFixed(2)}%</span>
 							</TableRow>
