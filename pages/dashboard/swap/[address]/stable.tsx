@@ -13,6 +13,8 @@ import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
 import { StatGrid } from '@/components/ui/stats';
 import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
+import AppLink from '@/components/ui/AppLink';
+import { getSwapSwapStrategyMeta } from '@/lib/swap-strategies';
 import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber, formatTimestampLocale, formatAddress } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
@@ -193,6 +195,7 @@ function SwapDetailPageContent() {
 		);
 	}
 
+	const swapStrategyMeta = getSwapSwapStrategyMeta(selectedModule.moduleAddress, selectedModule.vaultAddress);
 	const moduleLabel = `${selectedModule.coinSymbol} · ${selectedModule.vaultName || formatAddress(selectedModule.moduleAddress)}`;
 
 	return (
@@ -290,7 +293,13 @@ function SwapDetailPageContent() {
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface h-full flex flex-col">
 					<h3 className="font-semibold text-usdu-black text-lg mb-3">Details</h3>
 
-					<DetailRow label="Strategy" value={selectedModule.vaultName || '—'} />
+					<DetailRow label="Strategy">
+						{swapStrategyMeta ? (
+							<AppLink href={swapStrategyMeta.url}>{selectedModule.vaultName || swapStrategyMeta.provider}</AppLink>
+						) : (
+							<span>{selectedModule.vaultName || '—'}</span>
+						)}
+					</DetailRow>
 					<DetailRow label="Expiration" value={formatTimestampLocale(selectedModule.expiresAt)} />
 
 					<h3 className="font-semibold text-usdu-black text-lg mt-10 mb-3">Addresses</h3>

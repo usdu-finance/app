@@ -15,10 +15,11 @@ import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
 import { StatGrid } from '@/components/ui/stats';
 import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
+import AppLink from '@/components/ui/AppLink';
 import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
-import { SEO } from '@/lib/constants';
+import { SEO, getCurvePoolUrl } from '@/lib/constants';
 
 const SLIPPAGE_BPS = 50n; // 0.5%
 const TABS = ['Add', 'Remove'];
@@ -363,7 +364,11 @@ function LiquidityCurveDetailPageContent() {
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface h-full">
 					<h3 className="font-semibold text-usdu-black text-lg mb-3">Details</h3>
 
-					<DetailRow label="Pool Type" value={selectedPool.kind === 'stable' ? 'Curve StableSwap NG' : 'Curve Twocrypto NG'} />
+					<DetailRow label="Pool Type">
+						<AppLink href={getCurvePoolUrl(selectedPool.poolAddress)}>
+							{selectedPool.kind === 'stable' ? 'Curve StableSwap NG' : 'Curve Twocrypto NG'}
+						</AppLink>
+					</DetailRow>
 
 					<h3 className="font-semibold text-usdu-black text-lg mt-10 mb-3">Addresses</h3>
 
