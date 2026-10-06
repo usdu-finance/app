@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { useGetCurvePoolsDataQuery, type CurvePoolConfig, type CurvePoolData } from '@/redux/api/onChainApi';
@@ -82,7 +83,11 @@ export function useCurvePools(chainId: number = mainnet.id): CurvePoolsData {
 			return { pools: [], isLoading: isLoading || (isUninitialized && configs.length > 0), error: null };
 		}
 
-		const pools: CurvePool[] = registry.filter((entry) => poolsData[entry.key]).map((entry) => ({ ...entry, ...poolsData[entry.key] }));
+		const pools: CurvePool[] = registry.filter((entry) => poolsData[entry.key]).map((entry) => {
+			const data = poolsData[entry.key];
+			// Cache persisted before `price` existed lacks it; fall back to the price scale until the refetch lands
+			return { ...entry, ...data, price: data.price ?? parseFloat(formatUnits(data.priceScale, 18)) };
+		});
 
 		return { pools, isLoading: false, error: null };
 	}, [poolsData, isLoading, isUninitialized, error, registry, configs.length]);

@@ -40,10 +40,11 @@ export interface CurvePoolData {
 	priceScale: bigint; // value of 1 coin1 in coin0 terms (1e18 for stable pools)
 	totalValue: number; // in USD-equivalent (stable pools 1:1, twocrypto coin0 is USDU)
 	ratios: [number, number];
+	price: number; // live quote of 1 coin1 in coin0 (get_dy), falls back to priceScale when the pool cannot quote
 }
 
-// balances(0), balances(1), totalSupply, price_scale (twocrypto only, stable pools re-read totalSupply)
-const CALLS_PER_CURVE_POOL = 4;
+// balances(0), balances(1), totalSupply, price_scale (twocrypto only, stable pools re-read totalSupply), get_dy(1 -> 0)
+const CALLS_PER_CURVE_POOL = 5;
 
 // balances(0), balances(1), totalSupply, adapter balanceOf, get_dy, get_virtual_price
 const CALLS_PER_POOL = 6;
@@ -133,7 +134,7 @@ export const onChainApi = createApi({
 		getCurvePoolsData: builder.query<Record<string, CurvePoolData>, CurvePoolConfig[]>({
 			async queryFn(pools) {
 				try {
-					const contracts = pools.flatMap(({ poolAddress, kind }) => {
+					const contracts = pools.flatMap(({ poolAddress, kind, decimals }) => {
 						const abi = kind === 'stable' ? ICurveStableSwapNG_ABI : ITwocrypto_ABI;
 						return [
 							{ address: poolAddress, abi, functionName: 'balances' as const, args: [0n] },
@@ -143,12 +144,15 @@ export const onChainApi = createApi({
 							kind === 'stable'
 								? { address: poolAddress, abi: ICurveStableSwapNG_ABI, functionName: 'get_virtual_price' as const }
 								: { address: poolAddress, abi: ITwocrypto_ABI, functionName: 'price_scale' as const },
+							{ address: poolAddress, abi, functionName: 'get_dy' as const, args: [1n, 0n, 10n ** BigInt(decimals[1])] },
 						];
 					});
 
 					const results = await readContracts(WAGMI_CONFIG, { contracts });
 
-					if (!results.every((result) => result.status === 'success')) {
+					// get_dy may revert on an empty pool; only the first four reads per pool are required
+					const required = results.filter((_, i) => i % CALLS_PER_CURVE_POOL !== CALLS_PER_CURVE_POOL - 1);
+					if (!required.every((result) => result.status === 'success')) {
 						return { error: 'Some contract calls failed' };
 					}
 
@@ -161,6 +165,12 @@ export const onChainApi = createApi({
 						const totalSupply = results[base + 2].result as bigint;
 						const priceScale = pool.kind === 'twocrypto' ? (results[base + 3].result as bigint) : parseEther('1');
 
+						const dy = results[base + 4];
+						const price =
+							dy.status === 'success'
+								? parseFloat(formatUnits(dy.result as bigint, pool.decimals[0]))
+								: parseFloat(formatUnits(priceScale, 18));
+
 						const value0 = parseFloat(formatUnits(balance0, pool.decimals[0]));
 						const value1 = parseFloat(formatUnits(balance1, pool.decimals[1])) * parseFloat(formatUnits(priceScale, 18));
 						const totalValue = value0 + value1;
@@ -170,6 +180,7 @@ export const onChainApi = createApi({
 							totalSupply,
 							priceScale,
 							totalValue,
+							price,
 							ratios: totalValue > 0 ? [value0 / totalValue, value1 / totalValue] : [0, 0],
 						};
 					});
