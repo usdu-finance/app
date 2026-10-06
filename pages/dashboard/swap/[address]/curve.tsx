@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWallet, faDroplet, faScaleBalanced, faLayerGroup, faTag } from '@fortawesome/free-solid-svg-icons';
+import { faWallet, faDroplet, faScaleBalanced, faLayerGroup, faTag, faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
 import { ICurveStableSwapNG_ABI, ITwocrypto_ABI } from '@usdu-finance/usdu-core';
 import { useAuth } from '@/contexts/AuthContext';
@@ -295,7 +296,17 @@ export default function SwapCurveDetailPage() {
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface h-full">
 					<h3 className="font-semibold text-usdu-black text-lg mb-3">Details</h3>
 
-					<DetailRow label="Pool Type" value={selectedPool.kind === 'stable' ? 'Curve StableSwap NG' : 'Curve Twocrypto NG'} />
+					<DetailRow label="Pool Type">
+						<Link
+							href={`https://www.curve.finance/dex/ethereum/pools/${selectedPool.poolAddress}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-usdu-orange hover:text-usdu-orange/80 inline-flex items-center gap-1"
+						>
+							<span>{selectedPool.kind === 'stable' ? 'Curve StableSwap NG' : 'Curve Twocrypto NG'}</span>
+							<FontAwesomeIcon icon={faExternalLinkAlt} className="w-3 h-3 -mt-0.5" />
+						</Link>
+					</DetailRow>
 
 					<h3 className="font-semibold text-usdu-black text-lg mt-10 mb-3">Addresses</h3>
 
