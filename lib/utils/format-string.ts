@@ -9,6 +9,12 @@ export function capLetter(data: string) {
 }
 
 /**
+ * Normalize an address to lowercase so it can be used as a record/map key or compared safely
+ * @param address - The address to normalize
+ */
+export const normalizeAddress = (address: string): `0x${string}` => address.toLowerCase() as `0x${string}`;
+
+/**
  * Shorten a string by showing start and end with ellipsis in the middle
  * @param str - The string to shorten
  * @param start - Number of characters to show at start (default: 8)

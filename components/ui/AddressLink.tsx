@@ -1,9 +1,7 @@
 import React from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
+import AppLink from '@/components/ui/AppLink';
 import { getBlockExplorerUrl } from '@/lib/web3/config';
 import { formatAddress } from '@/lib/utils';
-import Link from 'next/link';
 
 interface AddressLinkProps {
 	/** The address to display and link to */
@@ -22,7 +20,7 @@ interface AddressLinkProps {
 
 /**
  * Inline address link component for use in tables, cards, etc.
- * Shows shortened address with link to block explorer.
+ * Shows shortened address with link to block explorer, styled like AppLink.
  */
 export default function AddressLink({
 	address,
@@ -36,14 +34,8 @@ export default function AddressLink({
 	const display = displayText || formatAddress(address);
 
 	return (
-		<Link
-			href={explorerUrl}
-			target="_blank"
-			rel="noopener noreferrer"
-			className={`text-usdu-orange hover:text-usdu-orange/80 inline-flex items-center gap-1 font-mono ${className}`}
-		>
-			<span>{display}</span>
-			{!hideIcon && <FontAwesomeIcon icon={faExternalLinkAlt} className="w-3 h-3 -mt-0.5" />}
-		</Link>
+		<AppLink href={explorerUrl} external hideIcon={hideIcon} className={className}>
+			{display}
+		</AppLink>
 	);
 }

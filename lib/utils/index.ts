@@ -29,7 +29,7 @@ export {
 } from './format-number';
 
 // String formatting
-export { capLetter, shortenString, shortenAddress, formatAddress } from './format-string';
+export { capLetter, normalizeAddress, shortenString, shortenAddress, formatAddress } from './format-string';
 
 // Style utilities
 export { cn } from './style-utils';

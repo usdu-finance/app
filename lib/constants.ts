@@ -25,6 +25,9 @@ export const SOCIAL = {
 	Etherscan: 'https://etherscan.io/token/0xdde3eC717f220Fc6A29D6a4Be73F91DA5b718e55',
 };
 
+// Official Curve page of a pool on Ethereum
+export const getCurvePoolUrl = (poolAddress: string) => `https://www.curve.finance/dex/ethereum/pools/${poolAddress}`;
+
 // Environment variables
 export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
