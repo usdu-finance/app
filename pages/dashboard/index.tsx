@@ -1,4 +1,5 @@
 import React from 'react';
+import { PageHeader } from '@/components/ui/layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import {
@@ -44,18 +45,12 @@ export default function DashboardPage() {
 
 	return (
 		<div className="space-y-8">
-			{/* Header */}
-			<div>
-				<h1 className="text-3xl font-bold text-usdu-black mb-2">
-					Dashboard
-				</h1>
-				<p className="text-usdu-black">
-					Welcome to USDU Finance.{' '}
-					{isConnected
-						? `Connected as ${address?.slice(0, 8)}...${address?.slice(-6)}`
-						: 'Connect your wallet to get started.'}
-				</p>
-			</div>
+			<PageHeader
+				title="Dashboard"
+				description={`Welcome to USDU Finance. ${
+					isConnected ? `Connected as ${address?.slice(0, 8)}...${address?.slice(-6)}` : 'Connect your wallet to get started.'
+				}`}
+			/>
 
 			{/* Stats Grid */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

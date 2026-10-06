@@ -4,6 +4,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLayerGroup, faScaleBalanced, faChartLine } from '@fortawesome/free-solid-svg-icons';
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
+import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 
 const HEADERS = ['Strategy', 'TVL', 'APY'];
@@ -58,13 +59,10 @@ export default function StrategyListPage() {
 
 	return (
 		<div className="space-y-8">
-			{/* Header */}
-			<div>
-				<h1 className="text-3xl font-bold text-usdu-black mb-2">Strategy</h1>
-				<p className="text-usdu-black">
-					Compare the strategy vaults backing each swap module, including their total value locked and yield.
-				</p>
-			</div>
+			<PageHeader
+				title="Strategy"
+				description="Compare the strategy vaults backing each swap module, including their total value locked and yield."
+			/>
 
 			<HeroSteps steps={STEPS} />
 

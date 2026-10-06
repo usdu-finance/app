@@ -7,6 +7,7 @@ import { useCurvePools, type CurvePool } from '@/hooks/useCurvePools';
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
+import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
 
@@ -69,11 +70,10 @@ export default function LiquidityListPage() {
 
 	return (
 		<div className="space-y-8">
-			{/* Header */}
-			<div>
-				<h1 className="text-3xl font-bold text-usdu-black mb-2">Liquidity</h1>
-				<p className="text-usdu-black">Provide or remove liquidity from the pools backing USDU. Select a pool to get started.</p>
-			</div>
+			<PageHeader
+				title="Liquidity"
+				description="Provide or remove liquidity from the pools backing USDU. Select a pool to get started."
+			/>
 
 			<HeroSteps steps={STEPS} />
 

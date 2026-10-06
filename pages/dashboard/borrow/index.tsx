@@ -5,6 +5,7 @@ import { faCoins, faCalendarDays, faPercentage } from '@fortawesome/free-solid-s
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
+import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatTimestampLocale } from '@/lib/utils';
 
@@ -67,14 +68,12 @@ export default function BorrowListPage() {
 
 	return (
 		<div className="space-y-8">
-			{/* Header */}
-			<div>
-				<h1 className="text-3xl font-bold text-usdu-black mb-2">Borrow</h1>
-				<p className="text-usdu-black">
-					Select a suitable collateral and maturity to initiate a borrow action. If your desired terms
-					aren&apos;t available, you can create a custom order.
-				</p>
-			</div>
+			<PageHeader
+				title="Borrow"
+				description={
+					"Select a suitable collateral and maturity to initiate a borrow action. If your desired terms aren't available, you can create a custom order."
+				}
+			/>
 
 			<HeroSteps steps={STEPS} />
 

@@ -8,11 +8,12 @@ import { useCurvePools, type CurvePool } from '@/hooks/useCurvePools';
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
+import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
 
 const HEADERS = ['Coin', 'Available In', 'Available Out', 'Fees In', 'Fees Out', 'Strategy'];
-const POOL_HEADERS = ['Pool', 'TVL', 'First Token', 'Second Token'];
+const POOL_HEADERS = ['Pool', 'TVL', 'Price', 'First Token', 'Second Token'];
 
 function compareBigint(a: bigint, b: bigint): number {
 	return a < b ? -1 : a > b ? 1 : 0;
@@ -45,6 +46,8 @@ function tokenAmount(p: CurvePool, index: 0 | 1): number {
 
 function comparePools(tab: string, a: CurvePool, b: CurvePool): number {
 	switch (tab) {
+		case 'Price':
+			return compareNumber(b.price, a.price);
 		case 'TVL':
 			return compareNumber(b.totalValue, a.totalValue);
 		case 'First Token':
@@ -94,14 +97,10 @@ export default function SwapListPage() {
 
 	return (
 		<div className="space-y-8">
-			{/* Header */}
-			<div>
-				<h1 className="text-3xl font-bold text-usdu-black mb-2">Swap</h1>
-				<p className="text-usdu-black">
-					Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get
-					started.
-				</p>
-			</div>
+			<PageHeader
+				title="Swap"
+				description="Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get started."
+			/>
 
 			<HeroSteps steps={STEPS} />
 
@@ -146,16 +145,15 @@ export default function SwapListPage() {
 			</Table>
 
 			{/* Curve pools */}
-			<div>
-				<h2 className="text-2xl font-bold text-usdu-black mb-2">Curve Pools</h2>
-				<p className="text-usdu-black">
-					Swap directly against Curve pools backing USDU. For now, only pools whose Curve address we&apos;ve manually checked are
-					listed here.
-				</p>
-			</div>
+			<PageHeader
+				title="Curve Pools"
+				description={
+					"Swap directly against Curve pools backing USDU. For now, only pools whose Curve address we've manually checked are listed here."
+				}
+			/>
 
 			<Table>
-				<TableHead headers={POOL_HEADERS} colSpan={4} tab={poolSortTab} reverse={poolSortReverse} tabOnChange={handlePoolSort} />
+				<TableHead headers={POOL_HEADERS} colSpan={5} tab={poolSortTab} reverse={poolSortReverse} tabOnChange={handlePoolSort} />
 				<TableBody>
 					{isLoadingPools ? (
 						<TableRowEmpty>Loading curve pools...</TableRowEmpty>
@@ -168,7 +166,7 @@ export default function SwapListPage() {
 							<TableRow
 								key={m.key}
 								headers={POOL_HEADERS}
-								colSpan={4}
+								colSpan={5}
 								tab={poolSortTab}
 								onClick={() => router.push(`/dashboard/swap/${m.poolAddress}/curve`)}
 							>
@@ -178,6 +176,7 @@ export default function SwapListPage() {
 									<span>{m.label}</span>
 								</div>
 								<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
+								<span>{`${m.price.toFixed(4)} ${m.tokens[0].symbol}`}</span>
 								<span>{formatCompactNumber(tokenAmount(m, 0), 1, '', ` ${m.tokens[0].symbol}`)}</span>
 								<span>{formatCompactNumber(tokenAmount(m, 1), 1, '', ` ${m.tokens[1].symbol}`)}</span>
 							</TableRow>

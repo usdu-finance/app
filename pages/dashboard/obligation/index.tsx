@@ -5,6 +5,7 @@ import { faFileContract, faHeartPulse, faCalendarDays } from '@fortawesome/free-
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
+import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatTimestampLocale } from '@/lib/utils';
 
@@ -67,13 +68,7 @@ export default function ObligationListPage() {
 
 	return (
 		<div className="space-y-8">
-			{/* Header */}
-			<div>
-				<h1 className="text-3xl font-bold text-usdu-black mb-2">Obligation</h1>
-				<p className="text-usdu-black">
-					Track your open borrow obligations, their health, and upcoming maturities.
-				</p>
-			</div>
+			<PageHeader title="Obligation" description="Track your open borrow obligations, their health, and upcoming maturities." />
 
 			<HeroSteps steps={STEPS} />
 
