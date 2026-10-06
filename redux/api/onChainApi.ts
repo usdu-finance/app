@@ -172,7 +172,10 @@ export const onChainApi = createApi({
 								: parseFloat(formatUnits(priceScale, 18));
 
 						const value0 = parseFloat(formatUnits(balance0, pool.decimals[0]));
-						const value1 = parseFloat(formatUnits(balance1, pool.decimals[1])) * parseFloat(formatUnits(priceScale, 18));
+						// Twocrypto pools are valued at the live market quote (the price shown in the tables) rather than the
+						// pool's internal price_scale, which lags the market; stable pools are valued 1:1
+						const value1Price = pool.kind === 'twocrypto' ? price : 1;
+						const value1 = parseFloat(formatUnits(balance1, pool.decimals[1])) * value1Price;
 						const totalValue = value0 + value1;
 
 						data[pool.key] = {
