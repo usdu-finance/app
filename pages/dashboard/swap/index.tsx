@@ -100,7 +100,7 @@ function SwapListPageContent() {
 	return (
 		<div className="space-y-8">
 			<PageHeader
-				title="Swap"
+				title="Stable Swap"
 				description="Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get started."
 			/>
 
