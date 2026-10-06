@@ -11,6 +11,8 @@ import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 const HEADERS = ['Coin', 'Available In', 'Available Out', 'Fees In', 'Fees Out', 'Strategy'];
 const POOL_HEADERS = ['Pool', 'TVL', 'Price', 'First Token', 'Second Token'];
@@ -77,7 +79,7 @@ const STEPS = [
 	},
 ];
 
-export default function SwapListPage() {
+function SwapListPageContent() {
 	const router = useRouter();
 	const { modules, isLoading, error } = useSwapModules();
 	const { sortTab, sortReverse, handleSort } = useSort('Available In');
@@ -148,7 +150,7 @@ export default function SwapListPage() {
 			<PageHeader
 				title="Curve Pools"
 				description={
-					"Swap directly against Curve pools backing USDU. For now, only pools whose Curve address we've manually checked are listed here."
+					'Curve pools provide the exit liquidity for USDU: the USDU / USDC pool is the deep, primary route between USDU and USDC, while the EURU and CHFU pools act as FX exchange pools within the protocol.'
 				}
 			/>
 
@@ -185,5 +187,14 @@ export default function SwapListPage() {
 				</TableBody>
 			</Table>
 		</div>
+	);
+}
+
+export default function SwapListPage() {
+	return (
+		<>
+			<NextSeo title={SEO.swap.title} description={SEO.swap.description} openGraph={SEO.swap.openGraph} />
+			<SwapListPageContent />
+		</>
 	);
 }

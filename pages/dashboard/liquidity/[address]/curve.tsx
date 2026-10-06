@@ -17,13 +17,15 @@ import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
 import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber } from '@/lib/utils';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 const SLIPPAGE_BPS = 50n; // 0.5%
 const TABS = ['Add', 'Remove'];
 
 const parseRaw = (v: string) => (v ? BigInt(v) : 0n);
 
-export default function LiquidityCurveDetailPage() {
+function LiquidityCurveDetailPageContent() {
 	const router = useRouter();
 	const addressParam = typeof router.query.address === 'string' ? router.query.address.toLowerCase() : undefined;
 
@@ -377,5 +379,14 @@ export default function LiquidityCurveDetailPage() {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function LiquidityCurveDetailPage() {
+	return (
+		<>
+			<NextSeo title={SEO.liquidityPool.title} description={SEO.liquidityPool.description} openGraph={SEO.liquidityPool.openGraph} />
+			<LiquidityCurveDetailPageContent />
+		</>
 	);
 }

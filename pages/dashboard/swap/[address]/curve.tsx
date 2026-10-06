@@ -18,10 +18,12 @@ import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
 import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber } from '@/lib/utils';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 const SLIPPAGE_BPS = 50n; // 0.5%
 
-export default function SwapCurveDetailPage() {
+function SwapCurveDetailPageContent() {
 	const router = useRouter();
 	const addressParam = typeof router.query.address === 'string' ? router.query.address.toLowerCase() : undefined;
 
@@ -322,5 +324,14 @@ export default function SwapCurveDetailPage() {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function SwapCurveDetailPage() {
+	return (
+		<>
+			<NextSeo title={SEO.swapPool.title} description={SEO.swapPool.description} openGraph={SEO.swapPool.openGraph} />
+			<SwapCurveDetailPageContent />
+		</>
 	);
 }

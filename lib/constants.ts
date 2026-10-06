@@ -38,7 +38,74 @@ export const STORAGE_KEYS = {
 } as const;
 
 // SEO metadata
+const pageSeo = (title: string, description: string, path: string) => ({
+	title: `${title} - ${APP_NAME}`,
+	description,
+	openGraph: {
+		title: `${title} - ${APP_NAME}`,
+		description,
+		type: 'website' as const,
+		url: `${APP_URL}${path}`,
+	},
+});
+
 export const SEO = {
+	dashboard: pageSeo('Dashboard', 'Your USDU Finance dashboard: protocol overview, wallet status and quick actions.', '/dashboard'),
+	swap: pageSeo(
+		'Swap',
+		'Mint or redeem USDU, EURU and CHFU through the swap router, or swap directly against Curve pools backing USDU.',
+		'/dashboard/swap'
+	),
+	swapModule: pageSeo(
+		'Swap Module',
+		'Mint or redeem a USDU stablecoin against its backing asset through a swap module, with live fees and capacity.',
+		'/dashboard/swap'
+	),
+	swapPool: pageSeo(
+		'Swap on Curve',
+		'Swap directly against a Curve pool backing USDU with live pricing, pool composition and slippage protection.',
+		'/dashboard/swap'
+	),
+	liquidity: pageSeo(
+		'Liquidity',
+		'Provide or remove liquidity from the Curve pools backing USDU and review TVL, balances and LP supply.',
+		'/dashboard/liquidity'
+	),
+	liquidityPool: pageSeo(
+		'Curve Pool Liquidity',
+		'Add or remove liquidity in a Curve pool backing USDU and review its composition and LP position.',
+		'/dashboard/liquidity'
+	),
+	borrow: pageSeo(
+		'Borrow',
+		'Select a collateral and maturity to borrow USDU at a fixed term, or create a custom order.',
+		'/dashboard/borrow'
+	),
+	borrowOffer: pageSeo(
+		'Borrow Offer',
+		'Review the terms of a fixed-term borrow offer, including collateral, maturity, rate and availability.',
+		'/dashboard/borrow'
+	),
+	obligation: pageSeo(
+		'Obligations',
+		'Track your open borrow obligations, their health and upcoming maturities.',
+		'/dashboard/obligation'
+	),
+	obligationDetail: pageSeo(
+		'Obligation Details',
+		'Details on an obligation, including outstanding debt, health and maturity.',
+		'/dashboard/obligation'
+	),
+	strategy: pageSeo(
+		'Strategies',
+		'Compare the strategy vaults backing each swap module, including total value locked and yield.',
+		'/dashboard/strategy'
+	),
+	strategyDetail: pageSeo(
+		'Strategy Details',
+		'Details on a strategy vault backing a swap module, including total value locked and yield.',
+		'/dashboard/strategy'
+	),
 	home: {
 		title: `${APP_NAME} - Institutional-Grade Stablecoin for Credit Markets`,
 		description: `${PROJECT.description} Offering 4-6% fixed-term funding rates with DAO governance.`,
@@ -60,8 +127,7 @@ export const SEO = {
 			'Manage USDU protocol modules through expiration-based governance. Review active adapters, pending proposals, and module history with secure timelock controls.',
 		openGraph: {
 			title: `Protocol Modules & Governance - ${APP_NAME}`,
-			description:
-				'Transparent governance of USDU protocol modules with expiration-based proposals and secure timelock controls.',
+			description: 'Transparent governance of USDU protocol modules with expiration-based proposals and secure timelock controls.',
 			type: 'website' as const,
 			url: `${APP_URL}/modules`,
 		},

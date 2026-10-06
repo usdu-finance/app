@@ -6,6 +6,8 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 const HEADERS = ['Strategy', 'TVL', 'APY'];
 
@@ -48,7 +50,7 @@ const STEPS = [
 	},
 ];
 
-export default function StrategyListPage() {
+function StrategyListPageContent() {
 	const router = useRouter();
 	const { sortTab, sortReverse, handleSort } = useSort('Strategy');
 
@@ -89,5 +91,14 @@ export default function StrategyListPage() {
 				</TableBody>
 			</Table>
 		</div>
+	);
+}
+
+export default function StrategyListPage() {
+	return (
+		<>
+			<NextSeo title={SEO.strategy.title} description={SEO.strategy.description} openGraph={SEO.strategy.openGraph} />
+			<StrategyListPageContent />
+		</>
 	);
 }

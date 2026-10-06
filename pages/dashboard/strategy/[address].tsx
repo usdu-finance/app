@@ -5,6 +5,8 @@ import { StatGrid } from '@/components/ui/stats';
 import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
 import NotFound from '@/components/ui/NotFound';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 interface StrategyItem {
 	key: string;
@@ -17,7 +19,7 @@ interface StrategyItem {
 // Placeholder — replace with a hook once strategy vaults are exposed on-chain.
 const STRATEGIES: StrategyItem[] = [];
 
-export default function StrategyDetailPage() {
+function StrategyDetailPageContent() {
 	const router = useRouter();
 	const key = typeof router.query.address === 'string' ? router.query.address : undefined;
 
@@ -61,5 +63,18 @@ export default function StrategyDetailPage() {
 				</DetailRow>
 			</div>
 		</div>
+	);
+}
+
+export default function StrategyDetailPage() {
+	return (
+		<>
+			<NextSeo
+				title={SEO.strategyDetail.title}
+				description={SEO.strategyDetail.description}
+				openGraph={SEO.strategyDetail.openGraph}
+			/>
+			<StrategyDetailPageContent />
+		</>
 	);
 }

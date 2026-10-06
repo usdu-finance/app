@@ -8,6 +8,8 @@ import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatTimestampLocale } from '@/lib/utils';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 const HEADERS = ['Collateral', 'Maturity', 'Rate', 'Available'];
 
@@ -57,7 +59,7 @@ const STEPS = [
 	},
 ];
 
-export default function BorrowListPage() {
+function BorrowListPageContent() {
 	const router = useRouter();
 	const { sortTab, sortReverse, handleSort } = useSort('Collateral');
 
@@ -104,5 +106,14 @@ export default function BorrowListPage() {
 				</TableBody>
 			</Table>
 		</div>
+	);
+}
+
+export default function BorrowListPage() {
+	return (
+		<>
+			<NextSeo title={SEO.borrow.title} description={SEO.borrow.description} openGraph={SEO.borrow.openGraph} />
+			<BorrowListPageContent />
+		</>
 	);
 }

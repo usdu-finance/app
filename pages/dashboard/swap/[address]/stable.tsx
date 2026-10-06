@@ -15,13 +15,15 @@ import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
 import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber, formatTimestampLocale, formatAddress } from '@/lib/utils';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 const fmtStable = (currency: string, value: bigint, round: boolean = true) =>
 	`${formatCompactNumber(formatUnits(value, 18), 1, '', '', round)} ${currency}`;
 
 type SwapDirection = 'in' | 'out';
 
-export default function SwapDetailPage() {
+function SwapDetailPageContent() {
 	const router = useRouter();
 	const moduleAddressParam = typeof router.query.address === 'string' ? router.query.address.toLowerCase() : undefined;
 
@@ -312,5 +314,14 @@ export default function SwapDetailPage() {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function SwapDetailPage() {
+	return (
+		<>
+			<NextSeo title={SEO.swapModule.title} description={SEO.swapModule.description} openGraph={SEO.swapModule.openGraph} />
+			<SwapDetailPageContent />
+		</>
 	);
 }

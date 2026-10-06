@@ -11,6 +11,8 @@ import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
 import NotFound from '@/components/ui/NotFound';
 import { formatTimestampLocale } from '@/lib/utils';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 interface BorrowOffer {
 	key: string;
@@ -24,7 +26,7 @@ interface BorrowOffer {
 // Placeholder — replace with a hook once borrow offers are exposed on-chain.
 const OFFERS: BorrowOffer[] = [];
 
-export default function BorrowDetailPage() {
+function BorrowDetailPageContent() {
 	const router = useRouter();
 	const key = typeof router.query.address === 'string' ? router.query.address : undefined;
 
@@ -100,5 +102,14 @@ export default function BorrowDetailPage() {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function BorrowDetailPage() {
+	return (
+		<>
+			<NextSeo title={SEO.borrowOffer.title} description={SEO.borrowOffer.description} openGraph={SEO.borrowOffer.openGraph} />
+			<BorrowDetailPageContent />
+		</>
 	);
 }

@@ -8,6 +8,8 @@ import {
 	faUsers,
 	faShield,
 } from '@fortawesome/free-solid-svg-icons';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 const stats = [
 	{
@@ -40,7 +42,7 @@ const stats = [
 	},
 ];
 
-export default function DashboardPage() {
+function DashboardPageContent() {
 	const { isConnected, address } = useAuth();
 
 	return (
@@ -157,5 +159,14 @@ export default function DashboardPage() {
 				</div>
 			</div>
 		</div>
+	);
+}
+
+export default function DashboardPage() {
+	return (
+		<>
+			<NextSeo title={SEO.dashboard.title} description={SEO.dashboard.description} openGraph={SEO.dashboard.openGraph} />
+			<DashboardPageContent />
+		</>
 	);
 }

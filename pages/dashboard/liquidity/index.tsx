@@ -10,6 +10,8 @@ import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 const HEADERS = ['Pool', 'TVL', 'First Token', 'Second Token', 'LP Supply'];
 
@@ -58,7 +60,7 @@ const STEPS = [
 	},
 ];
 
-export default function LiquidityListPage() {
+function LiquidityListPageContent() {
 	const router = useRouter();
 	const { pools, isLoading, error } = useCurvePools();
 	const { sortTab, sortReverse, handleSort } = useSort('TVL');
@@ -110,5 +112,14 @@ export default function LiquidityListPage() {
 				</TableBody>
 			</Table>
 		</div>
+	);
+}
+
+export default function LiquidityListPage() {
+	return (
+		<>
+			<NextSeo title={SEO.liquidity.title} description={SEO.liquidity.description} openGraph={SEO.liquidity.openGraph} />
+			<LiquidityListPageContent />
+		</>
 	);
 }

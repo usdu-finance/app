@@ -7,6 +7,8 @@ import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
 import NotFound from '@/components/ui/NotFound';
 import { formatTimestampLocale } from '@/lib/utils';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 interface ObligationItem {
 	key: string;
@@ -20,7 +22,7 @@ interface ObligationItem {
 // Placeholder — replace with a hook once obligations are exposed on-chain.
 const OBLIGATIONS: ObligationItem[] = [];
 
-export default function ObligationDetailPage() {
+function ObligationDetailPageContent() {
 	const router = useRouter();
 	const key = typeof router.query.address === 'string' ? router.query.address : undefined;
 
@@ -72,5 +74,18 @@ export default function ObligationDetailPage() {
 				<ButtonInput label="Repay" size="lg" className="w-full mt-6" onClick={() => {}} />
 			</div>
 		</div>
+	);
+}
+
+export default function ObligationDetailPage() {
+	return (
+		<>
+			<NextSeo
+				title={SEO.obligationDetail.title}
+				description={SEO.obligationDetail.description}
+				openGraph={SEO.obligationDetail.openGraph}
+			/>
+			<ObligationDetailPageContent />
+		</>
 	);
 }

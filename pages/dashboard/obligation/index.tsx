@@ -8,6 +8,8 @@ import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatTimestampLocale } from '@/lib/utils';
+import { NextSeo } from 'next-seo';
+import { SEO } from '@/lib/constants';
 
 const HEADERS = ['Collateral', 'Debt', 'Health', 'Maturity'];
 
@@ -57,7 +59,7 @@ const STEPS = [
 	},
 ];
 
-export default function ObligationListPage() {
+function ObligationListPageContent() {
 	const router = useRouter();
 	const { sortTab, sortReverse, handleSort } = useSort('Collateral');
 
@@ -99,5 +101,14 @@ export default function ObligationListPage() {
 				</TableBody>
 			</Table>
 		</div>
+	);
+}
+
+export default function ObligationListPage() {
+	return (
+		<>
+			<NextSeo title={SEO.obligation.title} description={SEO.obligation.description} openGraph={SEO.obligation.openGraph} />
+			<ObligationListPageContent />
+		</>
 	);
 }
