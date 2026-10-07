@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { formatUnits } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faDroplet, faRoute, faBolt } from '@fortawesome/free-solid-svg-icons';
-import { useCurvePools, type CurvePool } from '@/hooks/useCurvePools';
+import { useCurvePools, isRedeemPool, type CurvePool } from '@/hooks/useCurvePools';
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
@@ -60,9 +60,17 @@ const STEPS = [
 	},
 ];
 
-function LiquidityListPageContent() {
+interface LiquidityPoolSectionProps {
+	title: string;
+	description: string;
+	pools: CurvePool[];
+	isLoading: boolean;
+	error: string | null;
+	emptyText: string;
+}
+
+function LiquidityPoolSection({ title, description, pools, isLoading, error, emptyText }: LiquidityPoolSectionProps) {
 	const router = useRouter();
-	const { pools, isLoading, error } = useCurvePools();
 	const { sortTab, sortReverse, handleSort } = useSort('TVL');
 
 	const sortedPools = useMemo(() => {
@@ -71,13 +79,8 @@ function LiquidityListPageContent() {
 	}, [pools, sortTab, sortReverse]);
 
 	return (
-		<div className="space-y-8">
-			<PageHeader
-				title="Liquidity"
-				description="Provide or remove liquidity from the pools backing USDU. Select a pool to get started."
-			/>
-
-			<HeroSteps steps={STEPS} />
+		<>
+			<PageHeader title={title} description={description} />
 
 			<Table>
 				<TableHead headers={HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
@@ -87,7 +90,7 @@ function LiquidityListPageContent() {
 					) : error ? (
 						<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
 					) : sortedPools.length === 0 ? (
-						<TableRowEmpty>No liquidity pools available.</TableRowEmpty>
+						<TableRowEmpty>{emptyText}</TableRowEmpty>
 					) : (
 						sortedPools.map((m) => (
 							<TableRow
@@ -111,6 +114,47 @@ function LiquidityListPageContent() {
 					)}
 				</TableBody>
 			</Table>
+		</>
+	);
+}
+
+function LiquidityListPageContent() {
+	const { pools, isLoading, error } = useCurvePools();
+
+	const { fxPools, redeemPools } = useMemo(
+		() => ({
+			fxPools: pools.filter((p) => !isRedeemPool(p)),
+			redeemPools: pools.filter(isRedeemPool),
+		}),
+		[pools]
+	);
+
+	return (
+		<div className="space-y-8">
+			<PageHeader
+				title="Liquidity"
+				description="Provide or remove liquidity from the pools backing USDU. Select a pool to get started."
+			/>
+
+			<HeroSteps steps={STEPS} />
+
+			<LiquidityPoolSection
+				title="FX Liquidity"
+				description="Provide liquidity to the pools between the USDU stablecoins (USDU, EURU and CHFU). These pools stay inside the ecosystem."
+				pools={fxPools}
+				isLoading={isLoading}
+				error={error}
+				emptyText="No FX liquidity pools available."
+			/>
+
+			<LiquidityPoolSection
+				title="Redeem Liquidity"
+				description="Provide liquidity to the USDC pool that lets users redeem out of the ecosystem. The USDU / USDC pool is the primary exit liquidity for USDU."
+				pools={redeemPools}
+				isLoading={isLoading}
+				error={error}
+				emptyText="No redeem liquidity pools available."
+			/>
 		</div>
 	);
 }

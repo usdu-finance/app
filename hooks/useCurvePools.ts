@@ -4,6 +4,7 @@ import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { useGetCurvePoolsDataQuery, type CurvePoolConfig, type CurvePoolData } from '@/redux/api/onChainApi';
 import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
+import { normalizeAddress } from '@/lib/utils';
 import { APP_REFETCH } from '@/lib/constants';
 
 export interface CurveToken {
@@ -15,6 +16,11 @@ export interface CurveToken {
 export interface CurvePool extends CurvePoolConfig, CurvePoolData {
 	label: string;
 	tokens: [CurveToken, CurveToken];
+}
+
+/** Pools that pair with USDC redeem out of the ecosystem; every other pool is an FX pool inside it. */
+export function isRedeemPool(pool: CurvePool): boolean {
+	return pool.tokens.some((t) => normalizeAddress(t.address) === normalizeAddress(USDC_MAINNET));
 }
 
 export interface CurvePoolsData {
@@ -83,11 +89,13 @@ export function useCurvePools(chainId: number = mainnet.id): CurvePoolsData {
 			return { pools: [], isLoading: isLoading || (isUninitialized && configs.length > 0), error: null };
 		}
 
-		const pools: CurvePool[] = registry.filter((entry) => poolsData[entry.key]).map((entry) => {
-			const data = poolsData[entry.key];
-			// Cache persisted before `price` existed lacks it; fall back to the price scale until the refetch lands
-			return { ...entry, ...data, price: data.price ?? parseFloat(formatUnits(data.priceScale, 18)) };
-		});
+		const pools: CurvePool[] = registry
+			.filter((entry) => poolsData[entry.key])
+			.map((entry) => {
+				const data = poolsData[entry.key];
+				// Cache persisted before `price` existed lacks it; fall back to the price scale until the refetch lands
+				return { ...entry, ...data, price: data.price ?? parseFloat(formatUnits(data.priceScale, 18)) };
+			});
 
 		return { pools, isLoading: false, error: null };
 	}, [poolsData, isLoading, isUninitialized, error, registry, configs.length]);

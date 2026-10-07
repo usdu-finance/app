@@ -4,14 +4,13 @@ import { formatUnits } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCoins, faScaleBalanced, faBolt } from '@fortawesome/free-solid-svg-icons';
 import { useSwapModules, type SwapModule } from '@/hooks/useSwapModules';
-import { useCurvePools, type CurvePool } from '@/hooks/useCurvePools';
+import { useCurvePools, isRedeemPool, type CurvePool } from '@/hooks/useCurvePools';
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
-import { formatCompactNumber, normalizeAddress } from '@/lib/utils';
-import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
+import { formatCompactNumber } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
 
@@ -79,10 +78,6 @@ const STEPS = [
 		description: 'Mint or redeem directly on-chain through the swap router — no order book, no slippage.',
 	},
 ];
-
-function isRedeemPool(p: CurvePool): boolean {
-	return p.tokens.some((t) => normalizeAddress(t.address) === normalizeAddress(USDC_MAINNET));
-}
 
 interface CurvePoolSectionProps {
 	title: string;
@@ -154,7 +149,6 @@ function SwapListPageContent() {
 
 	const { pools, isLoading: isLoadingPools, error: poolError } = useCurvePools();
 
-	// Pools that pair with USDC redeem out of the ecosystem; every other pool is an FX swap inside it
 	const { fxPools, redeemPools } = useMemo(
 		() => ({
 			fxPools: pools.filter((p) => !isRedeemPool(p)),
@@ -166,11 +160,16 @@ function SwapListPageContent() {
 	return (
 		<div className="space-y-8">
 			<PageHeader
-				title="Stable Swap"
-				description="Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get started."
+				title="Swap"
+				description="Swap between USDU stablecoins and their backing assets, at par through the swap router or at the market price through Curve pools. Select a coin or pool to get started."
 			/>
 
 			<HeroSteps steps={STEPS} />
+
+			<PageHeader
+				title="Stable Swap"
+				description="Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get started."
+			/>
 
 			<Table>
 				<TableHead headers={HEADERS} colSpan={6} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
