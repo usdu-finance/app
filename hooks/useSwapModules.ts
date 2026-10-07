@@ -37,7 +37,10 @@ const CURRENCIES: CurrencyConfig[] = [
 		currency: 'EURU',
 		stableKey: 'euruStable',
 		routerKey: 'euruSwapRouterV1',
-		modules: [{ key: 'euru-steakEURC', label: 'EURC', moduleAddressKey: 'euruSwapBridgeMorphoV1_steakEURC_module' }],
+		modules: [
+			{ key: 'euru-steakEURC', label: 'EURC', moduleAddressKey: 'euruSwapBridgeMorphoV1_steakEURC_module' },
+			{ key: 'euru-dEURO', label: 'dEURO', moduleAddressKey: 'euruSwapBridgeMorphoV1_dEURO_module' },
+		],
 	},
 	{
 		currency: 'CHFU',

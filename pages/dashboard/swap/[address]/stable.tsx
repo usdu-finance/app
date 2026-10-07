@@ -14,7 +14,7 @@ import { StatGrid } from '@/components/ui/stats';
 import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
 import AppLink from '@/components/ui/AppLink';
-import { getSwapSwapStrategyMeta } from '@/lib/swap-strategies';
+import { getSwapStrategyMeta } from '@/lib/swap-strategies';
 import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber, formatTimestampLocale, formatAddress } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
@@ -195,7 +195,7 @@ function SwapDetailPageContent() {
 		);
 	}
 
-	const swapStrategyMeta = getSwapSwapStrategyMeta(selectedModule.moduleAddress, selectedModule.vaultAddress);
+	const swapStrategyMeta = getSwapStrategyMeta(selectedModule.moduleAddress, selectedModule.vaultAddress);
 	const moduleLabel = `${selectedModule.coinSymbol} · ${selectedModule.vaultName || formatAddress(selectedModule.moduleAddress)}`;
 
 	return (
@@ -300,7 +300,10 @@ function SwapDetailPageContent() {
 							<span>{selectedModule.vaultName || '—'}</span>
 						)}
 					</DetailRow>
-					<DetailRow label="Expiration" value={formatTimestampLocale(selectedModule.expiresAt)} />
+					<DetailRow
+						label="Expiration"
+						value={selectedModule.expiresAt === 0n ? 'Pending DAO approval' : formatTimestampLocale(selectedModule.expiresAt)}
+					/>
 
 					<h3 className="font-semibold text-usdu-black text-lg mt-10 mb-3">Addresses</h3>
 

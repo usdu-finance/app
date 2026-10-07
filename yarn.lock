@@ -2845,10 +2845,10 @@
   resolved "https://registry.yarnpkg.com/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz#538b1e103bf8d9864e7b85cc96fa8d6fb6c40777"
   integrity sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==
 
-"@usdu-finance/usdu-core@0.1.4":
-  version "0.1.4"
-  resolved "https://registry.yarnpkg.com/@usdu-finance/usdu-core/-/usdu-core-0.1.4.tgz#99716c7295705fd18bc9c6acc50cd789172c341d"
-  integrity sha512-lmWFKrjE02lsdg1C/bnMTtj6OslcBbBThLatoAI6HFJt6NGYguIMIIehmrq1N1iS97mba9iSmS8IhMfXhOp5+A==
+"@usdu-finance/usdu-core@0.1.5":
+  version "0.1.5"
+  resolved "https://registry.yarnpkg.com/@usdu-finance/usdu-core/-/usdu-core-0.1.5.tgz#b0b848d0777789097706a41e8829ab41395be34d"
+  integrity sha512-DpKUZ/PdD6LCk9DZY12cC0XPHp7L6Au69SMg6cJ9JsfwaxL392dx6NJi0lTOqjIIwKGB0RAgBuK5kI0UNaBfUQ==
   dependencies:
     "@typechain/ethers-v6" "^0.5.1"
     "@typechain/hardhat" "^9.1.0"
