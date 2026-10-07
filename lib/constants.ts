@@ -10,7 +10,7 @@ export const PROJECT = {
 	blockchains: ['Ethereum'],
 	tagline: 'Low-Cost Stable Funding for On-Chain Credit',
 	description:
-		'Protocol-issued, non-algorithmic stablecoins — USDU (USD), EURU (EUR), and CHFU (CHF) — offering fixed-term funding for structured finance and credit markets, with USDU as the base currency and USDC on-chain convertibility.',
+		'Protocol-issued, non-algorithmic stablecoins — USDU, EURU and CHFU — offering fixed-term funding for structured finance and credit markets, with USDU as the base currency. Convertible on-chain through Curve pools and stable swap modules for USDC, USDT, EURC, dEURO, ZCHF and more.',
 	logo: '/assets/usdu-full-text-1024x346.png',
 };
 
