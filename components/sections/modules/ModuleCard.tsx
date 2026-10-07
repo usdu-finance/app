@@ -5,6 +5,7 @@ import Accordion from '@/components/ui/Accordion';
 import AddressLink from '@/components/ui/AddressLink';
 import type { StablecoinModule, StablecoinModuleHistoryItem } from '@/hooks/useModulesData';
 import { formatTimestampLocale, formatDateOnly, formatTimeOnly } from '@/lib/utils';
+import { getModuleCurrency } from './helpers';
 
 interface ModuleCardProps {
 	module: StablecoinModule;
@@ -92,6 +93,11 @@ export default function ModuleCard({ module, moduleHistory, status }: ModuleCard
 							<h3 className="text-lg font-semibold text-usdu-black">
 								{module.message || 'Unnamed Module'}
 							</h3>
+							{getModuleCurrency(module.stablecoin) && (
+								<span className="px-2 py-1 rounded text-xs font-medium bg-usdu-surface text-usdu-black">
+									{getModuleCurrency(module.stablecoin)}
+								</span>
+							)}
 							<span
 								className={`px-3 py-1 rounded-full text-sm font-medium ${status.bgColor} ${status.color} flex items-center gap-2`}
 							>

@@ -1,4 +1,20 @@
+import { mainnet } from 'viem/chains';
+import { ADDRESS } from '@usdu-finance/usdu-core';
 import type { StablecoinModule, StablecoinModuleHistoryItem } from '@/hooks/useModulesData';
+
+const addresses = ADDRESS[mainnet.id];
+
+/** Currencies a module can be registered on, with the stablecoin address of each. */
+export const MODULE_CURRENCIES = [
+	{ currency: 'USDU', stablecoin: addresses.usduStable },
+	{ currency: 'EURU', stablecoin: addresses.euruStable },
+	{ currency: 'CHFU', stablecoin: addresses.chfuStable },
+] as const;
+
+/** Returns the currency symbol for a stablecoin address, or undefined if it isn't a known stablecoin. */
+export function getModuleCurrency(stablecoin: string | undefined): string | undefined {
+	return MODULE_CURRENCIES.find((c) => c.stablecoin.toLowerCase() === stablecoin?.toLowerCase())?.currency;
+}
 
 /**
  * Groups history items by module address
@@ -36,6 +52,7 @@ export function createAllModules(
 			const now = BigInt(Math.floor(Date.now() / 1000));
 			const syntheticModule: StablecoinModule = {
 				chainId: latestItem.chainId,
+				stablecoin: latestItem.stablecoin,
 				module: latestItem.module,
 				message: latestItem.message,
 				messageUpdated: null,

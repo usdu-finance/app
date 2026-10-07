@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useModuleDataAll } from '@/hooks/useModulesData';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRefresh } from '@fortawesome/free-solid-svg-icons';
@@ -10,12 +10,31 @@ import {
 	createAllModules,
 	sortModules,
 	getModuleStatus,
+	getModuleCurrency,
+	MODULE_CURRENCIES,
 } from '@/components/sections/modules/helpers';
+import { TabInput } from '@/components/ui/input';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
 
+const ALL_TAB = 'All';
+
 export default function ModulesPage() {
-	const { modules, activeModules, history, isLoading, error } = useModuleDataAll(mainnet.id);
+	const { modules: allModulesRaw, history: allHistory, isLoading, error } = useModuleDataAll(mainnet.id);
+
+	// Modules of every stablecoin are indexed; the tabs narrow the view to one currency
+	const currencyTabs = [ALL_TAB, ...MODULE_CURRENCIES.map((c) => c.currency)];
+	const [currencyTab, setCurrencyTab] = useState(ALL_TAB);
+
+	const modules = useMemo(
+		() => allModulesRaw.filter((m) => currencyTab === ALL_TAB || getModuleCurrency(m.stablecoin) === currencyTab),
+		[allModulesRaw, currencyTab]
+	);
+	const history = useMemo(
+		() => allHistory.filter((h) => currencyTab === ALL_TAB || getModuleCurrency(h.stablecoin) === currencyTab),
+		[allHistory, currencyTab]
+	);
+	const activeModules = useMemo(() => modules.filter((m) => !m.isExpired), [modules]);
 
 	// Group history by module
 	const historyByModule = useMemo(() => groupHistoryByModule(history), [history]);
@@ -67,6 +86,9 @@ export default function ModulesPage() {
 		<>
 			<NextSeo title={SEO.modules.title} description={SEO.modules.description} openGraph={SEO.modules.openGraph} />
 
+			<div className="px-4 md:px-8 lg:px-16 pt-32 -mb-24 bg-usdu-card">
+				<TabInput tabs={currencyTabs} tab={currencyTab} setTab={setCurrencyTab} />
+			</div>
 			<ModulesOverview allModules={allModules} activeModules={activeModules} getModuleStatus={getStatus} />
 			<ModulesList sortedModules={sortedModules} historyByModule={historyByModule} getModuleStatus={getStatus} />
 		</>

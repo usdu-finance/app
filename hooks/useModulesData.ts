@@ -7,6 +7,7 @@ const GET_STABLECOIN_MODULES = gql`
 		stablecoinModuleMappings(where: { chainId: $chainId }, orderBy: "updatedAt", orderDirection: "desc") {
 			items {
 				chainId
+				stablecoin
 				module
 				message
 				messageUpdated
@@ -32,6 +33,7 @@ const GET_STABLECOIN_MODULE_HISTORY = gql`
 		) {
 			items {
 				chainId
+				stablecoin
 				txHash
 				logIndex
 				createdAt
@@ -53,6 +55,7 @@ const GET_STABLECOIN_MODULE_HISTORY_ALL = gql`
 		stablecoinModuleHistorys(where: { chainId: $chainId }, orderBy: "createdAt", orderDirection: "desc") {
 			items {
 				chainId
+				stablecoin
 				txHash
 				logIndex
 				createdAt
@@ -70,6 +73,8 @@ const GET_STABLECOIN_MODULE_HISTORY_ALL = gql`
 
 export interface StablecoinModule {
 	chainId: number;
+	/** Address of the stablecoin (USDU, EURU, CHFU, ...) this module is registered on. */
+	stablecoin: string;
 	module: string;
 	message: string;
 	messageUpdated: string | null;
@@ -85,6 +90,7 @@ export interface StablecoinModule {
 
 export interface StablecoinModuleHistoryItem {
 	chainId: number;
+	stablecoin: string;
 	txHash: string;
 	logIndex: number;
 	createdAt: bigint;
