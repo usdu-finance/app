@@ -10,7 +10,8 @@ import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/componen
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
-import { formatCompactNumber } from '@/lib/utils';
+import { formatCompactNumber, normalizeAddress } from '@/lib/utils';
+import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
 
@@ -79,6 +80,68 @@ const STEPS = [
 	},
 ];
 
+function isRedeemPool(p: CurvePool): boolean {
+	return p.tokens.some((t) => normalizeAddress(t.address) === normalizeAddress(USDC_MAINNET));
+}
+
+interface CurvePoolSectionProps {
+	title: string;
+	description: string;
+	pools: CurvePool[];
+	isLoading: boolean;
+	error: string | null;
+	emptyText: string;
+}
+
+function CurvePoolSection({ title, description, pools, isLoading, error, emptyText }: CurvePoolSectionProps) {
+	const router = useRouter();
+	const { sortTab, sortReverse, handleSort } = useSort('TVL');
+
+	const sortedPools = useMemo(() => {
+		const dir = sortReverse ? -1 : 1;
+		return [...pools].sort((a, b) => dir * comparePools(sortTab, a, b));
+	}, [pools, sortTab, sortReverse]);
+
+	return (
+		<>
+			<PageHeader title={title} description={description} />
+
+			<Table>
+				<TableHead headers={POOL_HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+				<TableBody>
+					{isLoading ? (
+						<TableRowEmpty>Loading curve pools...</TableRowEmpty>
+					) : error ? (
+						<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
+					) : sortedPools.length === 0 ? (
+						<TableRowEmpty>{emptyText}</TableRowEmpty>
+					) : (
+						sortedPools.map((m) => (
+							<TableRow
+								key={m.key}
+								headers={POOL_HEADERS}
+								colSpan={5}
+								tab={sortTab}
+								onClick={() => router.push(`/dashboard/swap/${m.poolAddress}/curve`)}
+							>
+								<div className="flex items-center gap-2">
+									<TokenLogo currency={m.tokens[0].symbol} size={6} className="-mr-2" />
+									<TokenLogo currency={m.tokens[1].symbol} size={6} />
+									<span>{m.label}</span>
+								</div>
+								<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
+								<span>{`${m.price.toFixed(4)} ${m.tokens[0].symbol}`}</span>
+								<span>{formatCompactNumber(tokenAmount(m, 0), 1, '', ` ${m.tokens[0].symbol}`)}</span>
+								<span>{formatCompactNumber(tokenAmount(m, 1), 1, '', ` ${m.tokens[1].symbol}`)}</span>
+							</TableRow>
+						))
+					)}
+				</TableBody>
+			</Table>
+		</>
+	);
+}
+
 function SwapListPageContent() {
 	const router = useRouter();
 	const { modules, isLoading, error } = useSwapModules();
@@ -90,12 +153,15 @@ function SwapListPageContent() {
 	}, [modules, sortTab, sortReverse]);
 
 	const { pools, isLoading: isLoadingPools, error: poolError } = useCurvePools();
-	const { sortTab: poolSortTab, sortReverse: poolSortReverse, handleSort: handlePoolSort } = useSort('TVL');
 
-	const sortedPools = useMemo(() => {
-		const dir = poolSortReverse ? -1 : 1;
-		return [...pools].sort((a, b) => dir * comparePools(poolSortTab, a, b));
-	}, [pools, poolSortTab, poolSortReverse]);
+	// Pools that pair with USDC redeem out of the ecosystem; every other pool is an FX swap inside it
+	const { fxPools, redeemPools } = useMemo(
+		() => ({
+			fxPools: pools.filter((p) => !isRedeemPool(p)),
+			redeemPools: pools.filter(isRedeemPool),
+		}),
+		[pools]
+	);
 
 	return (
 		<div className="space-y-8">
@@ -146,46 +212,23 @@ function SwapListPageContent() {
 				</TableBody>
 			</Table>
 
-			{/* Curve pools */}
-			<PageHeader
-				title="Curve Pools"
-				description={
-					'Curve pools provide the exit liquidity for USDU: the USDU / USDC pool is the deep, primary route between USDU and USDC, while the EURU and CHFU pools act as FX exchange pools within the protocol.'
-				}
+			<CurvePoolSection
+				title="FX Swap"
+				description="Swap between the USDU stablecoins (USDU, EURU and CHFU) through Curve pools. These pools stay inside the ecosystem."
+				pools={fxPools}
+				isLoading={isLoadingPools}
+				error={poolError}
+				emptyText="No FX pools available."
 			/>
 
-			<Table>
-				<TableHead headers={POOL_HEADERS} colSpan={5} tab={poolSortTab} reverse={poolSortReverse} tabOnChange={handlePoolSort} />
-				<TableBody>
-					{isLoadingPools ? (
-						<TableRowEmpty>Loading curve pools...</TableRowEmpty>
-					) : poolError ? (
-						<TableRowEmpty>{`Error: ${poolError}`}</TableRowEmpty>
-					) : sortedPools.length === 0 ? (
-						<TableRowEmpty>No curve pools available.</TableRowEmpty>
-					) : (
-						sortedPools.map((m) => (
-							<TableRow
-								key={m.key}
-								headers={POOL_HEADERS}
-								colSpan={5}
-								tab={poolSortTab}
-								onClick={() => router.push(`/dashboard/swap/${m.poolAddress}/curve`)}
-							>
-								<div className="flex items-center gap-2">
-									<TokenLogo currency={m.tokens[0].symbol} size={6} className="-mr-2" />
-									<TokenLogo currency={m.tokens[1].symbol} size={6} />
-									<span>{m.label}</span>
-								</div>
-								<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
-								<span>{`${m.price.toFixed(4)} ${m.tokens[0].symbol}`}</span>
-								<span>{formatCompactNumber(tokenAmount(m, 0), 1, '', ` ${m.tokens[0].symbol}`)}</span>
-								<span>{formatCompactNumber(tokenAmount(m, 1), 1, '', ` ${m.tokens[1].symbol}`)}</span>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<CurvePoolSection
+				title="Redeem Swap"
+				description="Redeem out of the ecosystem into USDC through Curve pools. The USDU / USDC pool is the primary exit liquidity for USDU."
+				pools={redeemPools}
+				isLoading={isLoadingPools}
+				error={poolError}
+				emptyText="No redeem pools available."
+			/>
 		</div>
 	);
 }
