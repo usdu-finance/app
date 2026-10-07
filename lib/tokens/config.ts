@@ -45,6 +45,14 @@ export const TOKENS: Record<string, TokenConfig> = {
 		chainId: 1,
 		logoURI: '/coin/zchf.svg',
 	},
+	dEURO: {
+		address: '0xbA3f535bbCcCcA2A154b573Ca6c5A49BAAE0a3ea',
+		symbol: 'dEURO',
+		name: 'DecentralizedEURO',
+		decimals: 18,
+		chainId: 1,
+		logoURI: '/coin/deuro.svg',
+	},
 	USDU: {
 		address: '0xdde3eC717f220Fc6A29D6a4Be73F91DA5b718e55',
 		symbol: 'USDU',
@@ -111,6 +119,14 @@ export const TOKENS: Record<string, TokenConfig> = {
 		decimals: 18,
 		chainId: 1,
 		logoURI: '/coin/fps.png',
+	},
+	FCS: {
+		address: '0xDb861830D9Ae2d1fCF99fA0cfd3973de382B0B5b',
+		symbol: 'FCS',
+		name: 'Frankencoin Shares',
+		decimals: 18,
+		chainId: 1,
+		logoURI: '/coin/fcs.png',
 	},
 };
 
