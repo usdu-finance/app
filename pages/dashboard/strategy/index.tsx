@@ -10,6 +10,7 @@ import HeroSteps from '@/components/ui/HeroSteps';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
 import { formatCompactNumber } from '@/lib/utils';
+import { useRewardStreams, RewardStreamItem } from '@/hooks/useRewardStreams';
 
 const HEADERS = ['Strategy', 'TVL', 'APY'];
 
@@ -36,26 +37,6 @@ function compareStrategies(tab: string, a: StrategyItem, b: StrategyItem): numbe
 
 const STREAM_HEADERS = ['Stream', 'Staked', 'Locked', 'Rate / Day', 'APR', 'Ends In'];
 
-interface RewardStreamItem {
-	key: string;
-	name: string;
-	symbol: string;
-	logoURI: string;
-	staked: number; // asset staked in the streamer vault
-	locked: number; // rewards funded but not yet streamed
-	daysLeft: number; // until the current stream ends
-}
-
-// MOCK — replace with a hook reading StreamerVaultV1 (totalAssets, locked(), rate(), streamEnd) once deployed.
-const REWARD_STREAMS: RewardStreamItem[] = [
-	{ key: 'rusdu', name: 'USDU Rewards', symbol: 'rUSDU', logoURI: '/coin/rusdu.png', staked: 1_250_000, locked: 31_500, daysLeft: 74 },
-	{ key: 'reuru', name: 'EURU Rewards', symbol: 'rEURU', logoURI: '/coin/reuru.png', staked: 420_000, locked: 9_800, daysLeft: 58 },
-	{ key: 'rchfu', name: 'CHFU Rewards', symbol: 'rCHFU', logoURI: '/coin/rchfu.png', staked: 180_000, locked: 3_100, daysLeft: 81 },
-];
-
-const ratePerDay = (r: RewardStreamItem) => (r.daysLeft > 0 ? r.locked / r.daysLeft : 0);
-const streamApr = (r: RewardStreamItem) => (r.staked > 0 ? ((ratePerDay(r) * 365) / r.staked) * 100 : 0);
-
 function compareStreams(tab: string, a: RewardStreamItem, b: RewardStreamItem): number {
 	switch (tab) {
 		case 'Staked':
@@ -63,9 +44,9 @@ function compareStreams(tab: string, a: RewardStreamItem, b: RewardStreamItem): 
 		case 'Locked':
 			return b.locked - a.locked;
 		case 'Rate / Day':
-			return ratePerDay(b) - ratePerDay(a);
+			return b.ratePerDay - a.ratePerDay;
 		case 'APR':
-			return streamApr(b) - streamApr(a);
+			return b.apr - a.apr;
 		case 'Ends In':
 			return b.daysLeft - a.daysLeft;
 		default:
@@ -101,10 +82,11 @@ function StrategyListPageContent() {
 	}, [sortTab, sortReverse]);
 
 	const { sortTab: streamTab, sortReverse: streamReverse, handleSort: handleStreamSort } = useSort('APR');
+	const { streams } = useRewardStreams();
 	const sortedStreams = useMemo(() => {
 		const dir = streamReverse ? -1 : 1;
-		return [...REWARD_STREAMS].sort((a, b) => dir * compareStreams(streamTab, a, b));
-	}, [streamTab, streamReverse]);
+		return [...streams].sort((a, b) => dir * compareStreams(streamTab, a, b));
+	}, [streams, streamTab, streamReverse]);
 
 	return (
 		<div className="space-y-8">
@@ -144,27 +126,27 @@ function StrategyListPageContent() {
 			/>
 
 			<Table>
-				<TableHead
-					headers={STREAM_HEADERS}
-					colSpan={6}
-					tab={streamTab}
-					reverse={streamReverse}
-					tabOnChange={handleStreamSort}
-				/>
+				<TableHead headers={STREAM_HEADERS} colSpan={6} tab={streamTab} reverse={streamReverse} tabOnChange={handleStreamSort} />
 				<TableBody>
 					{sortedStreams.length === 0 ? (
 						<TableRowEmpty>No reward streams available.</TableRowEmpty>
 					) : (
 						sortedStreams.map((r) => (
-							<TableRow key={r.key} headers={STREAM_HEADERS} colSpan={6} tab={streamTab}>
+							<TableRow
+								key={r.key}
+								headers={STREAM_HEADERS}
+								colSpan={6}
+								tab={streamTab}
+								onClick={() => router.push(`/dashboard/strategy/${r.vault}/rewards`)}
+							>
 								<div className="flex items-center gap-2">
 									<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
 									<span>{r.name}</span>
 								</div>
 								<span>{formatCompactNumber(r.staked, 1, '', ` ${r.symbol.slice(1)}`)}</span>
 								<span>{formatCompactNumber(r.locked, 1, '', ` ${r.symbol.slice(1)}`)}</span>
-								<span>{formatCompactNumber(ratePerDay(r), 1, '', ` ${r.symbol.slice(1)}`)}</span>
-								<span>{streamApr(r).toFixed(2)}%</span>
+								<span>{formatCompactNumber(r.ratePerDay, 1, '', ` ${r.symbol.slice(1)}`)}</span>
+								<span>{r.apr.toFixed(2)}%</span>
 								<span>{r.daysLeft} days</span>
 							</TableRow>
 						))
