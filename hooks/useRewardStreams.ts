@@ -14,7 +14,9 @@ export interface RewardStreamItem {
 	asset: `0x${string}`; // the stablecoin staked in the vault
 	currency: string;
 	staked: number; // asset staked in the streamer vault (excludes still-locked rewards)
-	locked: number; // rewards funded but not yet streamed
+	locked: number; // rewards funded but not yet streamed (pending)
+	unlocked: number; // rewards funded and already streamed to stakers
+	price: number; // asset per share
 	ratePerDay: number; // asset streamed per day
 	apr: number; // percent, annualized from the current stream rate
 	daysLeft: number; // until the current stream ends
@@ -52,7 +54,7 @@ const STREAMS = [
 	},
 ] as const;
 
-const FUNCTIONS = ['totalAssets', 'locked', 'rate', 'streamEnd'] as const;
+const FUNCTIONS = ['totalAssets', 'locked', 'rate', 'streamEnd', 'totalFunded', 'price'] as const;
 const DAY = 86_400;
 
 /**
@@ -75,14 +77,18 @@ export function useRewardStreams() {
 		if (!data) return [];
 		const now = Math.floor(Date.now() / 1000);
 		return STREAMS.map((s, i) => {
-			const [assets, locked, rate, streamEnd] = FUNCTIONS.map((_, j) => data[i * FUNCTIONS.length + j]?.result);
+			const [assets, locked, rate, streamEnd, funded, price] = FUNCTIONS.map((_, j) => data[i * FUNCTIONS.length + j]?.result);
 			const staked = Number(formatUnits((assets as bigint) ?? 0n, 18));
 			const ratePerDay = Number(formatUnits(((rate as bigint) ?? 0n) * BigInt(DAY), 18));
 			const secondsLeft = Math.max(Number((streamEnd as bigint) ?? 0n) - now, 0);
+			const lockedAmount = (locked as bigint) ?? 0n;
+			const fundedAmount = (funded as bigint) ?? 0n;
 			return {
 				...s,
 				staked,
-				locked: Number(formatUnits((locked as bigint) ?? 0n, 18)),
+				locked: Number(formatUnits(lockedAmount, 18)),
+				unlocked: Number(formatUnits(fundedAmount > lockedAmount ? fundedAmount - lockedAmount : 0n, 18)),
+				price: Number(formatUnits((price as bigint) ?? 10n ** 18n, 18)),
 				ratePerDay,
 				apr: staked > 0 ? ((ratePerDay * 365) / staked) * 100 : 0,
 				daysLeft: Math.ceil(secondsLeft / DAY),
