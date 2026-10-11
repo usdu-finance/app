@@ -122,7 +122,7 @@ function StrategyListPageContent() {
 
 			<PageHeader
 				title="Reward Streams"
-				description="Protocol rewards are streamed linearly to everyone who stakes a USDU stablecoin, so the share price rises over time. Stake and unstake at any time."
+				description="Protocol rewards are streamed linearly to everyone who stakes their assets, so the share price rises over time. Stake and unstake at any time."
 			/>
 
 			<Table>
