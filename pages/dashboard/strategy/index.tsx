@@ -4,10 +4,13 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faLayerGroup, faScaleBalanced, faChartLine } from '@fortawesome/free-solid-svg-icons';
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
+import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
+import { formatCompactNumber } from '@/lib/utils';
+import { useRewardStreams, RewardStreamItem } from '@/hooks/useRewardStreams';
 
 const HEADERS = ['Strategy', 'TVL', 'APY'];
 
@@ -29,6 +32,25 @@ function compareStrategies(tab: string, a: StrategyItem, b: StrategyItem): numbe
 			return b.apyPPM - a.apyPPM;
 		default:
 			return a.name.localeCompare(b.name);
+	}
+}
+
+const STREAM_HEADERS = ['Stream', 'Staked', 'Locked', 'Rate / Day', 'APR', 'Ends In'];
+
+function compareStreams(tab: string, a: RewardStreamItem, b: RewardStreamItem): number {
+	switch (tab) {
+		case 'Staked':
+			return b.staked - a.staked;
+		case 'Locked':
+			return b.locked - a.locked;
+		case 'Rate / Day':
+			return b.ratePerDay - a.ratePerDay;
+		case 'APR':
+			return b.apr - a.apr;
+		case 'Ends In':
+			return b.daysLeft - a.daysLeft;
+		default:
+			return a.name.localeCompare(b.name); // 'Stream'
 	}
 }
 
@@ -59,6 +81,13 @@ function StrategyListPageContent() {
 		return [...STRATEGIES].sort((a, b) => dir * compareStrategies(sortTab, a, b));
 	}, [sortTab, sortReverse]);
 
+	const { sortTab: streamTab, sortReverse: streamReverse, handleSort: handleStreamSort } = useSort('APR');
+	const { streams } = useRewardStreams();
+	const sortedStreams = useMemo(() => {
+		const dir = streamReverse ? -1 : 1;
+		return [...streams].sort((a, b) => dir * compareStreams(streamTab, a, b));
+	}, [streams, streamTab, streamReverse]);
+
 	return (
 		<div className="space-y-8">
 			<PageHeader
@@ -85,6 +114,40 @@ function StrategyListPageContent() {
 								<span>{s.name}</span>
 								<span>{s.tvl.toString()}</span>
 								<span>{(s.apyPPM / 10_000).toFixed(2)}%</span>
+							</TableRow>
+						))
+					)}
+				</TableBody>
+			</Table>
+
+			<PageHeader
+				title="Reward Streams"
+				description="Protocol rewards are streamed linearly to everyone who stakes their assets, so the share price rises over time. Stake and unstake at any time."
+			/>
+
+			<Table>
+				<TableHead headers={STREAM_HEADERS} colSpan={6} tab={streamTab} reverse={streamReverse} tabOnChange={handleStreamSort} />
+				<TableBody>
+					{sortedStreams.length === 0 ? (
+						<TableRowEmpty>No reward streams available.</TableRowEmpty>
+					) : (
+						sortedStreams.map((r) => (
+							<TableRow
+								key={r.key}
+								headers={STREAM_HEADERS}
+								colSpan={6}
+								tab={streamTab}
+								onClick={() => router.push(`/dashboard/strategy/${r.vault}/rewards`)}
+							>
+								<div className="flex items-center gap-2">
+									<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
+									<span>{r.name}</span>
+								</div>
+								<span>{formatCompactNumber(r.staked, 1, '', ` ${r.symbol.slice(1)}`)}</span>
+								<span>{formatCompactNumber(r.locked, 1, '', ` ${r.symbol.slice(1)}`)}</span>
+								<span>{formatCompactNumber(r.ratePerDay, 1, '', ` ${r.symbol.slice(1)}`)}</span>
+								<span>{r.apr.toFixed(2)}%</span>
+								<span>{r.daysLeft} days</span>
 							</TableRow>
 						))
 					)}

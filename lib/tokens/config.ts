@@ -1,5 +1,7 @@
 // Token configuration - supports both static TOKENS and CoW token list
 
+import { ADDRESS } from '@usdu-finance/usdu-core';
+
 export interface TokenConfig {
 	address: string;
 	symbol: string;
@@ -85,6 +87,32 @@ export const TOKENS: Record<string, TokenConfig> = {
 		decimals: 18,
 		chainId: 1,
 		logoURI: '/coin/chfu.png',
+	},
+
+	// Reward vault shares
+	rUSDU: {
+		address: ADDRESS[1].usduStreamerVaultV1,
+		symbol: 'rUSDU',
+		name: 'USDU Rewards',
+		decimals: 18,
+		chainId: 1,
+		logoURI: '/coin/rusdu.png',
+	},
+	rEURU: {
+		address: ADDRESS[1].euruStreamerVaultV1,
+		symbol: 'rEURU',
+		name: 'EURU Rewards',
+		decimals: 18,
+		chainId: 1,
+		logoURI: '/coin/reuru.png',
+	},
+	rCHFU: {
+		address: ADDRESS[1].chfuStreamerVaultV1,
+		symbol: 'rCHFU',
+		name: 'CHFU Rewards',
+		decimals: 18,
+		chainId: 1,
+		logoURI: '/coin/rchfu.png',
 	},
 
 	// Crypto
