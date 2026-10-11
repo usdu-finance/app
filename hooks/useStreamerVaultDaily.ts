@@ -20,6 +20,7 @@ export interface VaultDailyPoint {
 	day: number; // utc midnight, seconds
 	tvl: number; // totalAssets
 	price: number; // asset per share
+	supply: number; // shares outstanding
 }
 
 export interface VaultDailyData {
@@ -39,14 +40,17 @@ export function useStreamerVaultDaily(vault: string | undefined): VaultDailyData
 		pollInterval: APP_REFETCH,
 	});
 
-	const items: { day: string; totalAssets: string; price: string }[] = data?.eRC4626Dailys?.items ?? [];
+	const items: { day: string; totalAssets: string; totalSupply: string; price: string }[] = data?.eRC4626Dailys?.items ?? [];
+
+	const logs = items.map((d) => ({
+		day: Number(d.day),
+		tvl: Number(d.totalAssets) / 1e18,
+		price: Number(d.price) / 1e18,
+		supply: Number(d.totalSupply) / 1e18,
+	}));
 
 	return {
-		logs: items.map((d) => ({
-			day: Number(d.day),
-			tvl: Number(d.totalAssets) / 1e18,
-			price: Number(d.price) / 1e18,
-		})),
+		logs,
 		isLoading: loading && !data,
 		error: error?.message ?? null,
 	};

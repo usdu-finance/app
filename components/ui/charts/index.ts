@@ -1,2 +1,2 @@
-export { default as AreaChart } from './AreaChart';
-export type { AreaChartPoint } from './AreaChart';
+export { default as TimeSeriesChart } from './TimeSeriesChart';
+export type { TimeSeriesPoint } from './TimeSeriesChart';

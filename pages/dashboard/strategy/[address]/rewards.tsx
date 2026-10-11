@@ -8,12 +8,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRewardStreams } from '@/hooks/useRewardStreams';
 import { useStreamerVaultPosition } from '@/hooks/useStreamerVaultPosition';
 import { useStreamerVault } from '@/hooks/useStreamerVault';
+import { aprSeries, yieldSeries } from '@/lib/vault-series';
 import { useStreamerVaultDaily } from '@/hooks/useStreamerVaultDaily';
 import { useStreamerVaultHistory, type VaultHistoryEntry } from '@/hooks/useStreamerVaultHistory';
 import { useSort } from '@/hooks/ui/useSort';
 import { PageHeader } from '@/components/ui/layout';
 import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
-import { AreaChart } from '@/components/ui/charts';
+import { TimeSeriesChart } from '@/components/ui/charts';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { DetailRow } from '@/components/ui/modal';
@@ -26,6 +27,7 @@ import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
 
 const TABS = ['Stake', 'Unstake'];
+const CHART_TABS = ['TVL', 'Yield', 'APR'];
 const STEPS = [
 	{
 		icon: <FontAwesomeIcon icon={faArrowRightToBracket} className="w-3 h-3 text-usdu-card" />,
@@ -82,6 +84,7 @@ function StrategyDetailPageContent() {
 	const stream = streams.find((s) => s.vault.toLowerCase() === vaultParam);
 
 	const [tab, setTab] = useState(TABS[0]!);
+	const [chartTab, setChartTab] = useState(CHART_TABS[0]!);
 	const isStake = tab === 'Stake';
 	const [amountRawInput, setAmountRawInput] = useState('');
 	const amountRaw = amountRawInput ? BigInt(amountRawInput) : 0n;
@@ -149,14 +152,32 @@ function StrategyDetailPageContent() {
 
 	// daily logs from the indexer plus the live on-chain value as the latest point
 	const now = Math.floor(Date.now() / 1000);
-	const tvlPoints = [...logs.map((l) => ({ t: l.day, v: l.tvl })), { t: now, v: stream.staked }];
+	const dailyPoints = [...logs, { day: now, tvl: stream.staked, price: stream.price, supply: stream.supply }];
 
-	// realized APR: share price growth over the last 30 days of logs, annualized
-	const pricePoints = [...logs.map((l) => ({ t: l.day, price: l.price })), { t: now, price: stream.price }];
-	const base = pricePoints.find((p) => p.t >= now - 30 * 86_400) ?? pricePoints[0]!;
-	const realizedDays = Math.floor((now - base.t) / 86_400);
-	const realizedApr =
-		realizedDays >= 1 && base.price > 0 ? `${((stream.price / base.price - 1) * (365 / realizedDays) * 100).toFixed(2)}%` : '—';
+	const tvlPoints = dailyPoints.map((p) => ({ t: p.day, v: p.tvl }));
+	const yieldPoints = yieldSeries(dailyPoints);
+	const aprPoints = aprSeries(dailyPoints);
+
+	const lastApr = aprPoints[aprPoints.length - 1];
+	const recentYield = yieldPoints.slice(-7);
+	const avgYield = recentYield.length > 0 ? recentYield.reduce((sum, p) => sum + p.v, 0) / recentYield.length : 0;
+
+	const fmtPercent = (v: number) => `${v.toFixed(2)}%`;
+	const chart = {
+		TVL: { points: tvlPoints, variant: 'area' as const, headline: fmtAmount(stream.staked), format: fmtAmount },
+		Yield: {
+			points: yieldPoints,
+			variant: 'bars' as const,
+			headline: `${fmtAmount(avgYield)} / day`,
+			format: (v: number) => `${formatCompactNumber(v, 2, '')} ${currency}`,
+		},
+		APR: { points: aprPoints, variant: 'area' as const, headline: lastApr ? fmtPercent(lastApr.v) : '—', format: fmtPercent },
+	}[chartTab]!;
+	const chartSubtitle = { TVL: 'Total value locked', Yield: 'Average rewards per day, last 7 days', APR: 'Realized, 7-day rolling' }[
+		chartTab
+	];
+	const realizedDays = Math.min(Math.floor((now - (dailyPoints[0]?.day ?? now)) / 86_400), 7);
+	const realizedApr = lastApr ? fmtPercent(lastApr.v) : '—';
 	const inputSymbol = isStake ? currency : stream.symbol;
 	const outputSymbol = isStake ? stream.symbol : currency;
 	const inputBalanceRaw = isStake ? position.assetBalanceRaw : position.sharesRaw;
@@ -214,17 +235,28 @@ function StrategyDetailPageContent() {
 			<HeroSteps steps={STEPS} />
 
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-				{/* TVL over time */}
+				{/* TVL / Yield / APR over time */}
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface space-y-4">
-					<div>
-						<h3 className="font-semibold text-usdu-black text-lg">TVL</h3>
-						<p className="text-2xl font-bold text-text-primary">{fmtAmount(stream.staked)}</p>
+					<div className="flex items-start justify-between gap-4">
+						<div>
+							<h3 className="font-semibold text-usdu-black text-lg">{chartTab}</h3>
+							<p className="text-sm text-text-secondary">{chartSubtitle}</p>
+						</div>
+						<p className="text-2xl font-bold text-text-primary text-right">{chart.headline}</p>
 					</div>
-					{tvlPoints.length > 1 ? (
-						<AreaChart points={tvlPoints} formatValue={fmtAmount} formatTick={(v) => formatCompactNumber(v, 1, '')} />
+
+					{chart.points.length > 1 || (chart.variant === 'bars' && chart.points.length > 0) ? (
+						<TimeSeriesChart
+							points={chart.points}
+							variant={chart.variant}
+							formatValue={chart.format}
+							formatTick={chartTab === 'APR' ? (v) => `${v.toFixed(1)}%` : (v) => formatCompactNumber(v, 1, '')}
+						/>
 					) : (
 						<p className="py-12 text-center text-text-secondary">Not enough data yet.</p>
 					)}
+
+					<TabInput tabs={CHART_TABS} tab={chartTab} setTab={setChartTab} />
 				</div>
 
 				{/* Yield / unlocked / pending */}

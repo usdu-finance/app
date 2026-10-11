@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
-export interface AreaChartPoint {
+export interface TimeSeriesPoint {
 	t: number; // unix seconds
 	v: number;
 }
 
 interface Props {
-	points: AreaChartPoint[];
+	points: TimeSeriesPoint[];
+	variant?: 'area' | 'bars';
 	formatValue: (v: number) => string;
 	formatTick?: (v: number) => string; // compact y-axis labels, defaults to formatValue
 	height?: number;
@@ -15,6 +16,9 @@ interface Props {
 
 const MARGIN = { top: 12, right: 12, bottom: 24, left: 52 };
 const Y_TICKS = 3;
+const BAR_MAX_WIDTH = 24;
+const BAR_RADIUS = 4;
+const BAR_GAP = 2;
 
 const formatDay = (t: number) => new Date(t * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
@@ -27,13 +31,15 @@ function niceMax(max: number): number {
 }
 
 /**
- * Single-series area chart with a crosshair and tooltip, drawn in SVG.
- * The area grows from a zero baseline, the line is 2px, the grid is a recessive hairline.
+ * Single-series time chart drawn in SVG, as an area with a crosshair or as columns with a per-bar tooltip.
+ * Both grow from a zero baseline; the line is 2px, columns are at most 24px wide with a 4px rounded top,
+ * and the grid is a recessive hairline.
  */
-export default function AreaChart({ points, formatValue, formatTick, height = 220, className = '' }: Props) {
+export default function TimeSeriesChart({ points, variant = 'area', formatValue, formatTick, height = 220, className = '' }: Props) {
 	const ref = useRef<HTMLDivElement>(null);
 	const [width, setWidth] = useState(0);
 	const [hover, setHover] = useState<number | null>(null);
+	const isBars = variant === 'bars';
 
 	useEffect(() => {
 		const el = ref.current;
@@ -50,24 +56,39 @@ export default function AreaChart({ points, formatValue, formatTick, height = 22
 	const tMax = points[points.length - 1]?.t ?? 1;
 	const yMax = niceMax(Math.max(...points.map((p) => p.v), 0));
 
-	const x = (t: number) => MARGIN.left + (tMax === tMin ? innerW / 2 : ((t - tMin) / (tMax - tMin)) * innerW);
+	// columns sit in equal slots by index, the area is placed by time
+	const slot = points.length > 0 ? innerW / points.length : 0;
+	const x = (i: number) =>
+		isBars
+			? MARGIN.left + slot * (i + 0.5)
+			: MARGIN.left + (tMax === tMin ? innerW / 2 : (((points[i]?.t ?? tMin) - tMin) / (tMax - tMin)) * innerW);
 	const y = (v: number) => MARGIN.top + innerH - (v / yMax) * innerH;
-
-	const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.t)},${y(p.v)}`).join(' ');
-	const last = points[points.length - 1];
-	const area = last && points[0] ? `${line} L${x(last.t)},${y(0)} L${x(points[0].t)},${y(0)} Z` : '';
 
 	const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
 		const px = e.clientX - e.currentTarget.getBoundingClientRect().left;
 		let nearest = 0;
-		points.forEach((p, i) => {
-			if (Math.abs(x(p.t) - px) < Math.abs(x(points[nearest]!.t) - px)) nearest = i;
+		points.forEach((_, i) => {
+			if (Math.abs(x(i) - px) < Math.abs(x(nearest) - px)) nearest = i;
 		});
 		setHover(nearest);
 	};
 
+	const barWidth = Math.max(Math.min(BAR_MAX_WIDTH, slot - BAR_GAP), 1);
+	const bar = (i: number, v: number) => {
+		const left = x(i) - barWidth / 2;
+		const right = left + barWidth;
+		const top = y(v);
+		const base = y(0);
+		const r = Math.min(BAR_RADIUS, base - top, barWidth / 2);
+		return `M${left},${base} L${left},${top + r} Q${left},${top} ${left + r},${top} L${right - r},${top} Q${right},${top} ${right},${top + r} L${right},${base} Z`;
+	};
+
+	const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(p.v)}`).join(' ');
+	const lastIndex = points.length - 1;
+	const area = lastIndex >= 0 ? `${line} L${x(lastIndex)},${y(0)} L${x(0)},${y(0)} Z` : '';
+
 	const active = hover !== null ? points[hover] : undefined;
-	const tooltipLeft = active ? Math.min(Math.max(x(active.t), 70), Math.max(width - 70, 70)) : 0;
+	const tooltipLeft = hover !== null ? Math.min(Math.max(x(hover), 70), Math.max(width - 70, 70)) : 0;
 
 	return (
 		<div ref={ref} className={`relative w-full ${className}`} style={{ height }}>
@@ -76,7 +97,7 @@ export default function AreaChart({ points, formatValue, formatTick, height = 22
 					width={width}
 					height={height}
 					role="img"
-					aria-label="Area chart"
+					aria-label={isBars ? 'Column chart' : 'Area chart'}
 					onPointerMove={onMove}
 					onPointerLeave={() => setHover(null)}
 				>
@@ -118,31 +139,58 @@ export default function AreaChart({ points, formatValue, formatTick, height = 22
 						</>
 					)}
 
-					<path d={area} className="fill-usdu-orange" fillOpacity={0.1} />
-					<path
-						d={line}
-						fill="none"
-						className="stroke-usdu-orange"
-						strokeWidth={2}
-						strokeLinejoin="round"
-						strokeLinecap="round"
-					/>
-
-					{/* end marker with a surface ring */}
-					{last && <circle cx={x(last.t)} cy={y(last.v)} r={4} className="fill-usdu-orange stroke-usdu-bg" strokeWidth={2} />}
-
-					{/* crosshair */}
-					{active && (
-						<>
-							<line
-								x1={x(active.t)}
-								x2={x(active.t)}
-								y1={MARGIN.top}
-								y2={y(0)}
-								className="stroke-text-secondary"
-								strokeWidth={1}
+					{isBars ? (
+						points.map((p, i) => (
+							<path
+								key={p.t}
+								d={bar(i, p.v)}
+								className="fill-usdu-orange"
+								fillOpacity={hover === null || hover === i ? 1 : 0.55}
 							/>
-							<circle cx={x(active.t)} cy={y(active.v)} r={4} className="fill-usdu-orange stroke-usdu-bg" strokeWidth={2} />
+						))
+					) : (
+						<>
+							<path d={area} className="fill-usdu-orange" fillOpacity={0.1} />
+							<path
+								d={line}
+								fill="none"
+								className="stroke-usdu-orange"
+								strokeWidth={2}
+								strokeLinejoin="round"
+								strokeLinecap="round"
+							/>
+
+							{/* end marker with a surface ring */}
+							{lastIndex >= 0 && (
+								<circle
+									cx={x(lastIndex)}
+									cy={y(points[lastIndex]!.v)}
+									r={4}
+									className="fill-usdu-orange stroke-usdu-bg"
+									strokeWidth={2}
+								/>
+							)}
+
+							{/* crosshair */}
+							{active && hover !== null && (
+								<>
+									<line
+										x1={x(hover)}
+										x2={x(hover)}
+										y1={MARGIN.top}
+										y2={y(0)}
+										className="stroke-text-secondary"
+										strokeWidth={1}
+									/>
+									<circle
+										cx={x(hover)}
+										cy={y(active.v)}
+										r={4}
+										className="fill-usdu-orange stroke-usdu-bg"
+										strokeWidth={2}
+									/>
+								</>
+							)}
 						</>
 					)}
 				</svg>
