@@ -1,24 +1,75 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { formatUnits } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWallet, faLayerGroup, faPercent, faCoins, faTag } from '@fortawesome/free-solid-svg-icons';
+import { faWallet, faHourglassHalf, faArrowRightFromBracket, faArrowRightToBracket } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRewardStreams } from '@/hooks/useRewardStreams';
 import { useStreamerVaultPosition } from '@/hooks/useStreamerVaultPosition';
 import { useStreamerVault } from '@/hooks/useStreamerVault';
+import { useStreamerVaultDaily } from '@/hooks/useStreamerVaultDaily';
+import { useStreamerVaultHistory, type VaultHistoryEntry } from '@/hooks/useStreamerVaultHistory';
+import { useSort } from '@/hooks/ui/useSort';
 import { PageHeader } from '@/components/ui/layout';
 import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
-import { StatGrid } from '@/components/ui/stats';
+import { AreaChart } from '@/components/ui/charts';
+import HeroSteps from '@/components/ui/HeroSteps';
+import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
+import AppLink from '@/components/ui/AppLink';
+import { getBlockExplorerUrl } from '@/lib/web3/config';
 import NotFound from '@/components/ui/NotFound';
-import { formatCompactNumber } from '@/lib/utils';
+import { formatCompactNumber, formatTimestampLocale } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
 
 const TABS = ['Stake', 'Unstake'];
+const STEPS = [
+	{
+		icon: <FontAwesomeIcon icon={faArrowRightToBracket} className="w-3 h-3 text-usdu-card" />,
+		title: 'Stake',
+		description: 'Deposit a USDU stablecoin into its reward vault and receive vault shares.',
+	},
+	{
+		icon: <FontAwesomeIcon icon={faHourglassHalf} className="w-3 h-3 text-usdu-card" />,
+		title: 'Earn',
+		description: 'Protocol rewards stream to all stakers, so each share is worth more over time.',
+	},
+	{
+		icon: <FontAwesomeIcon icon={faArrowRightFromBracket} className="w-3 h-3 text-usdu-card" />,
+		title: 'Unstake',
+		description: 'Redeem your shares at any time for your stake plus the rewards streamed so far.',
+	},
+];
+
+const HISTORY_HEADERS = ['Date', 'Type', 'Amount', 'Shares', 'Price'];
+
+function compareBigint(a: bigint, b: bigint): number {
+	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+// share price paid or received in a deposit/withdraw (assets per share)
+function entryPrice(e: VaultHistoryEntry): number {
+	const shares = BigInt(e.shares);
+	return shares > 0n ? Number(formatUnits((BigInt(e.assets) * 10n ** 18n) / shares, 18)) : 0;
+}
+
+function compareHistory(tab: string, a: VaultHistoryEntry, b: VaultHistoryEntry): number {
+	switch (tab) {
+		case 'Type':
+			return a.kind.localeCompare(b.kind);
+		case 'Amount':
+			return compareBigint(BigInt(b.assets), BigInt(a.assets));
+		case 'Shares':
+			return compareBigint(BigInt(b.shares), BigInt(a.shares));
+		case 'Price':
+			return entryPrice(b) - entryPrice(a);
+		default:
+			return compareBigint(BigInt(b.created), BigInt(a.created)); // 'Date', newest first
+	}
+}
 
 function StrategyDetailPageContent() {
 	const router = useRouter();
@@ -62,6 +113,18 @@ function StrategyDetailPageContent() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isConfirmed]);
 
+	const {
+		entries,
+		isLoading: isLoadingHistory,
+		error: historyError,
+	} = useStreamerVaultHistory(address ? stream?.vault : undefined, address ?? undefined);
+	const { logs } = useStreamerVaultDaily(stream?.vault);
+	const { sortTab, sortReverse, handleSort } = useSort('Date');
+	const sortedEntries = useMemo(() => {
+		const dir = sortReverse ? -1 : 1;
+		return [...entries].sort((a, b) => dir * compareHistory(sortTab, a, b));
+	}, [entries, sortTab, sortReverse]);
+
 	if (!router.isReady || isLoadingStreams) {
 		return (
 			<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface text-center py-8">
@@ -82,6 +145,18 @@ function StrategyDetailPageContent() {
 	}
 
 	const currency = stream.currency;
+	const fmtAmount = (v: number) => `${formatCompactNumber(v, 1, '')} ${currency}`;
+
+	// daily logs from the indexer plus the live on-chain value as the latest point
+	const now = Math.floor(Date.now() / 1000);
+	const tvlPoints = [...logs.map((l) => ({ t: l.day, v: l.tvl })), { t: now, v: stream.staked }];
+
+	// realized APR: share price growth over the last 30 days of logs, annualized
+	const pricePoints = [...logs.map((l) => ({ t: l.day, price: l.price })), { t: now, price: stream.price }];
+	const base = pricePoints.find((p) => p.t >= now - 30 * 86_400) ?? pricePoints[0]!;
+	const realizedDays = Math.floor((now - base.t) / 86_400);
+	const realizedApr =
+		realizedDays >= 1 && base.price > 0 ? `${((stream.price / base.price - 1) * (365 / realizedDays) * 100).toFixed(2)}%` : '—';
 	const inputSymbol = isStake ? currency : stream.symbol;
 	const outputSymbol = isStake ? stream.symbol : currency;
 	const inputBalanceRaw = isStake ? position.assetBalanceRaw : position.sharesRaw;
@@ -136,23 +211,38 @@ function StrategyDetailPageContent() {
 				breadcrumbs={[{ label: 'Strategy', href: '/dashboard/strategy' }, { label: stream.name }]}
 			/>
 
-			<StatGrid
-				columns={{ base: 1, sm: 2, lg: 4 }}
-				stats={[
-					{ icon: faLayerGroup, label: 'Staked', value: `${formatCompactNumber(stream.staked, 1, '')} ${currency}` },
-					{ icon: faPercent, label: 'APR', value: `${stream.apr.toFixed(2)}%` },
-					{
-						icon: faTag,
-						label: `${stream.symbol} Price`,
-						value: `${Number(formatUnits(position.priceRaw, 18)).toFixed(4)} ${currency}`,
-					},
-					{
-						icon: faCoins,
-						label: 'Your Stake',
-						value: isConnected ? `${formatCompactNumber(formatUnits(position.stakedRaw, 18), 1, '')} ${currency}` : '—',
-					},
-				]}
-			/>
+			<HeroSteps steps={STEPS} />
+
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				{/* TVL over time */}
+				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface space-y-4">
+					<div>
+						<h3 className="font-semibold text-usdu-black text-lg">TVL</h3>
+						<p className="text-2xl font-bold text-text-primary">{fmtAmount(stream.staked)}</p>
+					</div>
+					{tvlPoints.length > 1 ? (
+						<AreaChart points={tvlPoints} formatValue={fmtAmount} formatTick={(v) => formatCompactNumber(v, 1, '')} />
+					) : (
+						<p className="py-12 text-center text-text-secondary">Not enough data yet.</p>
+					)}
+				</div>
+
+				{/* Yield / unlocked / pending */}
+				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface flex flex-col">
+					<h3 className="font-semibold text-usdu-black text-lg mb-3">Rewards</h3>
+
+					<DetailRow label="APR (current stream)" value={`${stream.apr.toFixed(2)}%`} />
+					<DetailRow label={`APR (realized, ${realizedDays > 0 ? `${realizedDays}d` : 'n/a'})`} value={realizedApr} />
+					<DetailRow label="Unlocked" value={fmtAmount(stream.unlocked)} />
+					<DetailRow label="Pending" value={fmtAmount(stream.locked)} />
+					<DetailRow label="Rate / Day" value={fmtAmount(stream.ratePerDay)} />
+					<DetailRow label="Ends In" value={stream.daysLeft > 0 ? `${stream.daysLeft} days` : 'No active stream'} />
+
+					<p className="mt-6 lg:mt-auto pt-4 text-sm text-text-secondary">
+						Unlocked rewards are already part of the {stream.symbol} price. Pending rewards are still streaming to stakers.
+					</p>
+				</div>
+			</div>
 
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface space-y-6">
@@ -197,11 +287,14 @@ function StrategyDetailPageContent() {
 				</div>
 
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface h-full flex flex-col">
-					<h3 className="font-semibold text-usdu-black text-lg mb-3">Stream</h3>
+					<h3 className="font-semibold text-usdu-black text-lg mb-3">Position</h3>
 
-					<DetailRow label="Locked Rewards" value={`${formatCompactNumber(stream.locked, 1, '')} ${currency}`} />
-					<DetailRow label="Rate / Day" value={`${formatCompactNumber(stream.ratePerDay, 1, '')} ${currency}`} />
-					<DetailRow label="Ends In" value={stream.daysLeft > 0 ? `${stream.daysLeft} days` : 'No active stream'} />
+					<DetailRow label={`${stream.symbol} Price`} value={`${stream.price.toFixed(4)} ${currency}`} />
+					<DetailRow
+						label="Your Stake"
+						value={isConnected ? `${formatCompactNumber(formatUnits(position.sharesRaw, 18), 2, '')} ${stream.symbol}` : '—'}
+					/>
+					<DetailRow label="Your Value" value={isConnected ? fmtAmount(Number(formatUnits(position.stakedRaw, 18))) : '—'} />
 
 					<h3 className="font-semibold text-usdu-black text-lg mt-10 mb-3">Addresses</h3>
 
@@ -217,6 +310,33 @@ function StrategyDetailPageContent() {
 					</p>
 				</div>
 			</div>
+
+			<PageHeader title="History" description={`Your stake and unstake transactions in the ${stream.symbol} vault.`} />
+
+			<Table>
+				<TableHead headers={HISTORY_HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+				<TableBody>
+					{!isConnected ? (
+						<TableRowEmpty>Connect your wallet to see your history.</TableRowEmpty>
+					) : isLoadingHistory ? (
+						<TableRowEmpty>Loading history...</TableRowEmpty>
+					) : historyError && entries.length === 0 ? (
+						<TableRowEmpty>{`Error: ${historyError}`}</TableRowEmpty>
+					) : sortedEntries.length === 0 ? (
+						<TableRowEmpty>No stake or unstake transactions yet.</TableRowEmpty>
+					) : (
+						sortedEntries.map((e) => (
+							<TableRow key={`${e.txHash}-${e.count}`} headers={HISTORY_HEADERS} colSpan={5} tab={sortTab}>
+								<AppLink href={getBlockExplorerUrl(`tx/${e.txHash}`)}>{formatTimestampLocale(BigInt(e.created))}</AppLink>
+								<span>{e.kind === 'Deposit' ? 'Stake' : 'Unstake'}</span>
+								<span>{formatCompactNumber(formatUnits(BigInt(e.assets), 18), 2, '', ` ${currency}`)}</span>
+								<span>{formatCompactNumber(formatUnits(BigInt(e.shares), 18), 2, '', ` ${stream.symbol}`)}</span>
+								<span>{`${entryPrice(e).toFixed(4)} ${currency}`}</span>
+							</TableRow>
+						))
+					)}
+				</TableBody>
+			</Table>
 		</div>
 	);
 }
