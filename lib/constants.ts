@@ -106,7 +106,7 @@ export const SEO = {
 	),
 	strategyDetail: pageSeo(
 		'Strategy Details',
-		'Details on a strategy vault backing a swap module, including total value locked and yield.',
+		'Stake a USDU stablecoin in its reward vault and earn streamed protocol rewards.',
 		'/dashboard/strategy'
 	),
 	home: {
