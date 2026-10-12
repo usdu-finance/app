@@ -13,6 +13,7 @@ import { useStreamerVaultDaily } from '@/hooks/useStreamerVaultDaily';
 import { useStreamerVaultHistory, type VaultHistoryEntry } from '@/hooks/useStreamerVaultHistory';
 import { useSort } from '@/hooks/ui/useSort';
 import { PageHeader } from '@/components/ui/layout';
+import Card from '@/components/ui/Card';
 import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
 import { TimeSeriesChart } from '@/components/ui/charts';
 import HeroSteps from '@/components/ui/HeroSteps';
@@ -344,32 +345,35 @@ function StrategyDetailPageContent() {
 				</div>
 			</div>
 
-			<PageHeader title="History" description={`Your stake and unstake transactions in the ${stream.symbol} vault.`} />
-
-			<Table>
-				<TableHead headers={HISTORY_HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-				<TableBody>
-					{!isConnected ? (
-						<TableRowEmpty>Connect your wallet to see your history.</TableRowEmpty>
-					) : isLoadingHistory ? (
-						<TableRowEmpty>Loading history...</TableRowEmpty>
-					) : historyError && entries.length === 0 ? (
-						<TableRowEmpty>{`Error: ${historyError}`}</TableRowEmpty>
-					) : sortedEntries.length === 0 ? (
-						<TableRowEmpty>No stake or unstake transactions yet.</TableRowEmpty>
-					) : (
-						sortedEntries.map((e) => (
-							<TableRow key={`${e.txHash}-${e.count}`} headers={HISTORY_HEADERS} colSpan={5} tab={sortTab}>
-								<AppLink href={getBlockExplorerUrl(`tx/${e.txHash}`)}>{formatTimestampLocale(BigInt(e.created))}</AppLink>
-								<span>{e.kind === 'Deposit' ? 'Stake' : 'Unstake'}</span>
-								<span>{formatCompactNumber(formatUnits(BigInt(e.assets), 18), 2, '', ` ${currency}`)}</span>
-								<span>{formatCompactNumber(formatUnits(BigInt(e.shares), 18), 2, '', ` ${stream.symbol}`)}</span>
-								<span>{`${entryPrice(e).toFixed(4)} ${currency}`}</span>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<Card variant="panel" className="space-y-8">
+				<PageHeader title="History" description={`Your stake and unstake transactions in the ${stream.symbol} vault.`} />
+				<Table>
+					<TableHead headers={HISTORY_HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+					<TableBody>
+						{!isConnected ? (
+							<TableRowEmpty>Connect your wallet to see your history.</TableRowEmpty>
+						) : isLoadingHistory ? (
+							<TableRowEmpty>Loading history...</TableRowEmpty>
+						) : historyError && entries.length === 0 ? (
+							<TableRowEmpty>{`Error: ${historyError}`}</TableRowEmpty>
+						) : sortedEntries.length === 0 ? (
+							<TableRowEmpty>No stake or unstake transactions yet.</TableRowEmpty>
+						) : (
+							sortedEntries.map((e) => (
+								<TableRow key={`${e.txHash}-${e.count}`} headers={HISTORY_HEADERS} colSpan={5} tab={sortTab}>
+									<AppLink href={getBlockExplorerUrl(`tx/${e.txHash}`)}>
+										{formatTimestampLocale(BigInt(e.created))}
+									</AppLink>
+									<span>{e.kind === 'Deposit' ? 'Stake' : 'Unstake'}</span>
+									<span>{formatCompactNumber(formatUnits(BigInt(e.assets), 18), 2, '', ` ${currency}`)}</span>
+									<span>{formatCompactNumber(formatUnits(BigInt(e.shares), 18), 2, '', ` ${stream.symbol}`)}</span>
+									<span>{`${entryPrice(e).toFixed(4)} ${currency}`}</span>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</Card>
 		</div>
 	);
 }
