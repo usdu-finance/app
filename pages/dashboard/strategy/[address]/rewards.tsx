@@ -259,19 +259,20 @@ function StrategyDetailPageContent() {
 					<TabInput tabs={CHART_TABS} tab={chartTab} setTab={setChartTab} />
 				</div>
 
-				{/* Yield / unlocked / pending */}
+				{/* APR / total / unlocked / streaming */}
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface flex flex-col">
 					<h3 className="font-semibold text-usdu-black text-lg mb-3">Rewards</h3>
 
 					<DetailRow label="APR (current stream)" value={`${stream.apr.toFixed(2)}%`} />
 					<DetailRow label={`APR (realized, ${realizedDays > 0 ? `${realizedDays}d` : 'n/a'})`} value={realizedApr} />
 					<DetailRow label="Unlocked" value={fmtAmount(stream.unlocked)} />
-					<DetailRow label="Pending" value={fmtAmount(stream.locked)} />
+					<DetailRow label="Streaming" value={fmtAmount(stream.locked)} />
 					<DetailRow label="Rate / Day" value={fmtAmount(stream.ratePerDay)} />
 					<DetailRow label="Ends In" value={stream.daysLeft > 0 ? `${stream.daysLeft} days` : 'No active stream'} />
 
 					<p className="mt-6 lg:mt-auto pt-4 text-sm text-text-secondary">
-						Unlocked rewards are already part of the {stream.symbol} price. Pending rewards are still streaming to stakers.
+						Unlocked rewards are already part of the {stream.symbol} price. Streaming rewards are still being paid out to
+						stakers.
 					</p>
 				</div>
 			</div>

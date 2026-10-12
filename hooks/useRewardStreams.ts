@@ -14,7 +14,8 @@ export interface RewardStreamItem {
 	asset: `0x${string}`; // the stablecoin staked in the vault
 	currency: string;
 	staked: number; // asset staked in the streamer vault (excludes still-locked rewards)
-	locked: number; // rewards funded but not yet streamed (pending)
+	funded: number; // total rewards ever funded (totalFunded)
+	locked: number; // rewards funded but still streaming
 	unlocked: number; // rewards funded and already streamed to stakers
 	price: number; // asset per share
 	supply: number; // shares outstanding
@@ -89,6 +90,7 @@ export function useRewardStreams() {
 			return {
 				...s,
 				staked,
+				funded: Number(formatUnits(fundedAmount, 18)),
 				locked: Number(formatUnits(lockedAmount, 18)),
 				unlocked: Number(formatUnits(fundedAmount > lockedAmount ? fundedAmount - lockedAmount : 0n, 18)),
 				price: Number(formatUnits((price as bigint) ?? 10n ** 18n, 18)),
