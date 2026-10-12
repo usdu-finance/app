@@ -53,7 +53,7 @@ const pageSeo = (title: string, description: string, path: string) => ({
 });
 
 export const SEO = {
-	dashboard: pageSeo('Dashboard', 'Your USDU Finance dashboard: protocol overview, wallet status and quick actions.', '/dashboard'),
+	dashboard: pageSeo('Dashboard', 'Your USDU Finance dashboard: the value of every protocol asset in your wallet.', '/dashboard'),
 	swap: pageSeo(
 		'Swap',
 		'Mint or redeem USDU, EURU and CHFU through the swap router, or swap directly against Curve pools backing USDU.',
