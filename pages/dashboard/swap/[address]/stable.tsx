@@ -2,19 +2,26 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { formatUnits } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWallet, faArrowRightToBracket, faArrowRightFromBracket, faPercent, faSackDollar } from '@fortawesome/free-solid-svg-icons';
+import { faWallet, faArrowRightToBracket, faArrowRightFromBracket, faVault } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSwapModules } from '@/hooks/useSwapModules';
 import { useSwapBalances } from '@/hooks/useSwapBalances';
 import { useSwap } from '@/hooks/useSwap';
+import { useModuleDaily } from '@/hooks/useModuleDaily';
+import { useModuleSwapHistory, type ModuleSwapEntry } from '@/hooks/useModuleSwapHistory';
+import { useSort } from '@/hooks/ui/useSort';
 import { PageHeader } from '@/components/ui/layout';
 import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
-import { StatGrid } from '@/components/ui/stats';
+import { TimeSeriesChart } from '@/components/ui/charts';
+import HeroSteps from '@/components/ui/HeroSteps';
+import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
 import AppLink from '@/components/ui/AppLink';
 import { getSwapStrategyMeta } from '@/lib/swap-strategies';
+import { getBlockExplorerUrl } from '@/lib/web3/config';
+import { revenueSeries, tvlSeries, volumeSeries, withLive } from '@/lib/module-series';
 import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber, formatTimestampLocale, formatAddress } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
@@ -24,6 +31,46 @@ const fmtStable = (currency: string, value: bigint, round: boolean = true) =>
 	`${formatCompactNumber(formatUnits(value, 18), 1, '', '', round)} ${currency}`;
 
 type SwapDirection = 'in' | 'out';
+
+const CHART_TABS = ['TVL', 'Revenue', 'Volume'];
+const HISTORY_HEADERS = ['Date', 'Type', 'Coin', 'Stablecoin', 'Fee'];
+
+function compareBigint(a: bigint, b: bigint): number {
+	return a < b ? -1 : a > b ? 1 : 0;
+}
+
+function compareSwaps(tab: string, a: ModuleSwapEntry, b: ModuleSwapEntry): number {
+	switch (tab) {
+		case 'Type':
+			return a.kind.localeCompare(b.kind);
+		case 'Coin':
+			return compareBigint(BigInt(b.amountCoin), BigInt(a.amountCoin));
+		case 'Stablecoin':
+			return compareBigint(BigInt(b.amountStable), BigInt(a.amountStable));
+		case 'Fee':
+			return compareBigint(BigInt(b.fee), BigInt(a.fee));
+		default:
+			return compareBigint(BigInt(b.created), BigInt(a.created)); // 'Date', newest first
+	}
+}
+
+const STEPS = [
+	{
+		icon: <FontAwesomeIcon icon={faArrowRightToBracket} className="w-3 h-3 text-usdu-card" />,
+		title: 'Swap in',
+		description: 'Deposit the backed asset and mint the same amount of stablecoin, minus the swap-in fee.',
+	},
+	{
+		icon: <FontAwesomeIcon icon={faVault} className="w-3 h-3 text-usdu-card" />,
+		title: 'Backed by a strategy',
+		description: 'The asset is deposited into a strategy vault. Its yield is protocol revenue, not paid to swappers.',
+	},
+	{
+		icon: <FontAwesomeIcon icon={faArrowRightFromBracket} className="w-3 h-3 text-usdu-card" />,
+		title: 'Swap out',
+		description: 'Burn stablecoin at any time to redeem the backed asset, minus the swap-out fee.',
+	},
+];
 
 function SwapDetailPageContent() {
 	const router = useRouter();
@@ -57,6 +104,19 @@ function SwapDetailPageContent() {
 		selectedModule?.routerAddress,
 		selectedModule?.targetAddress
 	);
+
+	const [chartTab, setChartTab] = useState(CHART_TABS[0]!);
+	const { snapshots, swapDays } = useModuleDaily(selectedModule?.moduleAddress);
+	const {
+		entries,
+		isLoading: isLoadingSwaps,
+		error: swapsError,
+	} = useModuleSwapHistory(selectedModule?.moduleAddress, address ?? undefined);
+	const { sortTab, sortReverse, handleSort } = useSort('Date');
+	const sortedSwaps = useMemo(() => {
+		const dir = sortReverse ? -1 : 1;
+		return [...entries].sort((a, b) => dir * compareSwaps(sortTab, a, b));
+	}, [entries, sortTab, sortReverse]);
 
 	const { approve, swapIn, swapOut, isPending, isConfirming, isConfirmed, reset } = useSwap();
 	const [pendingStep, setPendingStep] = useState<'approve' | 'swap' | null>(null);
@@ -198,6 +258,36 @@ function SwapDetailPageContent() {
 	const swapStrategyMeta = getSwapStrategyMeta(selectedModule.moduleAddress, selectedModule.vaultAddress);
 	const moduleLabel = `${selectedModule.coinSymbol} · ${selectedModule.vaultName || formatAddress(selectedModule.moduleAddress)}`;
 
+	const currency = selectedModule.currency;
+	const fmtAmount = (v: number) => `${formatCompactNumber(v, 1, '')} ${currency}`;
+
+	// indexer snapshots plus the live on-chain value as the latest point
+	const dailyPoints = withLive(snapshots, {
+		totalMinted: Number(formatUnits(selectedModule.totalMinted, 18)),
+		totalRevenue: Number(formatUnits(selectedModule.totalRevenue, 18)),
+	});
+	const lifetimeVolume = swapDays.reduce((sum, d) => sum + d.volume, 0);
+	const chart = {
+		TVL: {
+			points: tvlSeries(dailyPoints),
+			variant: 'area' as const,
+			headline: fmtAmount(Number(formatUnits(selectedModule.totalMinted, 18))),
+			subtitle: 'Stablecoin minted against this module',
+		},
+		Revenue: {
+			points: revenueSeries(dailyPoints),
+			variant: 'bars' as const,
+			headline: fmtAmount(Number(formatUnits(selectedModule.totalRevenue, 18))),
+			subtitle: 'Lifetime revenue, per day: swap fees and strategy yield',
+		},
+		Volume: {
+			points: volumeSeries(dailyPoints, swapDays),
+			variant: 'bars' as const,
+			headline: fmtAmount(lifetimeVolume),
+			subtitle: 'Lifetime swap volume, per day',
+		},
+	}[chartTab]!;
+
 	return (
 		<div className="space-y-8">
 			<PageHeader
@@ -206,31 +296,64 @@ function SwapDetailPageContent() {
 				breadcrumbs={[{ label: 'Swap', href: '/dashboard/swap' }, { label: moduleLabel }]}
 			/>
 
-			<StatGrid
-				columns={{ base: 1, sm: 2, lg: 4 }}
-				stats={[
-					{
-						icon: faArrowRightToBracket,
-						label: 'Available In',
-						value: fmtStable(selectedModule.currency, selectedModule.mintable, false),
-					},
-					{
-						icon: faArrowRightFromBracket,
-						label: 'Available Out',
-						value: `${formatCompactNumber(formatUnits(selectedModule.totalMinted, 18), 1, '')} ${selectedModule.coinSymbol}`,
-					},
-					{
-						icon: faPercent,
-						label: 'Fees In / Fees Out',
-						value: `${(selectedModule.swapInFeePPM / 10_000).toFixed(2)} / ${(selectedModule.swapOutFeePPM / 10_000).toFixed(2)}`,
-					},
-					{
-						icon: faSackDollar,
-						label: 'Revenue',
-						value: fmtStable(selectedModule.currency, selectedModule.totalRevenue),
-					},
-				]}
-			/>
+			<HeroSteps steps={STEPS} />
+
+			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+				{/* TVL / Revenue / Volume over time */}
+				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface space-y-4">
+					<div className="flex items-start justify-between gap-4">
+						<div>
+							<h3 className="font-semibold text-usdu-black text-lg">{chartTab}</h3>
+							<p className="text-sm text-text-secondary">{chart.subtitle}</p>
+						</div>
+						<p className="text-2xl font-bold text-text-primary text-right">{chart.headline}</p>
+					</div>
+
+					{chart.points.length > 1 || (chart.variant === 'bars' && chart.points.length > 0) ? (
+						<TimeSeriesChart
+							points={chart.points}
+							variant={chart.variant}
+							formatValue={fmtAmount}
+							formatTick={(v) => formatCompactNumber(v, 1, '')}
+						/>
+					) : (
+						<p className="py-12 text-center text-text-secondary">Not enough data yet.</p>
+					)}
+
+					<TabInput tabs={CHART_TABS} tab={chartTab} setTab={setChartTab} />
+				</div>
+
+				{/* Module info */}
+				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface h-full flex flex-col">
+					<h3 className="font-semibold text-usdu-black text-lg mb-3">Module</h3>
+
+					<DetailRow label="Strategy">
+						{swapStrategyMeta ? (
+							<AppLink href={swapStrategyMeta.url}>{selectedModule.vaultName || swapStrategyMeta.provider}</AppLink>
+						) : (
+							<span>{selectedModule.vaultName || '—'}</span>
+						)}
+					</DetailRow>
+					<DetailRow label="Available In" value={fmtStable(currency, selectedModule.mintable, false)} />
+					<DetailRow
+						label="Available Out"
+						value={`${formatCompactNumber(formatUnits(selectedModule.totalMinted, 18), 1, '')} ${selectedModule.coinSymbol}`}
+					/>
+					<DetailRow
+						label="Fees In / Fees Out"
+						value={`${(selectedModule.swapInFeePPM / 10_000).toFixed(2)}% / ${(selectedModule.swapOutFeePPM / 10_000).toFixed(2)}%`}
+					/>
+					<DetailRow label="Total Revenue" value={fmtStable(currency, selectedModule.totalRevenue)} />
+					<DetailRow
+						label="Expiration"
+						value={selectedModule.expiresAt === 0n ? 'Pending DAO approval' : formatTimestampLocale(selectedModule.expiresAt)}
+					/>
+
+					<p className="mt-6 lg:mt-auto pt-4 text-sm text-text-secondary">
+						The input token is deposited into the strategy vault. Its yield is protocol revenue and is not paid to swappers.
+					</p>
+				</div>
+			</div>
 
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 				{/* Swap */}
@@ -289,21 +412,19 @@ function SwapDetailPageContent() {
 					/>
 				</div>
 
-				{/* Details */}
+				{/* Your details and addresses */}
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface h-full flex flex-col">
-					<h3 className="font-semibold text-usdu-black text-lg mb-3">Details</h3>
+					<h3 className="font-semibold text-usdu-black text-lg mb-3">Your Details</h3>
 
-					<DetailRow label="Strategy">
-						{swapStrategyMeta ? (
-							<AppLink href={swapStrategyMeta.url}>{selectedModule.vaultName || swapStrategyMeta.provider}</AppLink>
-						) : (
-							<span>{selectedModule.vaultName || '—'}</span>
-						)}
-					</DetailRow>
 					<DetailRow
-						label="Expiration"
-						value={selectedModule.expiresAt === 0n ? 'Pending DAO approval' : formatTimestampLocale(selectedModule.expiresAt)}
+						label={`Your ${selectedModule.coinSymbol}`}
+						value={
+							isConnected
+								? `${formatCompactNumber(formatUnits(balances.coinBalanceRaw, selectedModule.coinDecimals), 2, '')} ${selectedModule.coinSymbol}`
+								: '—'
+						}
 					/>
+					<DetailRow label={`Your ${currency}`} value={isConnected ? fmtStable(currency, balances.targetBalanceRaw) : '—'} />
 
 					<h3 className="font-semibold text-usdu-black text-lg mt-10 mb-3">Addresses</h3>
 
@@ -319,12 +440,35 @@ function SwapDetailPageContent() {
 					<DetailRow label="Strategy Vault">
 						<AddressLink address={selectedModule.vaultAddress} />
 					</DetailRow>
-
-					<p className="mt-10 lg:mt-auto text-sm text-text-secondary">
-						The input token is deposited into the strategy vault, generating additional revenue for the protocol.
-					</p>
 				</div>
 			</div>
+
+			<PageHeader title="History" description={`Your swaps between ${selectedModule.coinSymbol} and ${currency} on this module.`} />
+
+			<Table>
+				<TableHead headers={HISTORY_HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+				<TableBody>
+					{!isConnected ? (
+						<TableRowEmpty>Connect your wallet to see your history.</TableRowEmpty>
+					) : isLoadingSwaps ? (
+						<TableRowEmpty>Loading history...</TableRowEmpty>
+					) : swapsError && entries.length === 0 ? (
+						<TableRowEmpty>{`Error: ${swapsError}`}</TableRowEmpty>
+					) : sortedSwaps.length === 0 ? (
+						<TableRowEmpty>No swaps yet.</TableRowEmpty>
+					) : (
+						sortedSwaps.map((e) => (
+							<TableRow key={`${e.txHash}-${e.logIndex}`} headers={HISTORY_HEADERS} colSpan={5} tab={sortTab}>
+								<AppLink href={getBlockExplorerUrl(`tx/${e.txHash}`)}>{formatTimestampLocale(BigInt(e.created))}</AppLink>
+								<span>{e.kind === 'SwapIn' ? 'Swap In' : 'Swap Out'}</span>
+								<span>{`${formatCompactNumber(formatUnits(BigInt(e.amountCoin), selectedModule.coinDecimals), 2, '')} ${selectedModule.coinSymbol}`}</span>
+								<span>{fmtStable(currency, BigInt(e.amountStable))}</span>
+								<span>{fmtStable(currency, BigInt(e.fee))}</span>
+							</TableRow>
+						))
+					)}
+				</TableBody>
+			</Table>
 		</div>
 	);
 }
