@@ -9,6 +9,7 @@ import { useRewardStreams } from '@/hooks/useRewardStreams';
 import { useStreamerVaultPosition } from '@/hooks/useStreamerVaultPosition';
 import { useStreamerVault } from '@/hooks/useStreamerVault';
 import { aprSeries, yieldSeries } from '@/lib/vault-series';
+import { useStreamerVaultCostBasis } from '@/hooks/useStreamerVaultCostBasis';
 import { useStreamerVaultDaily } from '@/hooks/useStreamerVaultDaily';
 import { useStreamerVaultHistory, type VaultHistoryEntry } from '@/hooks/useStreamerVaultHistory';
 import { useSort } from '@/hooks/ui/useSort';
@@ -122,6 +123,7 @@ function StrategyDetailPageContent() {
 		isLoading: isLoadingHistory,
 		error: historyError,
 	} = useStreamerVaultHistory(address ? stream?.vault : undefined, address ?? undefined);
+	const costBasis = useStreamerVaultCostBasis(stream?.vault, address ?? undefined);
 	const { logs } = useStreamerVaultDaily(stream?.vault);
 	const { sortTab, sortReverse, handleSort } = useSort('Date');
 	const sortedEntries = useMemo(() => {
@@ -149,6 +151,8 @@ function StrategyDetailPageContent() {
 	}
 
 	const currency = stream.currency;
+	// earnings = value of the shares now + what was withdrawn - what was deposited, so realized and unrealized
+	const earningsRaw = position.stakedRaw + costBasis.withdrawn - costBasis.deposited;
 	const fmtAmount = (v: number) => `${formatCompactNumber(v, 1, '')} ${currency}`;
 
 	// daily logs from the indexer plus the live on-chain value as the latest point
@@ -329,6 +333,14 @@ function StrategyDetailPageContent() {
 						value={isConnected ? `${formatCompactNumber(formatUnits(position.sharesRaw, 18), 2, '')} ${stream.symbol}` : '—'}
 					/>
 					<DetailRow label="Your Value" value={isConnected ? fmtAmount(Number(formatUnits(position.stakedRaw, 18))) : '—'} />
+					<DetailRow
+						label="Your Earnings"
+						value={
+							isConnected && !costBasis.isLoading
+								? fmtAmount(Number(formatUnits(earningsRaw > 0n ? earningsRaw : 0n, 18)))
+								: '—'
+						}
+					/>
 
 					<h3 className="font-semibold text-usdu-black text-lg mt-10 mb-3">Addresses</h3>
 
