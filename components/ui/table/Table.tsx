@@ -5,7 +5,7 @@ interface Props {
 export default function Table({ children }: Props) {
 	return (
 		<section>
-			<div className="rounded-lg">{children}</div>
+			<div className="-mx-2 rounded-lg">{children}</div>
 		</section>
 	);
 }
