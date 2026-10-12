@@ -118,7 +118,7 @@ export default function TableHeadSearchable({
 	const totalActiveFilters = activeFilters.length + activeCustomCategories.length;
 
 	return (
-		<div className="rounded-t-lg bg-card">
+		<div className="rounded-t-lg bg-usdu-bg">
 			{/* Search / toggle / filter bar — not useful on paper */}
 			<div className="print:hidden grid grid-cols-1 md:flex md:items-center md:justify-between px-4 md:h-14 xl:px-6 border-b border-table-alt gap-x-3 gap-y-0">
 				{/* Search */}

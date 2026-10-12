@@ -13,6 +13,7 @@ import { StatCard } from '@/components/ui/stats';
 import { DonutChart, type DonutSlice } from '@/components/ui/charts';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
+import Card from '@/components/ui/Card';
 import { formatCompactNumber } from '@/lib/utils';
 import { SEO } from '@/lib/constants';
 
@@ -106,94 +107,96 @@ function DashboardPageContent() {
 				/>
 			</div>
 
-			<PageHeader
-				title="Stablecoin Assets"
-				actions={
-					<label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer select-none">
-						<span>Show zero balances</span>
-						<button
-							type="button"
-							role="switch"
-							aria-checked={showZero}
-							onClick={() => setShowZero((v) => !v)}
-							className={`relative w-9 h-5 rounded-full transition-colors ${showZero ? 'bg-usdu-orange' : 'bg-usdu-surface'}`}
-						>
-							<span
-								className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${showZero ? 'translate-x-4' : ''}`}
-							/>
-						</button>
-					</label>
-				}
-				description="USDU, EURU and CHFU plus every stablecoin the protocol bridges or pools, grouped by currency and valued at par in USDU."
-			/>
+			<Card variant="panel" className="space-y-8">
+				<PageHeader
+					title="Stablecoin Assets"
+					actions={
+						<label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer select-none">
+							<span>Show zero balances</span>
+							<button
+								type="button"
+								role="switch"
+								aria-checked={showZero}
+								onClick={() => setShowZero((v) => !v)}
+								className={`relative w-9 h-5 rounded-full transition-colors ${showZero ? 'bg-usdu-orange' : 'bg-usdu-surface'}`}
+							>
+								<span
+									className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${showZero ? 'translate-x-4' : ''}`}
+								/>
+							</button>
+						</label>
+					}
+					description="USDU, EURU and CHFU plus every stablecoin the protocol bridges or pools, grouped by currency and valued at par in USDU."
+				/>
 
-			{!isConnected || isLoading || error || stableGroups.length === 0 ? (
-				<Table>
-					<TableHead headers={HEADERS} colSpan={4} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-					<TableBody>
-						<TableRowEmpty>
-							{!isConnected
-								? 'Connect your wallet to see your assets.'
-								: isLoading
-									? 'Loading stablecoin assets...'
-									: error
-										? `Error: ${error}`
-										: 'No stablecoins in this wallet.'}
-						</TableRowEmpty>
-					</TableBody>
-				</Table>
-			) : (
-				stableGroups.map((g) => (
-					<div key={g.group} className="space-y-3">
-						<div className="flex items-center gap-2">
-							<span className={`w-2.5 h-2.5 rounded-full ${g.dot}`} />
-							<h3 className="text-usdu-black font-semibold">{g.label}</h3>
+				{!isConnected || isLoading || error || stableGroups.length === 0 ? (
+					<Table>
+						<TableHead headers={HEADERS} colSpan={4} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+						<TableBody>
+							<TableRowEmpty>
+								{!isConnected
+									? 'Connect your wallet to see your assets.'
+									: isLoading
+										? 'Loading stablecoin assets...'
+										: error
+											? `Error: ${error}`
+											: 'No stablecoins in this wallet.'}
+							</TableRowEmpty>
+						</TableBody>
+					</Table>
+				) : (
+					stableGroups.map((g) => (
+						<div key={g.group} className="space-y-3">
+							<div className="flex items-center gap-2">
+								<span className={`w-2.5 h-2.5 rounded-full ${g.dot}`} />
+								<h3 className="text-usdu-black font-semibold">{g.label}</h3>
+							</div>
+							<Table>
+								<TableHead
+									headers={HEADERS}
+									colSpan={4}
+									actionCol
+									tab={sortTab}
+									reverse={sortReverse}
+									tabOnChange={handleSort}
+								/>
+								<TableBody>
+									{g.assets.map((a) => (
+										<TableRow
+											key={a.key}
+											headers={HEADERS}
+											colSpan={4}
+											tab={sortTab}
+											actionCol={
+												stakeVaults[a.symbol] ? (
+													<ButtonInput
+														label="Stake"
+														href={`/dashboard/strategy/${stakeVaults[a.symbol]}/rewards`}
+														variant="outline"
+														size="sm"
+														className="w-full"
+													/>
+												) : (
+													// foreign stablecoins need wrapping into their U-stable first, not supported yet
+													<ButtonInput label="Stake" variant="outline" size="sm" className="w-full" disabled />
+												)
+											}
+										>
+											<div className="flex items-center gap-2">
+												<TokenLogo logoURI={a.logoURI} currency={a.symbol} size={6} />
+												<span>{a.name}</span>
+											</div>
+											<span>{formatCompactNumber(a.balance, 2, '', ` ${a.symbol}`)}</span>
+											<span>{`${a.price.toFixed(4)} USDU`}</span>
+											<span>{formatCompactNumber(a.value, 2, '', ' USDU')}</span>
+										</TableRow>
+									))}
+								</TableBody>
+							</Table>
 						</div>
-						<Table>
-							<TableHead
-								headers={HEADERS}
-								colSpan={4}
-								actionCol
-								tab={sortTab}
-								reverse={sortReverse}
-								tabOnChange={handleSort}
-							/>
-							<TableBody>
-								{g.assets.map((a) => (
-									<TableRow
-										key={a.key}
-										headers={HEADERS}
-										colSpan={4}
-										tab={sortTab}
-										actionCol={
-											stakeVaults[a.symbol] ? (
-												<ButtonInput
-													label="Stake"
-													href={`/dashboard/strategy/${stakeVaults[a.symbol]}/rewards`}
-													variant="outline"
-													size="sm"
-													className="w-full"
-												/>
-											) : (
-												// foreign stablecoins need wrapping into their U-stable first, not supported yet
-												<ButtonInput label="Stake" variant="outline" size="sm" className="w-full" disabled />
-											)
-										}
-									>
-										<div className="flex items-center gap-2">
-											<TokenLogo logoURI={a.logoURI} currency={a.symbol} size={6} />
-											<span>{a.name}</span>
-										</div>
-										<span>{formatCompactNumber(a.balance, 2, '', ` ${a.symbol}`)}</span>
-										<span>{`${a.price.toFixed(4)} USDU`}</span>
-										<span>{formatCompactNumber(a.value, 2, '', ' USDU')}</span>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					</div>
-				))
-			)}
+					))
+				)}
+			</Card>
 
 			<PageHeader
 				title="Stablecoin Rewards"
