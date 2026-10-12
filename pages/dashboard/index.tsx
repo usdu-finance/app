@@ -198,54 +198,56 @@ function DashboardPageContent() {
 				)}
 			</Card>
 
-			<PageHeader
-				title="Stablecoin Rewards"
-				description="Your stake in the USDU, EURU and CHFU reward vaults, including the rewards streamed to you so far."
-			/>
+			<Card variant="panel" className="space-y-8">
+				<PageHeader
+					title="Stablecoin Rewards"
+					description="Your stake in the USDU, EURU and CHFU reward vaults, including the rewards streamed to you so far."
+				/>
 
-			<div className="bg-usdu-bg border border-usdu-surface rounded-lg p-6 grid grid-cols-1 items-center gap-8 md:grid-cols-2 md:gap-12">
-				<div className="flex justify-center">
-					<DonutChart
-						slices={rewardSlices}
-						centerLabel="Total staked"
-						centerValue={isConnected ? formatCompactNumber(rewardsTotal, 2, '', ' USDU') : '—'}
-						size={240}
-					/>
-				</div>
+				<div className="grid grid-cols-1 items-center gap-8 md:grid-cols-2 md:gap-12">
+					<div className="flex justify-center">
+						<DonutChart
+							slices={rewardSlices}
+							centerLabel="Total staked"
+							centerValue={isConnected ? formatCompactNumber(rewardsTotal, 2, '', ' USDU') : '—'}
+							size={240}
+						/>
+					</div>
 
-				<div className="w-full divide-y divide-usdu-surface">
-					{!isConnected ? (
-						<p className="text-text-secondary py-3">Connect your wallet to see your rewards.</p>
-					) : (
-						rewards.map((r) => (
-							<div key={r.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-								<div className="flex items-center gap-3">
-									<span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
-									<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
-									<div>
-										<Link
-											href={`/dashboard/strategy/${r.vault}/rewards`}
-											className="text-usdu-black font-medium hover:text-usdu-orange hover:underline transition-colors"
-										>
-											{r.name}
-										</Link>
-										<p className="text-text-secondary text-sm flex items-center gap-1">
-											<FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-orange" />
-											{`${r.apr.toFixed(2)}% APR`}
+					<div className="w-full divide-y divide-usdu-surface">
+						{!isConnected ? (
+							<p className="text-text-secondary py-3">Connect your wallet to see your rewards.</p>
+						) : (
+							rewards.map((r) => (
+								<div key={r.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+									<div className="flex items-center gap-3">
+										<span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
+										<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
+										<div>
+											<Link
+												href={`/dashboard/strategy/${r.vault}/rewards`}
+												className="text-usdu-black font-medium hover:text-usdu-orange hover:underline transition-colors"
+											>
+												{r.name}
+											</Link>
+											<p className="text-text-secondary text-sm flex items-center gap-1">
+												<FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-orange" />
+												{`${r.apr.toFixed(2)}% APR`}
+											</p>
+										</div>
+									</div>
+									<div className="text-right">
+										<p className="text-usdu-black font-medium">{formatCompactNumber(r.value, 2, '', ' USDU')}</p>
+										<p className="text-text-secondary text-sm">
+											{rewardsTotal > 0 ? `${((r.value / rewardsTotal) * 100).toFixed(1)}%` : '0%'}
 										</p>
 									</div>
 								</div>
-								<div className="text-right">
-									<p className="text-usdu-black font-medium">{formatCompactNumber(r.value, 2, '', ' USDU')}</p>
-									<p className="text-text-secondary text-sm">
-										{rewardsTotal > 0 ? `${((r.value / rewardsTotal) * 100).toFixed(1)}%` : '0%'}
-									</p>
-								</div>
-							</div>
-						))
-					)}
+							))
+						)}
+					</div>
 				</div>
-			</div>
+			</Card>
 		</div>
 	);
 }

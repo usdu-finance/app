@@ -33,7 +33,7 @@ export default function TableRow({
 		<div
 			className={`${className ?? ''} ${
 				paddingY ?? 'py-1'
-			} bg-usdu-bg md:hover:bg-surface p-4 xl:px-6 border-t border-table-alt last:rounded-b-lg duration-300 ${
+			} bg-usdu-bg md:hover:bg-surface border-t border-table-alt last:rounded-b-lg duration-300 ${
 				onClick ? 'cursor-pointer' : 'cursor-default'
 			}`}
 			onClick={onClick}
