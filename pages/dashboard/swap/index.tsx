@@ -15,7 +15,7 @@ import { formatCompactNumber } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
 
-const HEADERS = ['Coin', 'Available In', 'Available Out', 'Fees In', 'Fees Out', 'Strategy'];
+const HEADERS = ['Coin', 'Available In', 'Available Out', 'Fees In / Out', 'Strategy'];
 const POOL_HEADERS = ['Pool', 'TVL', 'Price', 'First Token', 'Second Token'];
 
 function compareBigint(a: bigint, b: bigint): number {
@@ -28,10 +28,8 @@ function compareModules(tab: string, a: SwapModule, b: SwapModule): number {
 			return compareBigint(b.mintable, a.mintable);
 		case 'Available Out':
 			return compareBigint(b.totalMinted, a.totalMinted);
-		case 'Fees In':
-			return b.swapInFeePPM - a.swapInFeePPM;
-		case 'Fees Out':
-			return b.swapOutFeePPM - a.swapOutFeePPM;
+		case 'Fees In / Out':
+			return b.swapInFeePPM + b.swapOutFeePPM - (a.swapInFeePPM + a.swapOutFeePPM);
 		case 'Strategy':
 			return a.vaultName.localeCompare(b.vaultName);
 		default:
@@ -174,7 +172,7 @@ function SwapListPageContent() {
 					description="Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get started."
 				/>
 				<Table>
-					<TableHead headers={HEADERS} colSpan={6} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+					<TableHead headers={HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
 					<TableBody>
 						{isLoading ? (
 							<TableRowEmpty>Loading swap modules...</TableRowEmpty>
@@ -187,7 +185,7 @@ function SwapListPageContent() {
 								<TableRow
 									key={m.key}
 									headers={HEADERS}
-									colSpan={6}
+									colSpan={5}
 									tab={sortTab}
 									onClick={() => router.push(`/dashboard/swap/${m.moduleAddress}/stable`)}
 								>
@@ -204,8 +202,7 @@ function SwapListPageContent() {
 									<span>
 										{formatCompactNumber(formatUnits(m.totalMinted, 18), 1, '')} {m.coinSymbol}
 									</span>
-									<span>{(m.swapInFeePPM / 10_000).toFixed(2)}%</span>
-									<span>{(m.swapOutFeePPM / 10_000).toFixed(2)}%</span>
+									<span>{`${+(m.swapInFeePPM / 10_000).toFixed(2)}% / ${+(m.swapOutFeePPM / 10_000).toFixed(2)}%`}</span>
 									<span>{m.vaultName || '—'}</span>
 								</TableRow>
 							))
