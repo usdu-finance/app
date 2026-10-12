@@ -46,7 +46,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 	return (
 		<div className="min-h-screen bg-usdu-bg text-text-primary">
 			{/* Dashboard Header */}
-			<header className="fixed top-0 left-0 right-0 z-50 bg-usdu-bg border-b border-usdu-surface">
+			<header className="fixed top-0 left-0 right-0 z-50 bg-usdu-bg">
 				<div className="mx-auto max-md:px-4 px-16 py-3">
 					<div className="flex items-center justify-between">
 						{/* Logo */}
@@ -169,7 +169,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 
 				{/* Sidebar Navigation */}
 				<aside
-					className={`fixed left-0 top-16 mt-1 w-64 h-screen bg-usdu-bg border-r border-usdu-surface transform transition-transform duration-300 ease-in-out z-50 ${
+					className={`fixed left-0 top-16 w-64 h-screen bg-usdu-bg transform transition-transform duration-300 ease-in-out z-50 ${
 						isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
 					} md:translate-x-0`}
 				>
@@ -193,7 +193,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 				</aside>
 
 				{/* Main Content */}
-				<main className="flex-1 min-h-[calc(100vh-4rem)] max-md:px-4 md:px-8 py-8 md:ml-64 bg-usdu-card">
+				<main className="flex-1 min-h-[calc(100vh-4rem)] max-md:px-4 md:px-8 py-8 md:ml-64 md:mt-4 bg-usdu-card md:rounded-l-3xl">
 					<div>{children}</div>
 				</main>
 			</div>
