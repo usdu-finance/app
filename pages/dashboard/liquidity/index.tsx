@@ -8,6 +8,7 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
+import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
@@ -80,40 +81,41 @@ function LiquidityPoolSection({ title, description, pools, isLoading, error, emp
 
 	return (
 		<>
-			<PageHeader title={title} description={description} />
-
-			<Table>
-				<TableHead headers={HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-				<TableBody>
-					{isLoading ? (
-						<TableRowEmpty>Loading liquidity pools...</TableRowEmpty>
-					) : error ? (
-						<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
-					) : sortedPools.length === 0 ? (
-						<TableRowEmpty>{emptyText}</TableRowEmpty>
-					) : (
-						sortedPools.map((m) => (
-							<TableRow
-								key={m.key}
-								headers={HEADERS}
-								colSpan={5}
-								tab={sortTab}
-								onClick={() => router.push(`/dashboard/liquidity/${m.poolAddress}/curve`)}
-							>
-								<div className="flex items-center gap-2">
-									<TokenLogo currency={m.tokens[0].symbol} size={6} className="-mr-2" />
-									<TokenLogo currency={m.tokens[1].symbol} size={6} />
-									<span>{m.label}</span>
-								</div>
-								<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
-								<span>{formatCompactNumber(tokenAmount(m, 0), 1, '', ` ${m.tokens[0].symbol}`)}</span>
-								<span>{formatCompactNumber(tokenAmount(m, 1), 1, '', ` ${m.tokens[1].symbol}`)}</span>
-								<span>{formatCompactNumber(formatUnits(m.totalSupply, 18), 1, '', ' LP')}</span>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<Card variant="panel" className="space-y-8">
+				<PageHeader title={title} description={description} />
+				<Table>
+					<TableHead headers={HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+					<TableBody>
+						{isLoading ? (
+							<TableRowEmpty>Loading liquidity pools...</TableRowEmpty>
+						) : error ? (
+							<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
+						) : sortedPools.length === 0 ? (
+							<TableRowEmpty>{emptyText}</TableRowEmpty>
+						) : (
+							sortedPools.map((m) => (
+								<TableRow
+									key={m.key}
+									headers={HEADERS}
+									colSpan={5}
+									tab={sortTab}
+									onClick={() => router.push(`/dashboard/liquidity/${m.poolAddress}/curve`)}
+								>
+									<div className="flex items-center gap-2">
+										<TokenLogo currency={m.tokens[0].symbol} size={6} className="-mr-2" />
+										<TokenLogo currency={m.tokens[1].symbol} size={6} />
+										<span>{m.label}</span>
+									</div>
+									<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
+									<span>{formatCompactNumber(tokenAmount(m, 0), 1, '', ` ${m.tokens[0].symbol}`)}</span>
+									<span>{formatCompactNumber(tokenAmount(m, 1), 1, '', ` ${m.tokens[1].symbol}`)}</span>
+									<span>{formatCompactNumber(formatUnits(m.totalSupply, 18), 1, '', ' LP')}</span>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</Card>
 		</>
 	);
 }

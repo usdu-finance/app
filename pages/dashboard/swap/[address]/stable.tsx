@@ -12,6 +12,7 @@ import { useModuleDaily } from '@/hooks/useModuleDaily';
 import { useModuleSwapHistory, type ModuleSwapEntry } from '@/hooks/useModuleSwapHistory';
 import { useSort } from '@/hooks/ui/useSort';
 import { PageHeader } from '@/components/ui/layout';
+import Card from '@/components/ui/Card';
 import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
 import { TimeSeriesChart } from '@/components/ui/charts';
 import HeroSteps from '@/components/ui/HeroSteps';
@@ -443,32 +444,38 @@ function SwapDetailPageContent() {
 				</div>
 			</div>
 
-			<PageHeader title="History" description={`Your swaps between ${selectedModule.coinSymbol} and ${currency} on this module.`} />
-
-			<Table>
-				<TableHead headers={HISTORY_HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-				<TableBody>
-					{!isConnected ? (
-						<TableRowEmpty>Connect your wallet to see your history.</TableRowEmpty>
-					) : isLoadingSwaps ? (
-						<TableRowEmpty>Loading history...</TableRowEmpty>
-					) : swapsError && entries.length === 0 ? (
-						<TableRowEmpty>{`Error: ${swapsError}`}</TableRowEmpty>
-					) : sortedSwaps.length === 0 ? (
-						<TableRowEmpty>No swaps yet.</TableRowEmpty>
-					) : (
-						sortedSwaps.map((e) => (
-							<TableRow key={`${e.txHash}-${e.logIndex}`} headers={HISTORY_HEADERS} colSpan={5} tab={sortTab}>
-								<AppLink href={getBlockExplorerUrl(`tx/${e.txHash}`)}>{formatTimestampLocale(BigInt(e.created))}</AppLink>
-								<span>{e.kind === 'SwapIn' ? 'Swap In' : 'Swap Out'}</span>
-								<span>{`${formatCompactNumber(formatUnits(BigInt(e.amountCoin), selectedModule.coinDecimals), 2, '')} ${selectedModule.coinSymbol}`}</span>
-								<span>{fmtStable(currency, BigInt(e.amountStable))}</span>
-								<span>{fmtStable(currency, BigInt(e.fee))}</span>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<Card variant="panel" className="space-y-8">
+				<PageHeader
+					title="History"
+					description={`Your swaps between ${selectedModule.coinSymbol} and ${currency} on this module.`}
+				/>
+				<Table>
+					<TableHead headers={HISTORY_HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+					<TableBody>
+						{!isConnected ? (
+							<TableRowEmpty>Connect your wallet to see your history.</TableRowEmpty>
+						) : isLoadingSwaps ? (
+							<TableRowEmpty>Loading history...</TableRowEmpty>
+						) : swapsError && entries.length === 0 ? (
+							<TableRowEmpty>{`Error: ${swapsError}`}</TableRowEmpty>
+						) : sortedSwaps.length === 0 ? (
+							<TableRowEmpty>No swaps yet.</TableRowEmpty>
+						) : (
+							sortedSwaps.map((e) => (
+								<TableRow key={`${e.txHash}-${e.logIndex}`} headers={HISTORY_HEADERS} colSpan={5} tab={sortTab}>
+									<AppLink href={getBlockExplorerUrl(`tx/${e.txHash}`)}>
+										{formatTimestampLocale(BigInt(e.created))}
+									</AppLink>
+									<span>{e.kind === 'SwapIn' ? 'Swap In' : 'Swap Out'}</span>
+									<span>{`${formatCompactNumber(formatUnits(BigInt(e.amountCoin), selectedModule.coinDecimals), 2, '')} ${selectedModule.coinSymbol}`}</span>
+									<span>{fmtStable(currency, BigInt(e.amountStable))}</span>
+									<span>{fmtStable(currency, BigInt(e.fee))}</span>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</Card>
 		</div>
 	);
 }

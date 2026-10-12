@@ -9,6 +9,7 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
+import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
@@ -99,40 +100,41 @@ function CurvePoolSection({ title, description, pools, isLoading, error, emptyTe
 
 	return (
 		<>
-			<PageHeader title={title} description={description} />
-
-			<Table>
-				<TableHead headers={POOL_HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-				<TableBody>
-					{isLoading ? (
-						<TableRowEmpty>Loading curve pools...</TableRowEmpty>
-					) : error ? (
-						<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
-					) : sortedPools.length === 0 ? (
-						<TableRowEmpty>{emptyText}</TableRowEmpty>
-					) : (
-						sortedPools.map((m) => (
-							<TableRow
-								key={m.key}
-								headers={POOL_HEADERS}
-								colSpan={5}
-								tab={sortTab}
-								onClick={() => router.push(`/dashboard/swap/${m.poolAddress}/curve`)}
-							>
-								<div className="flex items-center gap-2">
-									<TokenLogo currency={m.tokens[0].symbol} size={6} className="-mr-2" />
-									<TokenLogo currency={m.tokens[1].symbol} size={6} />
-									<span>{m.label}</span>
-								</div>
-								<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
-								<span>{`${m.price.toFixed(4)} ${m.tokens[0].symbol}`}</span>
-								<span>{formatCompactNumber(tokenAmount(m, 0), 1, '', ` ${m.tokens[0].symbol}`)}</span>
-								<span>{formatCompactNumber(tokenAmount(m, 1), 1, '', ` ${m.tokens[1].symbol}`)}</span>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<Card variant="panel" className="space-y-8">
+				<PageHeader title={title} description={description} />
+				<Table>
+					<TableHead headers={POOL_HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+					<TableBody>
+						{isLoading ? (
+							<TableRowEmpty>Loading curve pools...</TableRowEmpty>
+						) : error ? (
+							<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
+						) : sortedPools.length === 0 ? (
+							<TableRowEmpty>{emptyText}</TableRowEmpty>
+						) : (
+							sortedPools.map((m) => (
+								<TableRow
+									key={m.key}
+									headers={POOL_HEADERS}
+									colSpan={5}
+									tab={sortTab}
+									onClick={() => router.push(`/dashboard/swap/${m.poolAddress}/curve`)}
+								>
+									<div className="flex items-center gap-2">
+										<TokenLogo currency={m.tokens[0].symbol} size={6} className="-mr-2" />
+										<TokenLogo currency={m.tokens[1].symbol} size={6} />
+										<span>{m.label}</span>
+									</div>
+									<span>{formatCompactNumber(m.totalValue, 1, '', ' USDU')}</span>
+									<span>{`${m.price.toFixed(4)} ${m.tokens[0].symbol}`}</span>
+									<span>{formatCompactNumber(tokenAmount(m, 0), 1, '', ` ${m.tokens[0].symbol}`)}</span>
+									<span>{formatCompactNumber(tokenAmount(m, 1), 1, '', ` ${m.tokens[1].symbol}`)}</span>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</Card>
 		</>
 	);
 }
@@ -166,50 +168,51 @@ function SwapListPageContent() {
 
 			<HeroSteps steps={STEPS} />
 
-			<PageHeader
-				title="Stable Swap"
-				description="Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get started."
-			/>
-
-			<Table>
-				<TableHead headers={HEADERS} colSpan={6} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-				<TableBody>
-					{isLoading ? (
-						<TableRowEmpty>Loading swap modules...</TableRowEmpty>
-					) : error ? (
-						<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
-					) : sortedModules.length === 0 ? (
-						<TableRowEmpty>No swap modules available.</TableRowEmpty>
-					) : (
-						sortedModules.map((m) => (
-							<TableRow
-								key={m.key}
-								headers={HEADERS}
-								colSpan={6}
-								tab={sortTab}
-								onClick={() => router.push(`/dashboard/swap/${m.moduleAddress}/stable`)}
-							>
-								<div className="flex items-center gap-2">
-									<TokenLogo currency={m.coinSymbol} size={6} className="-mr-2" />
-									<TokenLogo currency={m.currency} size={6} />
+			<Card variant="panel" className="space-y-8">
+				<PageHeader
+					title="Stable Swap"
+					description="Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get started."
+				/>
+				<Table>
+					<TableHead headers={HEADERS} colSpan={6} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+					<TableBody>
+						{isLoading ? (
+							<TableRowEmpty>Loading swap modules...</TableRowEmpty>
+						) : error ? (
+							<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
+						) : sortedModules.length === 0 ? (
+							<TableRowEmpty>No swap modules available.</TableRowEmpty>
+						) : (
+							sortedModules.map((m) => (
+								<TableRow
+									key={m.key}
+									headers={HEADERS}
+									colSpan={6}
+									tab={sortTab}
+									onClick={() => router.push(`/dashboard/swap/${m.moduleAddress}/stable`)}
+								>
+									<div className="flex items-center gap-2">
+										<TokenLogo currency={m.coinSymbol} size={6} className="-mr-2" />
+										<TokenLogo currency={m.currency} size={6} />
+										<span>
+											{m.coinSymbol} / {m.currency}
+										</span>
+									</div>
 									<span>
-										{m.coinSymbol} / {m.currency}
+										{formatCompactNumber(formatUnits(m.mintable, 18), 1, '', '', false)} {m.currency}
 									</span>
-								</div>
-								<span>
-									{formatCompactNumber(formatUnits(m.mintable, 18), 1, '', '', false)} {m.currency}
-								</span>
-								<span>
-									{formatCompactNumber(formatUnits(m.totalMinted, 18), 1, '')} {m.coinSymbol}
-								</span>
-								<span>{(m.swapInFeePPM / 10_000).toFixed(2)}%</span>
-								<span>{(m.swapOutFeePPM / 10_000).toFixed(2)}%</span>
-								<span>{m.vaultName || '—'}</span>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+									<span>
+										{formatCompactNumber(formatUnits(m.totalMinted, 18), 1, '')} {m.coinSymbol}
+									</span>
+									<span>{(m.swapInFeePPM / 10_000).toFixed(2)}%</span>
+									<span>{(m.swapOutFeePPM / 10_000).toFixed(2)}%</span>
+									<span>{m.vaultName || '—'}</span>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</Card>
 
 			<CurvePoolSection
 				title="FX Swap"

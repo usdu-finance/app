@@ -6,6 +6,7 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
+import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatTimestampLocale } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
@@ -74,32 +75,35 @@ function ObligationListPageContent() {
 
 			<HeroSteps steps={STEPS} />
 
-			<Table>
-				<TableHead headers={HEADERS} colSpan={4} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-				<TableBody>
-					{sortedObligations.length === 0 ? (
-						<TableRowEmpty>You have no open obligations yet.</TableRowEmpty>
-					) : (
-						sortedObligations.map((o) => (
-							<TableRow
-								key={o.key}
-								headers={HEADERS}
-								colSpan={4}
-								tab={sortTab}
-								onClick={() => router.push(`/dashboard/obligation/${o.key}`)}
-							>
-								<div className="flex items-center gap-2">
-									<TokenLogo currency={o.collateralSymbol} size={6} />
-									<span>{o.collateralSymbol}</span>
-								</div>
-								<span>{o.debtRaw.toString()}</span>
-								<span>{o.healthFactor.toFixed(2)}</span>
-								<span>{formatTimestampLocale(o.maturity)}</span>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<Card variant="panel" className="space-y-8">
+				<PageHeader title="Open Obligations" description="Your open borrow obligations with their health and maturity." />
+				<Table>
+					<TableHead headers={HEADERS} colSpan={4} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+					<TableBody>
+						{sortedObligations.length === 0 ? (
+							<TableRowEmpty>You have no open obligations yet.</TableRowEmpty>
+						) : (
+							sortedObligations.map((o) => (
+								<TableRow
+									key={o.key}
+									headers={HEADERS}
+									colSpan={4}
+									tab={sortTab}
+									onClick={() => router.push(`/dashboard/obligation/${o.key}`)}
+								>
+									<div className="flex items-center gap-2">
+										<TokenLogo currency={o.collateralSymbol} size={6} />
+										<span>{o.collateralSymbol}</span>
+									</div>
+									<span>{o.debtRaw.toString()}</span>
+									<span>{o.healthFactor.toFixed(2)}</span>
+									<span>{formatTimestampLocale(o.maturity)}</span>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
+			</Card>
 		</div>
 	);
 }
