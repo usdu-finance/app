@@ -28,7 +28,7 @@ export default function TableHead({
 	};
 
 	return (
-		<div className="items-center justify-between rounded-t-lg bg-usdu-bg py-4 md:flex">
+		<div className="items-center justify-between rounded-t-lg bg-usdu-bg px-2 py-4 md:flex">
 			{/* Desktop */}
 			<div
 				className={`max-md:hidden flex-grow md:grid`}

@@ -24,7 +24,7 @@ export default function HomeLayout({ children }: LayoutProps) {
 	return (
 		<div className="min-h-screen bg-usdu-bg text-text-primary">
 			{/* Home Header */}
-			<header className="fixed top-0 left-0 right-0 z-50 bg-usdu-bg border-b border-usdu-surface">
+			<header className="fixed top-0 left-0 right-0 z-50 bg-usdu-bg">
 				<div className="mx-auto max-md:px-4 px-16 py-3">
 					<div className="flex items-center justify-between">
 						{/* Logo */}
