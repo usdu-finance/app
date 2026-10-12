@@ -38,7 +38,7 @@ export default function TableRow({
 			}`}
 			onClick={onClick}
 		>
-			<div className="flex flex-col justify-between gap-y-5 md:flex-row">
+			<div className="flex flex-col justify-between gap-y-5 md:flex-row md:items-center">
 				{/* Desktop */}
 				<div
 					className="max-md:hidden grid flex-grow items-center py-2"
@@ -69,7 +69,7 @@ export default function TableRow({
 
 				{/* Action column */}
 				{actionCol && (
-					<div className="flex-shrink-0 md:w-[8rem] md:ml-[2rem] max-md:w-full mb-2">{actionCol}</div>
+					<div className="flex-shrink-0 md:w-[8rem] md:ml-[2rem] max-md:w-full max-md:mb-2">{actionCol}</div>
 				)}
 			</div>
 		</div>
