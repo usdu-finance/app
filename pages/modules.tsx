@@ -1,4 +1,6 @@
+import { GLASS } from '@/components/pages/godeye/GodEyeUi';
 import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { useModuleFigures } from '@/hooks/useModuleFigures';
 import { useModuleDataAll } from '@/hooks/useModulesData';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRefresh, faFileSignature, faHourglassHalf, faPlugCircleCheck, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
@@ -8,9 +10,12 @@ import {
 	groupHistoryByModule,
 	createAllModules,
 	getModuleStatus,
+	matchesStatus,
+	proposalTiming,
 	getModuleCurrency,
 	getModuleType,
 	moduleKey,
+	figureRows,
 	MODULE_TYPES,
 	STATUS_ORDER,
 	type ModuleStatusKey,
@@ -89,18 +94,16 @@ export default function ModulesPage() {
 	// Per stablecoin + module: the same module on another stablecoin is a separate entry with its own history
 	const historyByModule = useMemo(() => groupHistoryByModule(allHistory), [allHistory]);
 	const allModules = useMemo(() => createAllModules(allModulesRaw, historyByModule), [allModulesRaw, historyByModule]);
-	const getStatus = useMemo(
-		() => (m: StablecoinModule) => getModuleStatus(m, historyByModule),
-		[historyByModule]
-	);
+	const getStatus = useMemo(() => (m: StablecoinModule) => getModuleStatus(m, historyByModule), [historyByModule]);
 
 	const inTab = allModules;
+	const figures = useModuleFigures(useMemo(() => inTab.map((m) => m.module), [inTab]));
 
 	const rows = useMemo(() => {
 		const q = search.trim().toLowerCase();
 		const dir = sortReverse ? -1 : 1;
 		const filtered = inTab.filter((m) => {
-			if (statusFilter !== 'all' && getStatus(m).status !== statusFilter) return false;
+			if (!matchesStatus(getStatus(m), statusFilter)) return false;
 			if (!q) return true;
 			return (
 				m.message.toLowerCase().includes(q) ||
@@ -120,8 +123,11 @@ export default function ModulesPage() {
 					return cmpBig(a.expiredAt, b.expiredAt);
 				case 'Created':
 					return cmpBig(b.createdAt, a.createdAt);
-				default:
-					return STATUS_ORDER[getStatus(a).status] - STATUS_ORDER[getStatus(b).status];
+				default: {
+					const [sa, sb] = [getStatus(a), getStatus(b)];
+					// same base status: modules with an open proposal first
+					return STATUS_ORDER[sa.status] * 2 + (sa.pending ? 0 : 1) - (STATUS_ORDER[sb.status] * 2 + (sb.pending ? 0 : 1));
+				}
 			}
 		};
 		return [...filtered].sort((a, b) => dir * cmp(a, b));
@@ -173,7 +179,7 @@ export default function ModulesPage() {
 		);
 	}
 
-	const count = (s: ModuleStatusKey) => inTab.filter((m) => getStatus(m).status === s).length;
+	const count = (s: ModuleStatusKey) => inTab.filter((m) => matchesStatus(getStatus(m), s)).length;
 
 	return (
 		<>
@@ -183,15 +189,15 @@ export default function ModulesPage() {
 				<div className="text-center">
 					<h1 className="text-4xl md:text-5xl font-bold text-usdu-black mb-4">Modules & Adapters</h1>
 					<p className="text-lg text-text-secondary max-w-3xl mx-auto">
-						Modules are contracts authorised to mint and burn a stablecoin. They are governed by expiration-based
-						proposals, per stablecoin.
+						Modules are contracts authorised to mint and burn a stablecoin. They are governed by expiration-based proposals, per
+						stablecoin.
 					</p>
 				</div>
 
 				<HeroSteps steps={STEPS} />
 
 				<div className="space-y-4">
-					<ModulesMap modules={inTab} getStatus={getStatus} selected={selected} onSelect={selectFromMap} />
+					<ModulesMap modules={inTab} getStatus={getStatus} selected={selected} onSelect={selectFromMap} figures={figures} />
 					<p className="text-sm text-text-secondary">
 						{inTab.length} modules · {count('active')} active · {count('pending')} pending · {count('revoked')} revoked ·{' '}
 						{count('expired')} expired
@@ -209,7 +215,7 @@ export default function ModulesPage() {
 								value={search}
 								onChange={(e) => setSearch(e.target.value)}
 								placeholder="Search by name, message or address"
-								className="w-full rounded-lg bg-usdu-bg border border-usdu-surface py-2 pl-9 pr-3 text-sm text-usdu-black outline-none focus:border-brand"
+								className="w-full rounded-lg bg-white/80 border border-black/10 py-2 pl-9 pr-3 text-sm text-usdu-black outline-none focus:border-brand"
 							/>
 						</div>
 						<div className="flex flex-wrap gap-2">
@@ -218,7 +224,7 @@ export default function ModulesPage() {
 									key={s}
 									onClick={() => setStatusFilter(s)}
 									className={`px-3 py-1.5 rounded-lg text-sm capitalize transition-colors ${
-										statusFilter === s ? 'bg-usdu-black text-usdu-card' : 'bg-usdu-bg text-text-secondary hover:bg-usdu-surface'
+										statusFilter === s ? 'bg-usdu-black text-usdu-card' : `${GLASS} text-text-secondary hover:bg-white`
 									}`}
 								>
 									{s}
@@ -241,7 +247,12 @@ export default function ModulesPage() {
 									const open = selected === key;
 									return (
 										<Fragment key={key}>
-											<div ref={(el) => { rowRefs.current[key] = el; }} className={open ? 'ring-1 ring-brand rounded-lg' : ''}>
+											<div
+												ref={(el) => {
+													rowRefs.current[key] = el;
+												}}
+												className={open ? 'ring-1 ring-brand rounded-lg' : ''}
+											>
 												<TableRow
 													headers={HEADERS}
 													colSpan={6}
@@ -249,16 +260,35 @@ export default function ModulesPage() {
 													onClick={() => setSelected(open ? null : key)}
 												>
 													<div>
-														<div className="font-semibold text-text-primary">{m.message || 'Unnamed Module'}</div>
-														<div className="text-xs">{m.module.slice(0, 10)}...{m.module.slice(-6)}</div>
+														<div className="font-semibold text-text-primary">
+															{m.message || 'Unnamed Module'}
+														</div>
+														<div className="text-xs">
+															{m.module.slice(0, 10)}...{m.module.slice(-6)}
+														</div>
 													</div>
 													<span>{getModuleCurrency(m.stablecoin) ?? '—'}</span>
 													<span className="inline-flex items-center gap-1.5">
-														<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: type.color }} />
+														<span
+															className="inline-block w-2.5 h-2.5 rounded-full"
+															style={{ background: type.color }}
+														/>
 														{type.name}
 													</span>
-													<span className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}>
-														{status.label}
+													<span className="inline-flex flex-wrap items-center justify-end gap-1">
+														<span
+															className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}
+														>
+															{status.label}
+														</span>
+														{status.pending && status.status !== 'pending' && (
+															<span
+																className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-600"
+																title={proposalTiming(status.pending)}
+															>
+																{status.pending.ready ? 'Proposal ready' : 'Proposal pending'}
+															</span>
+														)}
 													</span>
 													<span>{fmtExpiry(m.expiredAt)}</span>
 													<span>{formatDateOnly(m.createdAt)}</span>
@@ -281,6 +311,56 @@ export default function ModulesPage() {
 															<p className="text-usdu-black">{formatTimestampLocale(m.updatedAt)}</p>
 														</div>
 													</div>
+													{status.pending && (
+														<div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2">
+															<p className="font-medium text-usdu-black">
+																Pending proposal · {proposalTiming(status.pending)}
+															</p>
+															<div className="mt-1 flex flex-wrap gap-x-8 gap-y-1 text-xs">
+																<span>
+																	<span className="text-text-secondary">Message </span>
+																	{status.pending.message || '—'}
+																</span>
+																<span>
+																	<span className="text-text-secondary">New expiry </span>
+																	{status.pending.expiredAt !== null
+																		? fmtExpiry(status.pending.expiredAt)
+																		: '—'}
+																</span>
+																<span>
+																	<span className="text-text-secondary">Timelock ends </span>
+																	{status.pending.readyAt
+																		? formatTimestampLocale(BigInt(status.pending.readyAt))
+																		: '—'}
+																</span>
+															</div>
+														</div>
+													)}
+													{(() => {
+														const f = figures.get(m.module.toLowerCase());
+														const sym = getModuleCurrency(m.stablecoin);
+														const shared =
+															inTab.filter((x) => x.module.toLowerCase() === m.module.toLowerCase()).length >
+															1;
+														const items = figureRows(f, shared ? undefined : sym);
+														return (
+															<div className="flex flex-wrap gap-x-8 gap-y-2">
+																{items.map((r) => (
+																	<div key={r.label} title={r.title}>
+																		<p className="text-text-secondary">{r.label}</p>
+																		<p className={r.negative ? 'text-red-600' : 'text-usdu-black'}>
+																			{r.value}
+																		</p>
+																	</div>
+																))}
+																{shared && (
+																	<p className="self-end text-xs text-text-secondary">
+																		Module totals, shared by all its stablecoins
+																	</p>
+																)}
+															</div>
+														);
+													})()}
 													{m.messageUpdated && (
 														<p className="text-usdu-black">
 															<span className="font-medium">Update:</span> {m.messageUpdated}
@@ -296,7 +376,11 @@ export default function ModulesPage() {
 															>
 																<div className="flex items-start justify-between mb-3">
 																	<div className="flex items-center gap-3">
-																		<span className={`px-2 py-1 rounded text-xs font-medium ${KIND_BADGE[h.kind]}`}>{h.kind}</span>
+																		<span
+																			className={`px-2 py-1 rounded text-xs font-medium ${KIND_BADGE[h.kind]}`}
+																		>
+																			{h.kind}
+																		</span>
 																		<span className="text-usdu-black font-medium">{h.message}</span>
 																	</div>
 																	<div className="text-xs text-text-secondary text-right">
@@ -321,8 +405,18 @@ export default function ModulesPage() {
 																	)}
 																	{tl && (
 																		<div>
-																			<p className="text-text-secondary mb-1">{tl.isPast ? 'Timelock Ended' : 'Timelock'}</p>
-																			<p className={tl.isPast ? 'text-usdu-black' : 'text-yellow-600 font-medium'}>{tl.display}</p>
+																			<p className="text-text-secondary mb-1">
+																				{tl.isPast ? 'Timelock Ended' : 'Timelock'}
+																			</p>
+																			<p
+																				className={
+																					tl.isPast
+																						? 'text-usdu-black'
+																						: 'text-yellow-600 font-medium'
+																				}
+																			>
+																				{tl.display}
+																			</p>
 																		</div>
 																	)}
 																</div>

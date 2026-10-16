@@ -1,173 +1,319 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Address } from 'viem';
 import type { StablecoinModule } from '@/hooks/useModulesData';
-import { formatTimestampLocale, shortenAddress } from '@/lib/utils';
+import { shortenAddress } from '@/lib/utils';
 import { GLASS } from '@/components/pages/godeye/GodEyeUi';
-import { MODULE_CURRENCIES, MODULE_TYPES, getModuleCurrency, getModuleType, moduleKey, type ModuleStatusKey } from './helpers';
+import type { ModuleFigures } from '@/hooks/useModuleFigures';
+import { expiryText, proposalTiming, matchesStatus, type PendingProposal } from './helpers';
+import {
+	figureRows,
+	MODULE_CURRENCIES,
+	MODULE_TYPES,
+	getModuleCurrency,
+	getModuleType,
+	moduleKey,
+	type ModuleStatusKey,
+	type ModuleType,
+} from './helpers';
+import { ModulesMapEngine, type MapNodeInput } from './modulesMap.engine';
 
 interface ModulesMapProps {
 	modules: StablecoinModule[];
-	getStatus: (m: StablecoinModule) => { status: ModuleStatusKey; label: string };
+	getStatus: (m: StablecoinModule) => { status: ModuleStatusKey; label: string; pending: PendingProposal | null };
 	selected: string | null;
 	onSelect: (key: string | null) => void;
+	/** on-chain figures by lowercase module address */
+	figures?: Map<string, ModuleFigures>;
 }
 
-const W = 1000;
-const H = 460;
-const HUB_X = [190, 500, 810];
-const HUB_Y = 230;
-const HUB_R = 30;
-const STATUS_ORDER: ModuleStatusKey[] = ['pending', 'active', 'revoked', 'expired', 'unknown'];
+const short = (s: string) => (s.length > 24 ? s.slice(0, 23).trimEnd() + '…' : s);
+type Reg = { m: StablecoinModule; label: string; status: ModuleStatusKey; pending: PendingProposal | null; currency: string; key: string };
+const TABS = ['all', 'pending', 'active', 'revoked', 'expired'] as const;
+const BTN = `${GLASS} w-8 h-8 flex items-center justify-center text-sm hover:bg-white`;
 
-type MapNode = { key: string; x: number; y: number; hub: number; module: StablecoinModule; status: ModuleStatusKey; label: string };
+/** Draggable / zoomable canvas map in the style of GodEye: one hub per stablecoin, modules relaxed around it. */
+export default function ModulesMap({ modules, getStatus, selected, onSelect, figures }: ModulesMapProps) {
+	const canvas = useRef<HTMLCanvasElement>(null);
+	const engine = useRef<ModulesMapEngine | null>(null);
+	const cb = useRef({ selected, onSelect });
+	cb.current = { selected, onSelect };
+	const byKeyRef = useRef(new Map<string, Reg[]>());
+	const [tip, setTip] = useState<{ id: string; x: number; y: number } | null>(null);
 
-function expiryLabel(m: StablecoinModule) {
-	return m.expiredAt >= BigInt(10) ** BigInt(12) ? 'Never' : formatTimestampLocale(m.expiredAt);
-}
+	const [tab, setTab] = useState<(typeof TABS)[number]>('active');
 
-/** Static radial map: one hub per stablecoin, one node per module registered on it. */
-export default function ModulesMap({ modules, getStatus, selected, onSelect }: ModulesMapProps) {
-	const box = useRef<HTMLDivElement>(null);
-	const [hover, setHover] = useState<{ node: MapNode | null; hub: number; x: number; y: number } | null>(null);
-
-	const nodes = useMemo(() => {
-		const out: MapNode[] = [];
-		MODULE_CURRENCIES.forEach((c, hub) => {
-			const list = modules
-				.filter((m) => getModuleCurrency(m.stablecoin) === c.currency)
-				.map((m) => ({ m, s: getStatus(m) }))
-				.sort(
-					(a, b) =>
-						getModuleType(a.m.message).localeCompare(getModuleType(b.m.message)) ||
-						STATUS_ORDER.indexOf(a.s.status) - STATUS_ORDER.indexOf(b.s.status)
-				);
-			const n = list.length;
-			list.forEach(({ m, s }, i) => {
-				// two alternating rings when crowded
-				const ring = n > 8 ? (i % 2 === 0 ? 85 : 125) : 105;
-				const a = (i / n) * Math.PI * 2 - Math.PI / 2;
-				out.push({
-					key: moduleKey(m.stablecoin, m.module),
-					x: HUB_X[hub] + Math.cos(a) * ring,
-					y: HUB_Y + Math.sin(a) * ring * 1.3,
-					hub,
-					module: m,
-					status: s.status,
-					label: s.label,
-				});
+	const { input, byKey, hubStats } = useMemo(() => {
+		const input: MapNodeInput[] = [];
+		// a module registered on several stablecoins becomes one shared node, keyed by its address
+		const byKey = new Map<string, Reg[]>();
+		const groups = new Map<string, Reg[]>();
+		modules.forEach((m) => {
+			const currency = getModuleCurrency(m.stablecoin);
+			if (!currency) return;
+			const s = getStatus(m);
+			const reg: Reg = { m, label: s.label, status: s.status, pending: s.pending, currency, key: moduleKey(m.stablecoin, m.module) };
+			const id = m.module.toLowerCase();
+			groups.set(id, [...(groups.get(id) ?? []), reg]);
+		});
+		const isInactive = (s: ModuleStatusKey) => s === 'expired' || s === 'revoked' || s === 'unknown';
+		const hubIndex = (r: Reg) => MODULE_CURRENCIES.findIndex((c) => c.currency === r.currency);
+		// per stablecoin aggregates over ALL registrations (independent of the toggle); shared modules are excluded
+		// because their figures belong to the contract and would be counted once per stablecoin
+		const hubStats = MODULE_CURRENCIES.map((c) => {
+			const own: Reg[] = [];
+			let shared = 0;
+			groups.forEach((regs) => {
+				const hit = regs.find((r) => r.currency === c.currency);
+				if (!hit) return;
+				if (regs.length > 1) shared++;
+				else own.push(hit);
+			});
+			const all = own.length + shared;
+			const active = [...groups.values()].filter((regs) =>
+				regs.some((r) => r.currency === c.currency && !isInactive(r.status))
+			).length;
+			return { currency: c.currency, own, shared, all, active };
+		});
+		const order: ModuleType[] = ['curve', 'morpho', 'bridge', 'streamer', 'other'];
+		groups.forEach((regs, id) => {
+			regs.sort(
+				(a, b) =>
+					MODULE_CURRENCIES.findIndex((c) => c.currency === a.currency) -
+					MODULE_CURRENCIES.findIndex((c) => c.currency === b.currency)
+			);
+			regs.forEach((r) => byKey.set(r.key, regs));
+			const m = regs[0].m;
+			const type = getModuleType(m.message);
+			const shown = regs.filter((r) => matchesStatus(r, tab));
+			if (!shown.length) return;
+			const sts = shown.map((r) => r.status);
+			// an open proposal pulses the node even though its base status stays active
+			const pulse = shown.some((r) => r.pending);
+			const status: ModuleStatusKey = sts.includes('pending') ? 'pending' : sts.every(isInactive) ? 'expired' : 'active';
+			input.push({
+				id,
+				hubs: shown.map(hubIndex),
+				isHub: false,
+				label: short(m.message || shortenAddress(m.module as Address)),
+				color: MODULE_TYPES[type].color,
+				cat: order.indexOf(type),
+				status,
+				pulse,
 			});
 		});
-		return out;
-	}, [modules, getStatus]);
+		const hubs: MapNodeInput[] = MODULE_CURRENCIES.map((c, hub) => ({
+			id: `hub:${c.currency}`,
+			hubs: [hub],
+			isHub: true,
+			label: c.currency,
+			color: '#0c0c0c',
+			cat: 0,
+			status: 'active',
+		}));
+		return { input: [...hubs, ...input], byKey, hubStats };
+	}, [modules, getStatus, tab]);
 
-	const move = (e: React.MouseEvent, node: MapNode | null, hub: number) => {
-		const r = box.current?.getBoundingClientRect();
-		if (r) setHover({ node, hub, x: e.clientX - r.left, y: e.clientY - r.top });
-	};
+	// aggregate figures per hub (modules whose calls failed are skipped)
+	const hubAgg = useMemo(
+		() =>
+			hubStats.map((h) => {
+				let debt = 0n,
+					funds = 0n,
+					revenue = 0n,
+					nBoth = 0,
+					nRev = 0;
+				h.own.forEach((r) => {
+					const f = figures?.get(r.m.module.toLowerCase());
+					if (!f) return;
+					if (f.debt !== undefined && f.funds !== undefined) {
+						debt += f.debt;
+						funds += f.funds;
+						nBoth++;
+					}
+					if (f.revenue !== undefined) {
+						revenue += f.revenue;
+						nRev++;
+					}
+				});
+				return {
+					...h,
+					rows:
+						nBoth + nRev
+							? figureRows(nBoth ? { debt, funds, revenue: nRev ? revenue : undefined } : { revenue }, h.currency)
+							: [],
+				};
+			}),
+		[hubStats, figures]
+	);
 
-	const hubNode = hover && !hover.node ? MODULE_CURRENCIES[hover.hub] : null;
-	const inactive = (s: ModuleStatusKey) => s === 'expired' || s === 'revoked' || s === 'unknown';
+	useEffect(() => {
+		const e = new ModulesMapEngine(canvas.current!, {
+			onSelect: (id) => {
+				// the engine reports the module address; the page selects the first matching per-stablecoin row
+				const regs = id ? [...byKeyRef.current.values()].find((r) => r[0].m.module.toLowerCase() === id) : undefined;
+				const key = regs?.[0].key ?? null;
+				const cur = cb.current.selected;
+				cb.current.onSelect(key && regs?.some((r) => r.key === cur) ? null : key);
+			},
+			onHover: setTip,
+		});
+		engine.current = e;
+		return () => {
+			e.destroy();
+			engine.current = null;
+		};
+	}, []);
+
+	const mapInput = useMemo(
+		() =>
+			input.map((n) => {
+				if (!n.isHub) return n;
+				const rows = hubAgg[n.hubs[0]]?.rows ?? [];
+				const sub = rows
+					.filter((r) => r.label === 'Funds' || r.label === 'Claimable')
+					.map((r) => `${r.label} ${r.value}`)
+					.join(' · ');
+				return { ...n, sub: sub || undefined };
+			}),
+		[input, hubAgg]
+	);
+	useEffect(() => engine.current?.setData(mapInput), [mapInput]);
+	byKeyRef.current = byKey;
+	useEffect(() => {
+		const regs = selected ? byKey.get(selected) : undefined;
+		engine.current?.setSelected(regs ? regs[0].m.module.toLowerCase() : null);
+	}, [selected, byKey]);
+
+	const hubIdx = tip?.id.startsWith('hub:') ? MODULE_CURRENCIES.findIndex((c) => `hub:${c.currency}` === tip.id) : -1;
+	const regs = tip ? [...byKey.values()].find((r) => r[0].m.module.toLowerCase() === tip.id) : undefined;
+	const info = regs?.[0];
+	const f = info ? figures?.get(info.m.module.toLowerCase()) : undefined;
+	const sym = regs && regs.length === 1 ? regs[0].currency : undefined;
+	const fig = figureRows(f, sym);
+	const w = canvas.current?.clientWidth ?? 600;
 
 	return (
-		<div ref={box} className="relative rounded-lg border border-usdu-surface bg-usdu-bg overflow-hidden">
-			<svg viewBox={`0 0 ${W} ${H}`} className="block w-full h-auto" onClick={() => onSelect(null)} role="img" aria-label="Map of stablecoin modules">
-				<defs>
-					{Object.entries(MODULE_TYPES).map(([k, t]) => (
-						<radialGradient key={k} id={`mm-${k}`} cx="35%" cy="35%" r="70%">
-							<stop offset="0" stopColor={t.color} stopOpacity="0.55" />
-							<stop offset="0.3" stopColor={t.color} />
-							<stop offset="1" stopColor={t.color} />
-						</radialGradient>
-					))}
-				</defs>
-				{/* no connectors: each stablecoin is a soft orbit, its modules cluster inside it */}
-				{HUB_X.map((x) => (
-					<ellipse key={x} cx={x} cy={HUB_Y} rx={148} ry={196} fill="#0c0c0c" fillOpacity={0.025} stroke="#0c0c0c" strokeOpacity={0.06} />
-				))}
-				{MODULE_CURRENCIES.map((c, i) => (
-					<g
-						key={c.currency}
-						onMouseMove={(e) => move(e, null, i)}
-						onMouseLeave={() => setHover(null)}
-						onClick={(e) => e.stopPropagation()}
-					>
-						<circle cx={HUB_X[i]} cy={HUB_Y} r={HUB_R} fill="#0c0c0c" />
-						<circle cx={HUB_X[i]} cy={HUB_Y} r={HUB_R + 5} fill="none" stroke="#0c0c0c" strokeOpacity={0.15} />
-						<text x={HUB_X[i]} y={HUB_Y + 4} textAnchor="middle" fontSize="12" fontWeight="700" fill="#fff">
-							{c.currency}
-						</text>
-					</g>
-				))}
-				{nodes.map((n) => {
-					const color = MODULE_TYPES[getModuleType(n.module.message)].color;
-					const dim = inactive(n.status);
-					const sel = selected === n.key;
-					return (
-						<g
-							key={n.key}
-							className="cursor-pointer"
-							onMouseMove={(e) => move(e, n, n.hub)}
-							onMouseLeave={() => setHover(null)}
-							onClick={(e) => {
-								e.stopPropagation();
-								onSelect(sel ? null : n.key);
-							}}
-						>
-							{n.status === 'pending' && (
-								<>
-									<circle cx={n.x} cy={n.y} r={11} fill={color} fillOpacity={0.35}>
-										<animate attributeName="r" values="11;26;11" dur="2s" repeatCount="indefinite" />
-										<animate attributeName="fill-opacity" values="0.45;0;0.45" dur="2s" repeatCount="indefinite" />
-									</circle>
-									<circle cx={n.x} cy={n.y} r={16} fill={color} fillOpacity={0.18} />
-								</>
-							)}
-							{sel && <circle cx={n.x} cy={n.y} r={18} fill="none" stroke="#0c0c0c" strokeOpacity={0.85} strokeWidth={1.6} />}
-							<circle
-								cx={n.x}
-								cy={n.y}
-								r={11}
-								fill={dim ? color : `url(#mm-${getModuleType(n.module.message)})`}
-								fillOpacity={dim ? 0.15 : 1}
-								stroke={color}
-								strokeWidth={dim ? 1.2 : 0}
-								strokeDasharray={dim ? '4 4' : undefined}
-								strokeOpacity={0.8}
-							/>
-						</g>
-					);
-				})}
-			</svg>
+		<div className="relative h-[520px] md:h-[680px] rounded-lg border border-usdu-surface overflow-hidden select-none">
+			<canvas ref={canvas} className="absolute inset-0 block" role="img" aria-label="Map of stablecoin modules" />
 
-			<div className="absolute left-3 bottom-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-text-secondary">
-				{Object.values(MODULE_TYPES).map((t) => (
-					<span key={t.name} className="flex items-center gap-1.5">
-						<span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: t.color }} />
-						{t.name}
-					</span>
+			<div
+				className="absolute right-3 top-3 left-3 flex justify-end gap-1.5 overflow-x-auto"
+				role="tablist"
+				aria-label="Filter map by status"
+			>
+				{TABS.map((t) => (
+					<button
+						key={t}
+						role="tab"
+						aria-selected={tab === t}
+						onClick={() => setTab(t)}
+						className={`shrink-0 px-3 py-1 rounded-lg text-xs capitalize transition-colors ${
+							tab === t ? 'bg-usdu-black text-usdu-card' : `${GLASS} text-text-secondary hover:bg-white`
+						}`}
+					>
+						{t}
+					</button>
 				))}
-				<span>Glowing = pending, dashed = expired / revoked</span>
 			</div>
 
-			{hover && (
-				<div
-					className={`${GLASS} pointer-events-none absolute z-40 max-w-[280px] px-2.5 py-2 text-xs`}
-					style={{ left: Math.min(hover.x + 14, (box.current?.clientWidth ?? 600) - 290), top: hover.y + 14 }}
+			<div className="absolute right-3 bottom-3 flex flex-col gap-1.5">
+				<button
+					className={`${BTN} text-xs font-medium`}
+					aria-label="Fit view"
+					title="Fit view"
+					onClick={() => engine.current?.fit(true)}
 				>
-					{hover.node ? (
+					{'[\u00a0]'}
+				</button>
+				<button className={BTN} aria-label="Zoom in" onClick={() => engine.current?.zoomBy(1.5)}>
+					+
+				</button>
+				<button className={BTN} aria-label="Zoom out" onClick={() => engine.current?.zoomBy(1 / 1.5)}>
+					−
+				</button>
+			</div>
+
+			<div className={`${GLASS} absolute left-3 bottom-3 max-w-[calc(100%-5.5rem)] px-3 py-2 text-[11px] text-text-secondary`}>
+				<div className="flex flex-wrap gap-x-3 gap-y-1">
+					{Object.values(MODULE_TYPES).map((t) => (
+						<span key={t.name} className="flex items-center gap-1.5">
+							<span className="inline-block w-2 h-2 rounded-full" style={{ background: t.color }} />
+							{t.name}
+						</span>
+					))}
+				</div>
+				<div className="mt-1 text-text-muted">Pulsing = pending · dashed = expired / revoked · drag, scroll, double-click</div>
+			</div>
+
+			{tip && (hubIdx >= 0 || info) && (
+				<div
+					className={`${GLASS} pointer-events-none absolute z-40 max-w-[340px] px-4 py-3 text-xs`}
+					style={{ left: Math.max(4, Math.min(tip.x + 16, w - 350)), top: tip.y + 16 }}
+				>
+					{info ? (
 						<>
-							<div className="font-semibold" style={{ color: MODULE_TYPES[getModuleType(hover.node.module.message)].color }}>
-								{hover.node.module.message || 'Unnamed Module'}
+							<div className="font-semibold" style={{ color: MODULE_TYPES[getModuleType(info.m.message)].color }}>
+								{info.m.message || 'Unnamed Module'}
 							</div>
-							<div className="text-[11px] text-text-muted">{shortenAddress(hover.node.module.module as Address)}</div>
-							<div className="text-[11px] text-text-muted">
-								{getModuleCurrency(hover.node.module.stablecoin)} · {hover.node.label} · expires {expiryLabel(hover.node.module)}
-							</div>
+							<div className="text-[11px] text-text-muted">{shortenAddress(info.m.module as Address)}</div>
+							{regs!.length > 1 ? (
+								<div className="text-[11px] text-text-muted">
+									{regs!.map((r) => `${r.currency}: ${r.label.toLowerCase()}${r.pending && r.status !== 'pending' ? ' + proposal' : ''}`).join(' · ')}
+								</div>
+							) : (
+								<div className="text-[11px] text-text-muted">
+									{info.currency} · {info.label} · expires {expiryText(info.m.expiredAt)}
+								</div>
+							)}
+							{regs!.length === 1 && info.pending && info.status !== 'pending' && (
+								<div className="text-[11px] text-yellow-700">
+									Proposal pending: expires {expiryText(info.pending.expiredAt)} · {proposalTiming(info.pending)}
+								</div>
+							)}
+							{fig.length > 0 && (
+								<div className="mt-2 grid grid-cols-[auto_auto_auto_auto] justify-start gap-x-4 gap-y-1 text-[11px]">
+									{fig.map((r) => (
+										<React.Fragment key={r.label}>
+											<span className="text-text-muted" title={r.title}>
+												{r.label}
+											</span>
+											<span className={`whitespace-nowrap ${r.negative ? 'text-red-600' : 'text-usdu-black'}`}>
+												{r.value}
+											</span>
+										</React.Fragment>
+									))}
+									{regs!.length > 1 && (
+										<span className="col-span-4 text-text-muted">module totals, shared by all stablecoins</span>
+									)}
+								</div>
+							)}
 						</>
 					) : (
 						<>
-							<div className="font-semibold">{hubNode?.currency}</div>
-							<div className="text-[11px] text-text-muted">{hubNode ? shortenAddress(hubNode.stablecoin as Address) : null}</div>
+							<div className="font-semibold">{MODULE_CURRENCIES[hubIdx].currency}</div>
+							<div className="text-[11px] text-text-muted">
+								{shortenAddress(MODULE_CURRENCIES[hubIdx].stablecoin as Address)}
+							</div>
+							<div className="text-[11px] text-text-muted">
+								{hubAgg[hubIdx].all} modules · {hubAgg[hubIdx].active} active
+							</div>
+							{hubAgg[hubIdx].rows.length > 0 && (
+								<div className="mt-1 grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 text-[11px]">
+									{hubAgg[hubIdx].rows.map((r) => (
+										<React.Fragment key={r.label}>
+											<span className="text-text-muted" title={r.title}>
+												{r.label}
+											</span>
+											<span className={r.negative ? 'text-red-600' : 'text-usdu-black'}>{r.value}</span>
+										</React.Fragment>
+									))}
+								</div>
+							)}
+							<div className="mt-1 text-[10px] text-text-muted">
+								Sum over all its modules incl. inactive
+								{hubAgg[hubIdx].shared > 0 &&
+									`, excl. ${hubAgg[hubIdx].shared} shared module${hubAgg[hubIdx].shared > 1 ? 's' : ''}`}
+							</div>
 						</>
 					)}
 				</div>
