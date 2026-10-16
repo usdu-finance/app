@@ -1,9 +1,13 @@
-import { ReactNode } from 'react';
+import { CSSProperties, ReactNode } from 'react';
 
 export const GLASS = 'bg-white/80 backdrop-blur-xl border border-black/10 rounded-2xl text-usdu-black';
 
-export function Glass({ className = '', children }: { className?: string; children: ReactNode }) {
-	return <div className={`${GLASS} ${className}`}>{children}</div>;
+export function Glass({ className = '', style, children }: { className?: string; style?: CSSProperties; children: ReactNode }) {
+	return (
+		<div className={`${GLASS} ${className}`} style={style}>
+			{children}
+		</div>
+	);
 }
 
 export function Seg<T extends string>({

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { SPEEDS } from './godeye.constants';
 import { clamp, dateStr, fmt } from './godeye.format';
 import { GodEyeTimelinePoint } from './godeye.types';
@@ -15,6 +15,8 @@ type Props = {
 	/** override the metric names and hover text (the address timeline reuses supply / holders / volume for balance / counterparties / volume) */
 	labels?: Record<Metric, string>;
 	title?: string;
+	/** extra controls rendered next to the metric switch */
+	controls?: ReactNode;
 	hoverText?: (p: GodEyeTimelinePoint, t: number) => string;
 	onScrub: (t: number) => void;
 	onPlay: () => void;
@@ -30,6 +32,7 @@ export default function GodEyeTimeline({
 	info,
 	labels,
 	title = 'Time travel',
+	controls,
 	hoverText,
 	onScrub,
 	onPlay,
@@ -181,7 +184,7 @@ export default function GodEyeTimeline({
 			</div>
 
 			<div className="flex min-w-0 flex-col">
-				<div className="mb-1 flex items-center justify-between gap-2">
+				<div className="mb-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
 					<Seg
 						value={metric}
 						onChange={setMetric}
@@ -191,7 +194,8 @@ export default function GodEyeTimeline({
 							{ value: 'volume', label: labels?.volume ?? 'Volume' },
 						]}
 					/>
-					<span className="hidden text-[10px] uppercase tracking-wider text-text-muted sm:block">{info}</span>
+					{controls}
+					<span className="ml-auto hidden text-[10px] uppercase tracking-wider text-text-muted sm:block">{info}</span>
 				</div>
 				<div className="relative h-[70px] min-h-0 flex-1">
 					<canvas

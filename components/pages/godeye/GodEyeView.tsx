@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GodEyeQuery, useGodEyeBoot, useGodEyeScene, useGodEyeTimeline } from '@/hooks/useGodEye';
-import { KIND_ORDER } from './godeye.constants';
+import { KIND_META, KIND_ORDER } from './godeye.constants';
 import { GodEyeKind, GodEyeMode, GodEyeRank } from './godeye.types';
+import GodEyeIntro from './GodEyeIntro';
 import GodEyeDetail from './GodEyeDetail';
 import GodEyeLoading from './GodEyeLoading';
 import GodEyeMap, { GodEyeMapHandle } from './GodEyeMap';
 import GodEyeOverview from './GodEyeOverview';
 import GodEyeTimeline from './GodEyeTimeline';
-import GodEyeToolbar from './GodEyeToolbar';
-import { Glass, IconButton } from './GodEyeUi';
-import { shortAddr } from './godeye.format';
+import GodEyeToolbar, { GodEyeControls } from './GodEyeToolbar';
+import { Dot, GLASS, Glass, IconButton } from './GodEyeUi';
+import { fmt, shortAddr } from './godeye.format';
 
 const NEAR_LIVE = 3600;
 
@@ -28,9 +29,15 @@ function useIsWide() {
 export default function GodEyeView() {
 	const boot = useGodEyeBoot();
 	const map = useRef<GodEyeMapHandle>(null);
+	// the side panels sit between the toolbar and the timeline with the same 12px gap on both sides
+	const barEl = useRef<HTMLDivElement | null>(null);
+	const timelineEl = useRef<HTMLDivElement>(null);
+	const [gaps, setGaps] = useState({ top: 64, bottom: 148 });
+	const panelVars = { '--gt': `${gaps.top}px`, '--gb': `${gaps.bottom}px` } as CSSProperties;
 	const wide = useIsWide();
 
 	// ---- view state (mirrored into the url hash so views can be shared)
+
 	const [init, setInit] = useState(false);
 	const [token, setToken] = useState<string | null>(null);
 	const [at, setAt] = useState<number | null>(null);
@@ -92,6 +99,20 @@ export default function GodEyeView() {
 	}, [init, token, at, windowS, mode, focus, selected, three]);
 
 	// ---- data
+	useEffect(() => {
+		const measure = () => {
+			const top = barEl.current ? barEl.current.offsetTop + barEl.current.offsetHeight + 12 : 64;
+			const bottom = timelineEl.current ? timelineEl.current.offsetHeight + 24 : 148;
+			setGaps((g) => (g.top === top && g.bottom === bottom ? g : { top, bottom }));
+		};
+		const ro = new ResizeObserver(measure);
+		if (barEl.current) ro.observe(barEl.current);
+		if (timelineEl.current) ro.observe(timelineEl.current);
+		measure();
+		return () => ro.disconnect();
+		// the bar and the timeline mount once the ledgers are known
+	}, [boot.ready, token]);
+
 	const timeline = useGodEyeTimeline(boot.ready ? token : null);
 	const t0 = timeline.length ? timeline[0].t : 0;
 	const t1 = timeline.length ? timeline[timeline.length - 1].t : 0;
@@ -216,11 +237,21 @@ export default function GodEyeView() {
 	// the engine centers the map in the free area between the panels
 	const detailOpen = !!selected && mode === 'entities';
 	const insets = useMemo(
-		() => ({ left: wide && leftOpen ? 304 : 0, right: wide && detailOpen ? 364 : detailOpen ? 0 : 0, top: 70, bottom: 150 }),
-		[wide, leftOpen, detailOpen]
+		() => ({
+			left: wide && leftOpen ? 304 : 0,
+			right: wide && detailOpen ? 364 : detailOpen ? 0 : 0,
+			top: gaps.top + 6,
+			bottom: gaps.bottom + 2,
+		}),
+		[wide, leftOpen, detailOpen, gaps]
 	);
 
 	const focusNode = graph?.nodes.find((n) => n.id === graph.focus);
+	// on phones the details start as a compact bar, a tap opens the full sheet
+	const [sheet, setSheet] = useState(false);
+	useEffect(() => setSheet(false), [selected]);
+	const selectedNode = graph?.nodes.find((n) => n.id === selected);
+
 	const selectedLabel = graph?.nodes.find((n) => n.id === selected)?.label;
 	const ready = boot.ready && !!graph;
 
@@ -253,20 +284,12 @@ export default function GodEyeView() {
 
 			{boot.ready && token && (
 				<GodEyeToolbar
+					rootRef={barEl}
 					tokens={boot.tokens}
 					token={token}
 					onToken={onToken}
 					mode={mode}
 					onMode={onMode}
-					rank={rank}
-					onRank={setRank}
-					window={windowS}
-					onWindow={setWindowS}
-					top={top}
-					onTop={setTop}
-					three={three}
-					onThree={() => setThree((t) => !t)}
-					onFit={() => map.current?.fit()}
 					onPick={doFocus}
 					focusActive={!!focus}
 				/>
@@ -276,7 +299,8 @@ export default function GodEyeView() {
 				<>
 					{wide && (
 						<div
-							className={`absolute bottom-[148px] left-3 top-[64px] z-10 w-[292px] transition-transform duration-200 ${leftOpen ? '' : '-translate-x-[310px]'}`}
+							style={panelVars}
+							className={`absolute bottom-[var(--gb)] left-3 top-[var(--gt)] z-10 w-[292px] transition-transform duration-200 ${leftOpen ? '' : '-translate-x-[310px]'}`}
 						>
 							<GodEyeOverview
 								graph={graph}
@@ -290,13 +314,16 @@ export default function GodEyeView() {
 						</div>
 					)}
 					{wide && !leftOpen && (
-						<div className="absolute left-3 top-[70px] z-10">
+						<div style={panelVars} className="absolute left-3 top-[var(--gt)] z-10">
 							<IconButton onClick={() => setLeftOpen(true)}>› Overview</IconButton>
 						</div>
 					)}
 
 					{focus && (
-						<Glass className="absolute left-1/2 top-[64px] z-10 flex -translate-x-1/2 items-center gap-3 px-3 py-1.5 text-xs">
+						<Glass
+							style={panelVars}
+							className="absolute left-1/2 top-[var(--gt)] z-10 flex -translate-x-1/2 items-center gap-3 px-3 py-1.5 text-xs"
+						>
 							<span>
 								Focus · <b>{focusNode?.label || shortAddr(focus)}</b>
 								<span className="text-text-muted"> and its {graph.nodes.length - 1} biggest counterparties</span>
@@ -305,8 +332,43 @@ export default function GodEyeView() {
 						</Glass>
 					)}
 
-					{detailOpen && token && selected && (
-						<div className="absolute bottom-[148px] right-3 top-[64px] z-10 w-[340px] max-w-[calc(100%-24px)] max-md:top-auto max-md:h-[46%]">
+					{!selected && <GodEyeIntro />}
+
+					{detailOpen && token && selected && !wide && !sheet && (
+						<button
+							onClick={() => setSheet(true)}
+							style={panelVars}
+							className={`${GLASS} absolute bottom-[var(--gb)] left-3 right-3 z-10 flex items-center gap-2.5 px-3.5 py-2.5 text-left`}
+						>
+							<Dot color={KIND_META[selectedNode?.kind ?? 'wallet'].color} size={9} />
+							<span className="min-w-0 flex-1">
+								<span className="block truncate text-sm font-semibold">{selectedNode?.label || shortAddr(selected)}</span>
+								{selectedNode && selectedNode.kind !== 'mint' && (
+									<span className="block text-[11px] text-text-muted">
+										{fmt(selectedNode.balance)} {token ? boot.tokens.find((t) => t.key === token)?.symbol : ''}
+									</span>
+								)}
+							</span>
+							<span className="rounded-lg border border-usdu-orange/50 bg-usdu-orange/10 px-2.5 py-1 text-xs">Details ▲</span>
+							<span
+								role="button"
+								aria-label="Deselect"
+								onClick={(e) => {
+									e.stopPropagation();
+									setSelected(null);
+								}}
+								className="px-1 text-text-muted"
+							>
+								✕
+							</span>
+						</button>
+					)}
+
+					{detailOpen && token && selected && (wide || sheet) && (
+						<div
+							style={panelVars}
+							className="absolute bottom-[var(--gb)] right-3 top-[var(--gt)] z-10 w-[340px] max-w-[calc(100%-24px)] max-md:top-auto max-md:h-[46%]"
+						>
 							<GodEyeDetail
 								token={token}
 								address={selected}
@@ -321,7 +383,7 @@ export default function GodEyeView() {
 			)}
 
 			{boot.ready && (
-				<div className="absolute bottom-3 left-3 right-3 z-10">
+				<div ref={timelineEl} className="absolute bottom-3 left-3 right-3 z-10">
 					<GodEyeTimeline
 						timeline={timeline}
 						at={at}
@@ -331,6 +393,21 @@ export default function GodEyeView() {
 							graph
 								? `${graph.token.transfers.toLocaleString()} transfers mirrored · ${graph.totalNodes.toLocaleString()} ${mode === 'entities' ? 'accounts' : 'categories'}`
 								: ''
+						}
+						controls={
+							<GodEyeControls
+								mode={mode}
+								rank={rank}
+								onRank={setRank}
+								window={windowS}
+								onWindow={setWindowS}
+								top={top}
+								onTop={setTop}
+								three={three}
+								onThree={() => setThree((t) => !t)}
+								onFit={() => map.current?.fit()}
+								focusActive={!!focus}
+							/>
 						}
 						onScrub={scrub}
 						onPlay={togglePlay}

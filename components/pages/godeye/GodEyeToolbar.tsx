@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { Ref, useEffect, useRef, useState } from 'react';
 import { godeyeSearch } from '@/hooks/useGodEye';
 import { KIND_META, WINDOWS } from './godeye.constants';
 import { shortAddr } from './godeye.format';
@@ -8,12 +8,8 @@ import { Dot, Glass, IconButton, Seg } from './GodEyeUi';
 
 const select = 'rounded-lg border border-black/10 bg-black/5 px-2 py-1 text-xs outline-none [&>option]:bg-white';
 
-type Props = {
-	tokens: GodEyeTokenInfo[];
-	token: string;
-	onToken: (k: string) => void;
+type ControlsProps = {
 	mode: GodEyeMode;
-	onMode: (m: GodEyeMode) => void;
 	rank: GodEyeRank;
 	onRank: (r: GodEyeRank) => void;
 	window: number;
@@ -23,19 +19,76 @@ type Props = {
 	three: boolean;
 	onThree: () => void;
 	onFit: () => void;
-	onPick: (address: string) => void;
 	focusActive: boolean;
 };
+
+type Props = {
+	tokens: GodEyeTokenInfo[];
+	token: string;
+	onToken: (k: string) => void;
+	mode: GodEyeMode;
+	onMode: (m: GodEyeMode) => void;
+	onPick: (address: string) => void;
+	focusActive: boolean;
+	/** lets the view measure the bar to keep the panels evenly spaced */
+	rootRef?: Ref<HTMLDivElement>;
+};
+
+/** graph settings, rendered inside the time travel panel */
+export function GodEyeControls(p: ControlsProps) {
+	const [topLocal, setTopLocal] = useState(p.top);
+	useEffect(() => setTopLocal(p.top), [p.top]);
+
+	return (
+		<div className="hidden flex-wrap items-center gap-2 md:flex">
+			<span className="text-[10px] uppercase tracking-wider text-text-muted">Rank</span>
+			<Seg
+				value={p.rank}
+				onChange={p.onRank}
+				disabled={p.mode === 'categories' || p.focusActive}
+				options={[
+					{ value: 'balance', label: 'Balance' },
+					{ value: 'volume', label: 'Volume' },
+				]}
+			/>
+			<span className="text-[10px] uppercase tracking-wider text-text-muted">Flow</span>
+			<select className={select} value={p.window} onChange={(e) => p.onWindow(Number(e.target.value))}>
+				{WINDOWS.map((w) => (
+					<option key={w.value} value={w.value}>
+						{w.label}
+					</option>
+				))}
+			</select>
+			<span className="text-[10px] uppercase tracking-wider text-text-muted">Nodes</span>
+			<input
+				type="range"
+				min={15}
+				max={300}
+				step={5}
+				value={topLocal}
+				onChange={(e) => setTopLocal(Number(e.target.value))}
+				onMouseUp={() => p.onTop(topLocal)}
+				onTouchEnd={() => p.onTop(topLocal)}
+				onKeyUp={() => p.onTop(topLocal)}
+				className="w-24 accent-usdu-orange"
+			/>
+			<span className="w-8 rounded-lg border border-black/10 bg-black/5 py-0.5 text-center text-xs tabular-nums">{topLocal}</span>
+			<IconButton onClick={p.onThree} active={p.three} title="Toggle 3D (3)">
+				3D
+			</IconButton>
+			<IconButton onClick={p.onFit} title="Fit view (F)">
+				Fit
+			</IconButton>
+		</div>
+	);
+}
 
 export default function GodEyeToolbar(p: Props) {
 	const [q, setQ] = useState('');
 	const [hits, setHits] = useState<GodEyeSearchHit[]>([]);
 	const [open, setOpen] = useState(false);
-	const [topLocal, setTopLocal] = useState(p.top);
 	const box = useRef<HTMLDivElement>(null);
 	const input = useRef<HTMLInputElement>(null);
-
-	useEffect(() => setTopLocal(p.top), [p.top]);
 
 	useEffect(() => {
 		const term = q.trim();
@@ -77,78 +130,45 @@ export default function GodEyeToolbar(p: Props) {
 	};
 
 	return (
-		<div className="pointer-events-none absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-2 [&>*]:pointer-events-auto">
-			<Glass className="flex items-center gap-2.5 py-2 pl-2.5 pr-4">
-				<Link href="/dashboard" title="Back to the dashboard" className="mr-0.5 text-text-muted hover:text-usdu-black">
+		<div
+			ref={p.rootRef}
+			className="pointer-events-none absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-2 [&>*]:pointer-events-auto"
+		>
+			<Glass className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-2 px-3 py-2.5 md:w-auto md:flex-nowrap">
+				<Link href="/" title="Back to the home page" className="mr-0.5 text-text-muted hover:text-usdu-black">
 					←
 				</Link>
 				<div className="h-6 w-6 rounded-full bg-[radial-gradient(circle,#0c0c0c_0_22%,#f16325_23%_55%,transparent_56%)] ring-2 ring-usdu-orange/30" />
 				<div className="leading-tight">
 					<div className="text-[13px] font-bold tracking-[0.18em]">GODEYE</div>
-					<div className="text-[10px] text-text-muted">USDU · fund flow</div>
+					<div className="whitespace-nowrap text-[10px] text-text-muted">USDU · fund flow</div>
+				</div>
+				<div className="mx-1 hidden h-6 w-px bg-black/10 md:block" />
+				<div className="flex w-full items-center gap-2 md:w-auto">
+					<select
+						className={`${select} min-w-0 flex-1 md:flex-none`}
+						value={p.token}
+						onChange={(e) => p.onToken(e.target.value)}
+						title="Token ledger"
+					>
+						{p.tokens.map((t) => (
+							<option key={t.key} value={t.key}>
+								{t.symbol} ({t.transfers.toLocaleString()})
+							</option>
+						))}
+					</select>
+					<Seg
+						value={p.mode}
+						onChange={p.onMode}
+						options={[
+							{ value: 'entities', label: 'Entities' },
+							{ value: 'categories', label: 'Categories' },
+						]}
+					/>
 				</div>
 			</Glass>
 
-			<Glass className="flex items-center gap-2 px-2 py-1.5">
-				<select className={select} value={p.token} onChange={(e) => p.onToken(e.target.value)} title="Token ledger">
-					{p.tokens.map((t) => (
-						<option key={t.key} value={t.key}>
-							{t.symbol} ({t.transfers.toLocaleString()})
-						</option>
-					))}
-				</select>
-				<Seg
-					value={p.mode}
-					onChange={p.onMode}
-					options={[
-						{ value: 'entities', label: 'Entities' },
-						{ value: 'categories', label: 'Categories' },
-					]}
-				/>
-			</Glass>
-
-			<Glass className="hidden items-center gap-2 px-2 py-1.5 md:flex">
-				<span className="text-[10px] uppercase tracking-wider text-text-muted">Rank</span>
-				<Seg
-					value={p.rank}
-					onChange={p.onRank}
-					disabled={p.mode === 'categories' || p.focusActive}
-					options={[
-						{ value: 'balance', label: 'Balance' },
-						{ value: 'volume', label: 'Volume' },
-					]}
-				/>
-				<span className="text-[10px] uppercase tracking-wider text-text-muted">Flow</span>
-				<select className={select} value={p.window} onChange={(e) => p.onWindow(Number(e.target.value))}>
-					{WINDOWS.map((w) => (
-						<option key={w.value} value={w.value}>
-							{w.label}
-						</option>
-					))}
-				</select>
-				<span className="text-[10px] uppercase tracking-wider text-text-muted">Nodes</span>
-				<input
-					type="range"
-					min={15}
-					max={300}
-					step={5}
-					value={topLocal}
-					onChange={(e) => setTopLocal(Number(e.target.value))}
-					onMouseUp={() => p.onTop(topLocal)}
-					onTouchEnd={() => p.onTop(topLocal)}
-					onKeyUp={() => p.onTop(topLocal)}
-					className="w-24 accent-usdu-orange"
-				/>
-				<span className="w-8 rounded-lg border border-black/10 bg-black/5 py-0.5 text-center text-xs tabular-nums">{topLocal}</span>
-				<IconButton onClick={p.onThree} active={p.three} title="Toggle 3D (3)">
-					3D
-				</IconButton>
-				<IconButton onClick={p.onFit} title="Fit view (F)">
-					Fit
-				</IconButton>
-			</Glass>
-
-			<div ref={box} className="relative ml-auto">
+			<div ref={box} className="relative w-full md:ml-auto md:w-auto">
 				<input
 					ref={input}
 					value={q}
@@ -163,10 +183,10 @@ export default function GodEyeToolbar(p: Props) {
 					placeholder="Search address or label  ( / )"
 					spellCheck={false}
 					autoComplete="off"
-					className="w-64 rounded-xl border border-black/10 bg-white/80 px-3 py-2 text-xs text-usdu-black outline-none backdrop-blur-xl placeholder:text-text-muted focus:border-usdu-orange"
+					className="w-full rounded-xl md:w-64 border border-black/10 bg-white/80 px-3 py-2 text-xs text-usdu-black outline-none backdrop-blur-xl placeholder:text-text-muted focus:border-usdu-orange"
 				/>
 				{open && (
-					<Glass className="absolute right-0 top-11 max-h-80 w-80 overflow-auto p-1">
+					<Glass className="absolute right-0 top-11 max-h-80 w-full overflow-auto p-1 md:w-80">
 						{hits.length === 0 && <div className="px-2 py-1.5 text-xs text-text-muted">No match</div>}
 						{hits.map((h) => (
 							<div
