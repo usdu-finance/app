@@ -13,6 +13,11 @@ export default function Layout({ children }: LayoutProps) {
   // dashboard chrome when Next.js falls back to pages/404.tsx
   const isDashboard = router.asPath.startsWith('/dashboard')
 
+  // GodEye is a fullscreen cockpit without navbar or footer
+  if (router.pathname.startsWith('/godeye')) {
+    return <>{children}</>
+  }
+
   if (isDashboard) {
     return <DashboardLayout>{children}</DashboardLayout>
   }
