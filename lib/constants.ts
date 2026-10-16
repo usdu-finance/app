@@ -155,6 +155,6 @@ export const SEO = {
 	transparency: pageSeo(
 		'Transparency',
 		'GodEye shows where USDU and its sibling stablecoins flow on-chain: every holder, minter, pool and vault, with a timeline.',
-		'/godeye'
+		'/transparency'
 	),
 } as const;

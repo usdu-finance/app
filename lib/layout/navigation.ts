@@ -4,7 +4,7 @@ import { faFileContract, faHome, faDroplet, faPercentage, faLayerGroup, faRightL
 export const homeNavigation: NavigationItem[] = [
 	{ name: 'Modules', href: '/modules' },
 	{ name: 'Governance', href: '/governance' },
-	{ name: 'Transparency', href: '/godeye' },
+	{ name: 'Transparency', href: '/transparency' },
 ];
 
 export const dashboardNavigation = [

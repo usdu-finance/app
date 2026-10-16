@@ -37,12 +37,11 @@ export default function ModuleFlow() {
 			>
 				<h2 className="text-3xl font-bold text-usdu-black mb-4">How a Module Gets Approved</h2>
 				<p className="text-lg text-text-secondary max-w-3xl mx-auto">
-					Modules are the only contracts allowed to mint and burn USDU. Each one has to pass the same
-					process before it goes live.
+					Modules are the only contracts allowed to mint and burn USDU. Each one has to pass the same process before it goes live.
 				</p>
 			</motion.div>
 
-			<div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-8">
+			<div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
 				{stages.map((stage, index) => (
 					<motion.div
 						key={stage.title}

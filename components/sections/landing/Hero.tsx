@@ -87,7 +87,7 @@ export default function Hero() {
 							label="View Transparency"
 							variant="outline"
 							size="lg"
-							href="/godeye"
+							href="/transparency"
 							className="border-usdu-card text-usdu-card hover:bg-usdu-orange hover:text-white"
 						/>
 					</motion.div>

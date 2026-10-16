@@ -2,7 +2,6 @@ import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from
 import { GodEyeQuery, useGodEyeBoot, useGodEyeScene, useGodEyeTimeline } from '@/hooks/useGodEye';
 import { KIND_META, KIND_ORDER } from './godeye.constants';
 import { GodEyeKind, GodEyeMode, GodEyeRank } from './godeye.types';
-import GodEyeIntro from './GodEyeIntro';
 import GodEyeDetail from './GodEyeDetail';
 import GodEyeLoading from './GodEyeLoading';
 import GodEyeMap, { GodEyeMapHandle } from './GodEyeMap';
@@ -331,8 +330,6 @@ export default function GodEyeView() {
 							<IconButton onClick={exitFocus}>Exit focus</IconButton>
 						</Glass>
 					)}
-
-					{!selected && <GodEyeIntro />}
 
 					{detailOpen && token && selected && !wide && !sheet && (
 						<button

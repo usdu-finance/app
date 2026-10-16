@@ -33,12 +33,12 @@ export default function GovernanceOverview() {
 				whileInView={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.6 }}
 				viewport={{ once: true }}
-				className="text-center mb-12"
+				className="text-center mb-8"
 			>
-				<h1 className="text-4xl md:text-5xl font-bold text-usdu-black mb-6">Governance</h1>
-				<p className="text-xl text-text-secondary max-w-3xl mx-auto">
-					USDU is governed by an Aragon DAO. Every module that can mint or move USDU has to pass through it,
-					with a public delay in which a change can still be vetoed.
+				<h1 className="text-4xl md:text-5xl font-bold text-usdu-black mb-4">Governance</h1>
+				<p className="text-lg text-text-secondary max-w-3xl mx-auto">
+					USDU is governed by an Aragon DAO. Every module that can mint or move USDU has to pass through it, with a public delay
+					in which a change can still be vetoed.
 				</p>
 			</motion.div>
 
@@ -47,7 +47,6 @@ export default function GovernanceOverview() {
 				whileInView={{ opacity: 1, y: 0 }}
 				transition={{ duration: 0.6, delay: 0.2 }}
 				viewport={{ once: true }}
-				className="max-w-6xl mx-auto"
 			>
 				<HeroSteps steps={STEPS} />
 			</motion.div>

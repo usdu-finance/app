@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { Ref, useEffect, useRef, useState } from 'react';
 import { godeyeSearch } from '@/hooks/useGodEye';
 import { KIND_META, WINDOWS } from './godeye.constants';
@@ -135,9 +134,6 @@ export default function GodEyeToolbar(p: Props) {
 			className="pointer-events-none absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-2 [&>*]:pointer-events-auto"
 		>
 			<Glass className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-2 px-3 py-2.5 md:w-auto md:flex-nowrap">
-				<Link href="/" title="Back to the home page" className="mr-0.5 text-text-muted hover:text-usdu-black">
-					←
-				</Link>
 				<div className="h-6 w-6 rounded-full bg-[radial-gradient(circle,#0c0c0c_0_22%,#f16325_23%_55%,transparent_56%)] ring-2 ring-usdu-orange/30" />
 				<div className="leading-tight">
 					<div className="text-[13px] font-bold tracking-[0.18em]">GODEYE</div>

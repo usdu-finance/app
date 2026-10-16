@@ -49,7 +49,7 @@ export default function DaoStructure() {
 				</p>
 			</motion.div>
 
-			<div className="grid md:grid-cols-2 gap-6 max-w-6xl mx-auto mb-8">
+			<div className="grid md:grid-cols-2 gap-6 mb-8">
 				{roles.map((role, index) => (
 					<motion.div
 						key={role.title}

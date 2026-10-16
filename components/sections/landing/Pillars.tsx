@@ -26,7 +26,7 @@ const pillars = [
 		title: 'Transparency',
 		description:
 			'GodEye maps how USDU and its sibling stablecoins move between addresses on-chain, with a timeline to replay it.',
-		href: '/godeye',
+		href: '/transparency',
 		cta: 'Open GodEye',
 	},
 ];

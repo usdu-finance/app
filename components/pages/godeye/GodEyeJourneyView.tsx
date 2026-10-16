@@ -180,8 +180,8 @@ export default function GodEyeJourneyView() {
 	}, [model, state, selected]);
 
 	const back = journey
-		? `/godeye#token=${encodeURIComponent(journey.token.key)}&focus=${journey.address}&sel=${journey.address}`
-		: '/godeye';
+		? `/transparency#token=${encodeURIComponent(journey.token.key)}&focus=${journey.address}&sel=${journey.address}`
+		: '/transparency';
 	const ready = boot.ready && !!model && !!state;
 	const kindTotal = state ? [...state.byKind.entries()].reduce((a, [k, v]) => (hidden.has(k) ? a : a + v), 0) : 0;
 	const visiblePeers = state ? state.peers.filter((p) => !hidden.has(p.kind)) : [];
@@ -210,7 +210,7 @@ export default function GodEyeJourneyView() {
 						<div className="font-semibold">No timeline for this address</div>
 						<div className="mt-1 text-xs text-rose-600">{error}</div>
 						<div className="mt-3">
-							<Link href="/godeye" className="text-xs text-usdu-orange">
+							<Link href="/transparency" className="text-xs text-usdu-orange">
 								← back to GodEye
 							</Link>
 						</div>
@@ -420,7 +420,7 @@ export default function GodEyeJourneyView() {
 									</div>
 									<div className="mt-2 flex gap-1.5">
 										<Link
-											href={`/godeye/${sel.address}?token=${encodeURIComponent(journey.token.key)}`}
+											href={`/transparency/${sel.address}?token=${encodeURIComponent(journey.token.key)}`}
 											className="rounded-lg border border-usdu-orange/50 bg-usdu-orange/15 px-2.5 py-1 text-xs text-usdu-black hover:bg-usdu-orange/25"
 										>
 											◈ Open timeline

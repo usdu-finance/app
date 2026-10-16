@@ -123,7 +123,7 @@ export default function GodEyeDetail({ token, address, fallbackLabel, onClose, o
 						<div className="flex flex-wrap gap-1.5">
 							<IconButton onClick={() => onFocus(a.address)}>◎ Focus map</IconButton>
 							<Link
-								href={`/godeye/${a.address}?token=${encodeURIComponent(token)}`}
+								href={`/transparency/${a.address}?token=${encodeURIComponent(token)}`}
 								className="rounded-lg border border-usdu-orange/50 bg-usdu-orange/15 px-2.5 py-1 text-xs text-usdu-black hover:bg-usdu-orange/25"
 							>
 								◈ Deep timeline
