@@ -1,5 +1,3 @@
-import Link from 'next/link';
-import { useRouter } from 'next/router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGodEyeBoot, useGodEyeJourney } from '@/hooks/useGodEye';
 import { EXPLORER, KIND_META } from './godeye.constants';
@@ -9,30 +7,31 @@ import { buildModel, insights, stateAt } from './godeye.journey';
 import GodEyeJourneyCanvas, { JourneyCanvasHandle } from './GodEyeJourneyCanvas';
 import GodEyeLoading from './GodEyeLoading';
 import GodEyeTimeline from './GodEyeTimeline';
-import { Dot, Glass, IconButton, SectionTitle, StatCard } from './GodEyeUi';
+import { NodesSlider } from './GodEyeToolbar';
+import { DETAIL_PANEL, GodEyeBrand, MobileDetailBar, useIsWide, usePanelGaps } from './GodEyeLayout';
+import { Dot, Glass, IconButton, SectionTitle, SELECT, StatCard } from './GodEyeUi';
 
 const NEAR_LIVE = 86400;
 const LABELS = { supply: 'Balance', holders: 'Counterparties', volume: 'Volume' };
 
-function useIsWide() {
-	const [wide, setWide] = useState(true);
-	useEffect(() => {
-		const mq = window.matchMedia('(min-width: 1024px)');
-		const on = () => setWide(mq.matches);
-		on();
-		mq.addEventListener('change', on);
-		return () => mq.removeEventListener('change', on);
-	}, []);
-	return wide;
-}
+type Props = {
+	address: string;
+	/** ledger key; defaults to USDU on mainnet */
+	token: string | null;
+	onBack: () => void;
+	/** drill into a counterparty's own timeline */
+	onOpenAddress: (address: string, token: string) => void;
+};
 
-export default function GodEyeJourneyView() {
-	const router = useRouter();
+export default function GodEyeJourneyView({ address: addr, token: initialToken, onBack, onOpenAddress }: Props) {
 	const boot = useGodEyeBoot();
 	const wide = useIsWide();
+	const [leftOpen, setLeftOpen] = useState(true);
+	// on phones the details start as a compact bar, a tap opens the full sheet
+	const [sheet, setSheet] = useState(false);
 	const canvas = useRef<JourneyCanvasHandle>(null);
 
-	const address = router.isReady ? String(router.query.address ?? '').toLowerCase() : null;
+	const address = addr.toLowerCase();
 	const [token, setToken] = useState<string | null>(null);
 	const [at, setAt] = useState<number | null>(null);
 	const [selected, setSelected] = useState<number | null>(null);
@@ -41,7 +40,6 @@ export default function GodEyeJourneyView() {
 	const [fitKey, setFitKey] = useState(0);
 	const [hashRead, setHashRead] = useState(false);
 	const [top, setTop] = useState(50);
-	const [topLocal, setTopLocal] = useState(50);
 	const [hidden, setHidden] = useState<Set<GodEyeKind>>(new Set());
 	const toggleKind = (k: GodEyeKind) =>
 		setHidden((h) => {
@@ -53,14 +51,14 @@ export default function GodEyeJourneyView() {
 
 	// token comes from the link, otherwise default to USDU once the ledger is ready
 	useEffect(() => {
-		if (!router.isReady || !boot.ready) return;
-		const q = router.query.token ? String(router.query.token) : null;
+		if (!boot.ready) return;
+		const q = initialToken;
 		const t =
 			q && boot.tokens.some((x) => x.key === q)
 				? q
 				: (boot.tokens.find((x) => x.symbol === 'USDU' && x.chainId === 1) ?? boot.tokens[0]).key;
 		setToken((cur) => cur ?? t);
-	}, [router.isReady, router.query.token, boot.ready, boot.tokens]);
+	}, [initialToken, boot.ready, boot.tokens]);
 
 	const { data: journey, loading, error } = useGodEyeJourney(boot.ready ? token : null, address);
 	const model = useMemo(() => (journey ? buildModel(journey) : null), [journey]);
@@ -80,20 +78,19 @@ export default function GodEyeJourneyView() {
 		if (!model || !hashRead) return;
 		const t = setTimeout(() => {
 			const p = new URLSearchParams();
+			p.set('view', 'journey');
+			p.set('addr', address);
+			if (token) p.set('token', token);
 			if (at) p.set('at', String(at));
 			if (selected !== null) p.set('sel', model.journey.peers[selected].address);
 			try {
-				window.history.replaceState(
-					null,
-					'',
-					window.location.pathname + window.location.search + (p.toString() ? '#' + p.toString() : '')
-				);
+				window.history.replaceState(null, '', window.location.pathname + window.location.search + '#' + p.toString());
 			} catch {
 				/* ignore */
 			}
 		}, 400);
 		return () => clearTimeout(t);
-	}, [model, hashRead, at, selected]);
+	}, [model, hashRead, at, selected, address, token]);
 
 	const t0 = model?.t0 ?? 0;
 	const t1 = model?.t1 ?? 0;
@@ -151,7 +148,13 @@ export default function GodEyeJourneyView() {
 		return () => window.removeEventListener('keydown', key);
 	}, [togglePlay, scrub, cur]);
 
-	const insets = useMemo(() => ({ left: wide ? 304 : 0, right: wide ? 364 : 0, top: 70, bottom: 150 }), [wide]);
+	useEffect(() => setSheet(false), [selected]);
+	const ready = boot.ready && !!model && !!state;
+	const { barEl, timelineEl, gaps, panelVars } = usePanelGaps(`${boot.ready}:${token}:${ready}`);
+	const insets = useMemo(
+		() => ({ left: wide && leftOpen ? 304 : 0, right: wide ? 364 : 0, top: gaps.top + 6, bottom: gaps.bottom + 2 }),
+		[wide, leftOpen, gaps]
+	);
 	const scan = journey ? EXPLORER[journey.token.chainId] || EXPLORER[1] : EXPLORER[1];
 	const kcol = journey ? KIND_META[journey.kind].color : KIND_META.wallet.color;
 	const sel = model && selected !== null ? model.journey.peers[selected] : null;
@@ -179,10 +182,6 @@ export default function GodEyeJourneyView() {
 		return rows;
 	}, [model, state, selected]);
 
-	const back = journey
-		? `/transparency#token=${encodeURIComponent(journey.token.key)}&focus=${journey.address}&sel=${journey.address}`
-		: '/transparency';
-	const ready = boot.ready && !!model && !!state;
 	const kindTotal = state ? [...state.byKind.entries()].reduce((a, [k, v]) => (hidden.has(k) ? a : a + v), 0) : 0;
 	const visiblePeers = state ? state.peers.filter((p) => !hidden.has(p.kind)) : [];
 
@@ -210,104 +209,105 @@ export default function GodEyeJourneyView() {
 						<div className="font-semibold">No timeline for this address</div>
 						<div className="mt-1 text-xs text-rose-600">{error}</div>
 						<div className="mt-3">
-							<Link href="/transparency" className="text-xs text-usdu-orange">
+							<button onClick={onBack} className="text-xs text-usdu-orange">
 								← back to GodEye
-							</Link>
+							</button>
 						</div>
 					</Glass>
 				</div>
 			)}
 
-			{/* header */}
-			<Glass className="absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2">
-				<Link
-					href={back}
-					className="rounded-lg border border-black/10 bg-black/5 px-2.5 py-1 text-xs text-text-secondary hover:bg-black/10"
-				>
-					← Map
-				</Link>
-				<div className="flex min-w-0 items-center gap-2">
-					<Dot color={kcol} />
-					<span className="truncate text-sm font-semibold">{journey?.label || (address ? shortAddr(address) : '…')}</span>
-					{journey && (
-						<span className="rounded-full border px-2 py-px text-[10px]" style={{ color: kcol, borderColor: kcol }}>
-							{KIND_META[journey.kind].name}
-						</span>
-					)}
-					<span className="hidden font-mono text-[11px] text-text-muted md:inline">{address}</span>
-				</div>
-				<div className="ml-auto flex items-center gap-1.5">
-					<span className="hidden text-[10px] uppercase tracking-widest text-text-muted sm:inline">Timeline</span>
-					{boot.ready && token && (
-						<select
-							value={token}
-							onChange={(e) => {
-								setToken(e.target.value);
-								setSelected(null);
-								setAt(null);
-								setPlaying(false);
-								setHashRead(false);
-							}}
-							className="rounded-lg border border-black/10 bg-black/5 px-2 py-1 text-xs outline-none [&>option]:bg-white"
+			{/* one card: brand, way back, ledger and who we are looking at */}
+			{boot.ready && token && (
+				<div ref={barEl} className="pointer-events-none absolute left-3 right-3 top-3 z-20 flex [&>*]:pointer-events-auto">
+					<Glass className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-2 px-3 py-2.5 md:w-auto md:max-w-full md:flex-nowrap">
+						<GodEyeBrand subtitle="Account timeline" />
+						<div className="mx-1 hidden h-6 w-px bg-black/10 md:block" />
+						<button
+							onClick={onBack}
+							title="Back to the map"
+							className="ml-auto whitespace-nowrap rounded-lg border border-black/10 bg-black/5 px-2.5 py-1 text-xs text-text-secondary hover:bg-white md:ml-0"
 						>
-							{boot.tokens.map((t) => (
-								<option key={t.key} value={t.key}>
-									{t.symbol}
-								</option>
-							))}
-						</select>
-					)}
-					{address && (
-						<a
-							className="rounded-lg border border-black/10 bg-black/5 px-2.5 py-1 text-xs text-text-secondary hover:bg-black/10"
-							href={`${scan}/address/${address}`}
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							Explorer ↗
-						</a>
-					)}
-					<span className="hidden text-[10px] uppercase tracking-wider text-text-muted sm:inline">Nodes</span>
-					<input
-						type="range"
-						min={10}
-						max={300}
-						step={5}
-						value={topLocal}
-						onChange={(e) => setTopLocal(Number(e.target.value))}
-						onMouseUp={() => setTop(topLocal)}
-						onTouchEnd={() => setTop(topLocal)}
-						onKeyUp={() => setTop(topLocal)}
-						className="w-24 accent-usdu-orange"
-					/>
-					<span className="w-8 rounded-lg border border-black/10 bg-black/5 py-0.5 text-center text-xs tabular-nums">
-						{topLocal}
-					</span>
-					<IconButton
-						onClick={() => {
-							canvas.current?.fit();
-							setFitKey((k) => k + 1);
-						}}
-					>
-						Fit
-					</IconButton>
+							← Map
+						</button>
+						<div className="flex w-full items-center gap-2 md:w-auto">
+							<select
+								className={`${SELECT} min-w-0 flex-1 md:flex-none`}
+								value={token}
+								title="Token ledger"
+								onChange={(e) => {
+									setToken(e.target.value);
+									setSelected(null);
+									setAt(null);
+									setPlaying(false);
+									setHashRead(false);
+								}}
+							>
+								{boot.tokens.map((t) => (
+									<option key={t.key} value={t.key}>
+										{t.symbol} ({t.transfers.toLocaleString()})
+									</option>
+								))}
+							</select>
+						</div>
+						<div className="mx-1 hidden h-6 w-px bg-black/10 md:block" />
+						<div className="flex w-full min-w-0 items-center gap-2 md:w-auto">
+							<Dot color={kcol} />
+							<span className="truncate text-sm font-semibold">{journey?.label || (address ? shortAddr(address) : '…')}</span>
+							{journey && (
+								<span
+									className="shrink-0 rounded-full border px-2 py-px text-[10px]"
+									style={{ color: kcol, borderColor: kcol }}
+								>
+									{KIND_META[journey.kind].name}
+								</span>
+							)}
+							<span className="hidden font-mono text-[11px] text-text-muted lg:inline">{address}</span>
+							{address && (
+								<a
+									className="ml-auto whitespace-nowrap text-xs text-text-secondary hover:text-usdu-black md:hidden"
+									href={`${scan}/address/${address}`}
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									Explorer ↗
+								</a>
+							)}
+						</div>
+					</Glass>
 				</div>
-			</Glass>
+			)}
 
 			{ready && model && state && journey && (
 				<>
 					{wide && (
-						<div className="absolute bottom-[148px] left-3 top-[64px] z-10 w-[292px]">
-							<Glass className="flex h-full min-h-0 flex-col gap-4 overflow-auto p-3.5 [scrollbar-width:thin]">
+						<div
+							style={panelVars}
+							className={`absolute bottom-[var(--gb)] left-3 top-[var(--gt)] z-10 w-[292px] transition-transform duration-200 ${leftOpen ? '' : '-translate-x-[310px]'}`}
+						>
+							<Glass className="flex h-full min-h-0 flex-col gap-4 overflow-auto p-3 [scrollbar-width:thin]">
 								<div>
-									<SectionTitle>Insights</SectionTitle>
+									<SectionTitle
+										right={
+											<button
+												className="px-1 text-base leading-none text-text-muted hover:text-usdu-black"
+												onClick={() => setLeftOpen(false)}
+												title="Collapse"
+											>
+												‹
+											</button>
+										}
+									>
+										Insights
+									</SectionTitle>
 									<div className="grid grid-cols-2 gap-2">
 										{facts.map((f) => (
-											<div key={f.title} className="rounded-xl border border-black/10 bg-white/60 px-2.5 py-1.5">
-												<div className="text-[10px] uppercase tracking-wider text-text-muted">{f.title}</div>
-												<div className="text-[13px] font-semibold leading-tight">{f.value}</div>
-												{f.sub && <div className="truncate text-[10px] text-text-muted">{f.sub}</div>}
-											</div>
+											<StatCard
+												key={f.title}
+												label={f.title}
+												value={f.value}
+												sub={f.sub && <span className="block truncate">{f.sub}</span>}
+											/>
 										))}
 									</div>
 								</div>
@@ -374,99 +374,133 @@ export default function GodEyeJourneyView() {
 						</div>
 					)}
 
-					<div className="absolute bottom-[148px] right-3 top-[64px] z-10 w-[340px] max-w-[calc(100%-24px)] max-lg:top-auto max-lg:h-[40%]">
-						<Glass className="flex h-full min-h-0 flex-col gap-4 overflow-auto p-3.5 [scrollbar-width:thin]">
-							<div className="grid grid-cols-2 gap-2">
-								<StatCard label="Balance" value={fmt(state.balance)} sub={`${journey.token.symbol} on ${dateStr(cur)}`} />
-								<StatCard label="Transfers" value={state.txs.toLocaleString()} sub="since the first one" />
-								<StatCard label="Received" value={fmt(state.inflow)} valueClass="text-green-600" />
-								<StatCard
-									label="Sent"
-									value={fmt(state.outflow)}
-									valueClass="text-rose-600"
-									sub={`net ${fmt(state.inflow - state.outflow)}`}
-								/>
-							</div>
+					{wide && !leftOpen && (
+						<div style={panelVars} className="absolute left-3 top-[var(--gt)] z-10">
+							<IconButton onClick={() => setLeftOpen(true)}>› Insights</IconButton>
+						</div>
+					)}
 
-							{sel && (
-								<div className="rounded-xl border border-usdu-orange/30 bg-usdu-orange/[0.06] p-2.5">
-									<div className="flex items-start justify-between gap-2">
-										<div className="min-w-0">
-											<div className="flex items-center gap-2 text-sm font-semibold">
-												<Dot color={KIND_META[sel.kind].color} size={8} />
-												<span className="truncate">{sel.label || shortAddr(sel.address)}</span>
-											</div>
-											<div className="break-all font-mono text-[10px] text-text-muted">{sel.address}</div>
-										</div>
-										<button
-											className="px-1 text-lg leading-none text-text-muted hover:text-usdu-black"
-											onClick={() => setSelected(null)}
-										>
-											×
-										</button>
-									</div>
-									<div className="mt-1.5 text-[12px] tabular-nums text-text-secondary">
-										{selStat ? (
-											<>
-												<span className="text-green-600">← {fmt(selStat.in)}</span> ·{' '}
-												<span className="text-rose-600">→ {fmt(selStat.out)}</span> · {selStat.count} transfers
-												<div className="text-[10px] text-text-muted">
-													{dateStr(selStat.first)} → {dateStr(selStat.last)}
-												</div>
-											</>
-										) : (
-											<span className="text-text-muted">not met yet at this date</span>
-										)}
-									</div>
-									<div className="mt-2 flex gap-1.5">
-										<Link
-											href={`/transparency/${sel.address}?token=${encodeURIComponent(journey.token.key)}`}
-											className="rounded-lg border border-usdu-orange/50 bg-usdu-orange/15 px-2.5 py-1 text-xs text-usdu-black hover:bg-usdu-orange/25"
-										>
-											◈ Open timeline
-										</Link>
-										<a
-											className="rounded-lg border border-black/10 bg-black/5 px-2.5 py-1 text-xs text-text-secondary hover:bg-black/10"
-											href={`${scan}/address/${sel.address}`}
-											target="_blank"
-											rel="noopener noreferrer"
-										>
-											Explorer ↗
-										</a>
-									</div>
+					{!wide && !sheet && (
+						<MobileDetailBar
+							style={panelVars}
+							color={sel ? KIND_META[sel.kind].color : kcol}
+							title={sel ? sel.label || shortAddr(sel.address) : journey.label || shortAddr(journey.address)}
+							sub={
+								sel
+									? selStat
+										? `← ${fmt(selStat.in)} · → ${fmt(selStat.out)} · ${selStat.count} transfers`
+										: 'not met yet at this date'
+									: `${fmt(state.balance)} ${journey.token.symbol} · ${state.txs.toLocaleString()} transfers`
+							}
+							onOpen={() => setSheet(true)}
+							onClose={sel ? () => setSelected(null) : undefined}
+						/>
+					)}
+
+					{(wide || sheet) && (
+						<div style={panelVars} className={DETAIL_PANEL}>
+							<Glass className="flex h-full min-h-0 flex-col gap-4 overflow-auto p-3.5 [scrollbar-width:thin]">
+								{!wide && (
+									<button className="-mb-2 self-end px-1 text-xs text-text-muted" onClick={() => setSheet(false)}>
+										Close ▼
+									</button>
+								)}
+								<div className="grid grid-cols-2 gap-2">
+									<StatCard
+										label="Balance"
+										value={fmt(state.balance)}
+										sub={`${journey.token.symbol} on ${dateStr(cur)}`}
+									/>
+									<StatCard label="Transfers" value={state.txs.toLocaleString()} sub="since the first one" />
+									<StatCard label="Received" value={fmt(state.inflow)} valueClass="text-green-600" />
+									<StatCard
+										label="Sent"
+										value={fmt(state.outflow)}
+										valueClass="text-rose-600"
+										sub={`net ${fmt(state.inflow - state.outflow)}`}
+									/>
 								</div>
-							)}
 
-							<div>
-								<SectionTitle right={sel ? 'with this counterparty' : 'newest first'}>
-									Activity up to {dateStr(cur)}
-								</SectionTitle>
-								{feed.length === 0 && <div className="text-xs text-text-muted">No activity before this date.</div>}
-								{feed.map((r) => (
-									<div key={r.t} className="grid grid-cols-[1fr_auto] gap-2 border-b border-black/5 py-1 text-[11px]">
-										<span>
-											{r.in > 0 && <span className="text-green-600">← {fmt(r.in)} </span>}
-											{r.out > 0 && <span className="text-rose-600">→ {fmt(r.out)} </span>}
-											<span className="text-text-muted">
-												{r.who}
-												{!sel && r.extra > 0 ? ` +${r.extra}` : ''} · {r.txs}×
-											</span>
-										</span>
-										<span className="text-right">
-											{dateStr(r.t)}
-											<br />
-											<span className="text-text-muted">bal {fmt(r.balance)}</span>
-										</span>
+								{sel && (
+									<div className="rounded-xl border border-usdu-orange/30 bg-usdu-orange/[0.06] p-2.5">
+										<div className="flex items-start justify-between gap-2">
+											<div className="min-w-0">
+												<div className="flex items-center gap-2 text-sm font-semibold">
+													<Dot color={KIND_META[sel.kind].color} size={8} />
+													<span className="truncate">{sel.label || shortAddr(sel.address)}</span>
+												</div>
+												<div className="break-all font-mono text-[10px] text-text-muted">{sel.address}</div>
+											</div>
+											<button
+												className="px-1 text-lg leading-none text-text-muted hover:text-usdu-black"
+												onClick={() => setSelected(null)}
+											>
+												×
+											</button>
+										</div>
+										<div className="mt-1.5 text-[12px] tabular-nums text-text-secondary">
+											{selStat ? (
+												<>
+													<span className="text-green-600">← {fmt(selStat.in)}</span> ·{' '}
+													<span className="text-rose-600">→ {fmt(selStat.out)}</span> · {selStat.count} transfers
+													<div className="text-[10px] text-text-muted">
+														{dateStr(selStat.first)} → {dateStr(selStat.last)}
+													</div>
+												</>
+											) : (
+												<span className="text-text-muted">not met yet at this date</span>
+											)}
+										</div>
+										<div className="mt-2 flex gap-1.5">
+											<button
+												onClick={() => onOpenAddress(sel.address, journey.token.key)}
+												className="rounded-lg border border-usdu-orange/50 bg-usdu-orange/15 px-2.5 py-1 text-xs text-usdu-black hover:bg-usdu-orange/25"
+											>
+												◈ Open timeline
+											</button>
+											<a
+												className="rounded-lg border border-black/10 bg-black/5 px-2.5 py-1 text-xs text-text-secondary hover:bg-black/10"
+												href={`${scan}/address/${sel.address}`}
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												Explorer ↗
+											</a>
+										</div>
 									</div>
-								))}
-							</div>
-						</Glass>
-					</div>
+								)}
+
+								<div>
+									<SectionTitle right={sel ? 'with this counterparty' : 'newest first'}>
+										Activity up to {dateStr(cur)}
+									</SectionTitle>
+									{feed.length === 0 && <div className="text-xs text-text-muted">No activity before this date.</div>}
+									{feed.map((r) => (
+										<div key={r.t} className="grid grid-cols-[1fr_auto] gap-2 border-b border-black/5 py-1 text-[11px]">
+											<span>
+												{r.in > 0 && <span className="text-green-600">← {fmt(r.in)} </span>}
+												{r.out > 0 && <span className="text-rose-600">→ {fmt(r.out)} </span>}
+												<span className="text-text-muted">
+													{r.who}
+													{!sel && r.extra > 0 ? ` +${r.extra}` : ''} · {r.txs}×
+												</span>
+											</span>
+											<span className="text-right">
+												{dateStr(r.t)}
+												<br />
+												<span className="text-text-muted">bal {fmt(r.balance)}</span>
+											</span>
+										</div>
+									))}
+								</div>
+							</Glass>
+						</div>
+					)}
 				</>
 			)}
 
 			{ready && model && (
-				<div className="absolute bottom-3 left-3 right-3 z-10">
+				<div ref={timelineEl} className="absolute bottom-3 left-3 right-3 z-10">
 					<GodEyeTimeline
 						timeline={model.series}
 						at={at}
@@ -475,6 +509,30 @@ export default function GodEyeJourneyView() {
 						title="Account timeline"
 						labels={LABELS}
 						info={`${model.journey.days.length.toLocaleString()} active days · ${(state?.peers.length ?? 0).toLocaleString()} of ${model.journey.peers.length.toLocaleString()} counterparties`}
+						controls={
+							<div className="hidden flex-wrap items-center gap-2 md:flex">
+								<NodesSlider value={top} min={10} onChange={setTop} />
+								<IconButton
+									onClick={() => {
+										canvas.current?.fit();
+										setFitKey((k) => k + 1);
+									}}
+									title="Fit view (F)"
+								>
+									Fit
+								</IconButton>
+								{address && (
+									<a
+										className="rounded-lg border border-black/10 bg-black/5 px-2.5 py-1 text-xs text-text-secondary hover:bg-white"
+										href={`${scan}/address/${address}`}
+										target="_blank"
+										rel="noopener noreferrer"
+									>
+										Explorer ↗
+									</a>
+								)}
+							</div>
+						}
 						hoverText={(p, t) => `${dateStr(t)} · balance ${fmt(p.supply)} · ${p.holders} counterparties`}
 						onScrub={scrub}
 						onPlay={togglePlay}

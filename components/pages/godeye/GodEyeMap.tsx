@@ -25,6 +25,8 @@ type Props = {
 	onSelect: (id: string | null) => void;
 	onFocus: (id: string) => void;
 	onDive: (kind: GodEyeKind) => void;
+	/** the map is covered by the timeline: stop the render loop */
+	paused?: boolean;
 };
 
 const GodEyeMap = forwardRef<GodEyeMapHandle, Props>(function GodEyeMap(props, ref) {
@@ -56,6 +58,7 @@ const GodEyeMap = forwardRef<GodEyeMapHandle, Props>(function GodEyeMap(props, r
 		};
 	}, []);
 
+	useEffect(() => engine.current?.setPaused(!!props.paused), [props.paused]);
 	useEffect(() => engine.current?.setInsets(props.insets), [props.insets]);
 	useEffect(() => engine.current?.setHidden(props.hidden), [props.hidden]);
 	useEffect(() => engine.current?.setThree(props.three), [props.three]);

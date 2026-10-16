@@ -1,11 +1,10 @@
-import { Ref, useEffect, useRef, useState } from 'react';
+import { ReactNode, Ref, useEffect, useRef, useState } from 'react';
 import { godeyeSearch } from '@/hooks/useGodEye';
 import { KIND_META, WINDOWS } from './godeye.constants';
 import { shortAddr } from './godeye.format';
 import { GodEyeMode, GodEyeRank, GodEyeSearchHit, GodEyeTokenInfo } from './godeye.types';
-import { Dot, Glass, IconButton, Seg } from './GodEyeUi';
-
-const select = 'rounded-lg border border-black/10 bg-black/5 px-2 py-1 text-xs outline-none [&>option]:bg-white';
+import { GodEyeBrand } from './GodEyeLayout';
+import { Dot, Glass, IconButton, Seg, SELECT as select } from './GodEyeUi';
 
 type ControlsProps = {
 	mode: GodEyeMode;
@@ -31,13 +30,36 @@ type Props = {
 	focusActive: boolean;
 	/** lets the view measure the bar to keep the panels evenly spaced */
 	rootRef?: Ref<HTMLDivElement>;
+	/** shown on the same row between the card and the search (own row on phones) */
+	center?: ReactNode;
 };
+
+/** node count slider; commits on release so the scene is not refetched while dragging */
+export function NodesSlider({ value, min, onChange }: { value: number; min: number; onChange: (n: number) => void }) {
+	const [local, setLocal] = useState(value);
+	useEffect(() => setLocal(value), [value]);
+	return (
+		<>
+			<span className="text-[10px] uppercase tracking-wider text-text-muted">Nodes</span>
+			<input
+				type="range"
+				min={min}
+				max={300}
+				step={5}
+				value={local}
+				onChange={(e) => setLocal(Number(e.target.value))}
+				onMouseUp={() => onChange(local)}
+				onTouchEnd={() => onChange(local)}
+				onKeyUp={() => onChange(local)}
+				className="w-24 accent-usdu-orange"
+			/>
+			<span className="w-8 rounded-lg border border-black/10 bg-black/5 py-0.5 text-center text-xs tabular-nums">{local}</span>
+		</>
+	);
+}
 
 /** graph settings, rendered inside the time travel panel */
 export function GodEyeControls(p: ControlsProps) {
-	const [topLocal, setTopLocal] = useState(p.top);
-	useEffect(() => setTopLocal(p.top), [p.top]);
-
 	return (
 		<div className="hidden flex-wrap items-center gap-2 md:flex">
 			<span className="text-[10px] uppercase tracking-wider text-text-muted">Rank</span>
@@ -58,20 +80,7 @@ export function GodEyeControls(p: ControlsProps) {
 					</option>
 				))}
 			</select>
-			<span className="text-[10px] uppercase tracking-wider text-text-muted">Nodes</span>
-			<input
-				type="range"
-				min={15}
-				max={300}
-				step={5}
-				value={topLocal}
-				onChange={(e) => setTopLocal(Number(e.target.value))}
-				onMouseUp={() => p.onTop(topLocal)}
-				onTouchEnd={() => p.onTop(topLocal)}
-				onKeyUp={() => p.onTop(topLocal)}
-				className="w-24 accent-usdu-orange"
-			/>
-			<span className="w-8 rounded-lg border border-black/10 bg-black/5 py-0.5 text-center text-xs tabular-nums">{topLocal}</span>
+			<NodesSlider value={p.top} min={15} onChange={p.onTop} />
 			<IconButton onClick={p.onThree} active={p.three} title="Toggle 3D (3)">
 				3D
 			</IconButton>
@@ -134,11 +143,7 @@ export default function GodEyeToolbar(p: Props) {
 			className="pointer-events-none absolute left-3 right-3 top-3 z-20 flex flex-wrap items-center gap-2 [&>*]:pointer-events-auto"
 		>
 			<Glass className="flex w-full flex-wrap items-center gap-x-2.5 gap-y-2 px-3 py-2.5 md:w-auto md:flex-nowrap">
-				<div className="h-6 w-6 rounded-full bg-[radial-gradient(circle,#0c0c0c_0_22%,#f16325_23%_55%,transparent_56%)] ring-2 ring-usdu-orange/30" />
-				<div className="leading-tight">
-					<div className="text-[13px] font-bold tracking-[0.18em]">GODEYE</div>
-					<div className="whitespace-nowrap text-[10px] text-text-muted">USDU · fund flow</div>
-				</div>
+				<GodEyeBrand subtitle="USDU · fund flow" />
 				<div className="mx-1 hidden h-6 w-px bg-black/10 md:block" />
 				<div className="flex w-full items-center gap-2 md:w-auto">
 					<select
@@ -163,6 +168,8 @@ export default function GodEyeToolbar(p: Props) {
 					/>
 				</div>
 			</Glass>
+
+			{p.center && <div className="flex w-full min-w-0 justify-center md:w-auto md:flex-1">{p.center}</div>}
 
 			<div ref={box} className="relative w-full md:ml-auto md:w-auto">
 				<input

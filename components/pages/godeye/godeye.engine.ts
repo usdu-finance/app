@@ -106,6 +106,15 @@ export class GodEyeEngine {
 	}
 
 	// ---------------------------------------------------------------- public api
+	/** stop rendering while the map is covered by another view */
+	setPaused(paused: boolean) {
+		cancelAnimationFrame(this.raf);
+		if (!paused) {
+			this.last = performance.now();
+			this.raf = requestAnimationFrame(this.frame);
+		}
+	}
+
 	destroy() {
 		cancelAnimationFrame(this.raf);
 		this.ro.disconnect();

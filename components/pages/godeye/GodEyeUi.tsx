@@ -2,6 +2,8 @@ import { CSSProperties, ReactNode } from 'react';
 
 export const GLASS = 'bg-white/80 backdrop-blur-xl border border-black/10 rounded-2xl text-usdu-black';
 
+export const SELECT = 'rounded-lg border border-black/10 bg-black/5 px-2 py-1 text-xs outline-none [&>option]:bg-white';
+
 export function Glass({ className = '', style, children }: { className?: string; style?: CSSProperties; children: ReactNode }) {
 	return (
 		<div className={`${GLASS} ${className}`} style={style}>

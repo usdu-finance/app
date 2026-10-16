@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { useEffect, useRef } from 'react';
 import { useGodEyeAddress } from '@/hooks/useGodEye';
 import { EXPLORER, KIND_META } from './godeye.constants';
@@ -85,9 +84,10 @@ type Props = {
 	onClose: () => void;
 	onFocus: (address: string) => void;
 	onJump: (address: string) => void;
+	onTimeline: (address: string) => void;
 };
 
-export default function GodEyeDetail({ token, address, fallbackLabel, onClose, onFocus, onJump }: Props) {
+export default function GodEyeDetail({ token, address, fallbackLabel, onClose, onFocus, onJump, onTimeline }: Props) {
 	const { data: a, loading, failed } = useGodEyeAddress(token, address);
 	const scan = a ? EXPLORER[a.token.chainId] || EXPLORER[1] : EXPLORER[1];
 	const kcol = a ? KIND_META[a.kind].color : KIND_META.wallet.color;
@@ -122,12 +122,12 @@ export default function GodEyeDetail({ token, address, fallbackLabel, onClose, o
 					<>
 						<div className="flex flex-wrap gap-1.5">
 							<IconButton onClick={() => onFocus(a.address)}>◎ Focus map</IconButton>
-							<Link
-								href={`/transparency/${a.address}?token=${encodeURIComponent(token)}`}
+							<button
+								onClick={() => onTimeline(a.address)}
 								className="rounded-lg border border-usdu-orange/50 bg-usdu-orange/15 px-2.5 py-1 text-xs text-usdu-black hover:bg-usdu-orange/25"
 							>
 								◈ Deep timeline
-							</Link>
+							</button>
 							<a
 								className="rounded-lg border border-black/10 bg-black/5 px-2.5 py-1 text-xs text-text-secondary hover:bg-black/10"
 								href={`${scan}/address/${a.address}`}

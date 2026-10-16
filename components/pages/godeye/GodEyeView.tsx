@@ -1,4 +1,4 @@
-import { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GodEyeQuery, useGodEyeBoot, useGodEyeScene, useGodEyeTimeline } from '@/hooks/useGodEye';
 import { KIND_META, KIND_ORDER } from './godeye.constants';
 import { GodEyeKind, GodEyeMode, GodEyeRank } from './godeye.types';
@@ -8,31 +8,21 @@ import GodEyeMap, { GodEyeMapHandle } from './GodEyeMap';
 import GodEyeOverview from './GodEyeOverview';
 import GodEyeTimeline from './GodEyeTimeline';
 import GodEyeToolbar, { GodEyeControls } from './GodEyeToolbar';
-import { Dot, GLASS, Glass, IconButton } from './GodEyeUi';
+import { DETAIL_PANEL, MobileDetailBar, useIsWide, usePanelGaps } from './GodEyeLayout';
+import { Glass, IconButton } from './GodEyeUi';
 import { fmt, shortAddr } from './godeye.format';
 
 const NEAR_LIVE = 3600;
 
-function useIsWide() {
-	const [wide, setWide] = useState(true);
-	useEffect(() => {
-		const mq = window.matchMedia('(min-width: 768px)');
-		const on = () => setWide(mq.matches);
-		on();
-		mq.addEventListener('change', on);
-		return () => mq.removeEventListener('change', on);
-	}, []);
-	return wide;
-}
+type Props = {
+	/** false while the deep timeline covers the map: keeps the state but stops rendering, hotkeys and the url hash */
+	active?: boolean;
+	onTimeline: (address: string, token: string) => void;
+};
 
-export default function GodEyeView() {
+export default function GodEyeView({ active = true, onTimeline }: Props) {
 	const boot = useGodEyeBoot();
 	const map = useRef<GodEyeMapHandle>(null);
-	// the side panels sit between the toolbar and the timeline with the same 12px gap on both sides
-	const barEl = useRef<HTMLDivElement | null>(null);
-	const timelineEl = useRef<HTMLDivElement>(null);
-	const [gaps, setGaps] = useState({ top: 64, bottom: 148 });
-	const panelVars = { '--gt': `${gaps.top}px`, '--gb': `${gaps.bottom}px` } as CSSProperties;
 	const wide = useIsWide();
 
 	// ---- view state (mirrored into the url hash so views can be shared)
@@ -40,6 +30,7 @@ export default function GodEyeView() {
 	const [init, setInit] = useState(false);
 	const [token, setToken] = useState<string | null>(null);
 	const [at, setAt] = useState<number | null>(null);
+	const { barEl, timelineEl, gaps, panelVars } = usePanelGaps(`${boot.ready}:${token}`);
 	const [windowS, setWindowS] = useState(0);
 	const [top, setTop] = useState(30);
 	const [rank, setRank] = useState<GodEyeRank>('balance');
@@ -78,7 +69,7 @@ export default function GodEyeView() {
 
 	// write the hash
 	useEffect(() => {
-		if (!init || !token) return;
+		if (!init || !token || !active) return;
 		const t = setTimeout(() => {
 			const p = new URLSearchParams();
 			p.set('token', token);
@@ -95,23 +86,9 @@ export default function GodEyeView() {
 			}
 		}, 400);
 		return () => clearTimeout(t);
-	}, [init, token, at, windowS, mode, focus, selected, three]);
+	}, [init, token, active, at, windowS, mode, focus, selected, three]);
 
 	// ---- data
-	useEffect(() => {
-		const measure = () => {
-			const top = barEl.current ? barEl.current.offsetTop + barEl.current.offsetHeight + 12 : 64;
-			const bottom = timelineEl.current ? timelineEl.current.offsetHeight + 24 : 148;
-			setGaps((g) => (g.top === top && g.bottom === bottom ? g : { top, bottom }));
-		};
-		const ro = new ResizeObserver(measure);
-		if (barEl.current) ro.observe(barEl.current);
-		if (timelineEl.current) ro.observe(timelineEl.current);
-		measure();
-		return () => ro.disconnect();
-		// the bar and the timeline mount once the ledgers are known
-	}, [boot.ready, token]);
-
 	const timeline = useGodEyeTimeline(boot.ready ? token : null);
 	const t0 = timeline.length ? timeline[0].t : 0;
 	const t1 = timeline.length ? timeline[timeline.length - 1].t : 0;
@@ -217,6 +194,7 @@ export default function GodEyeView() {
 	// ---- keyboard
 	useEffect(() => {
 		const key = (e: KeyboardEvent) => {
+			if (!active) return;
 			if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
 			if (e.code === 'Space') {
 				e.preventDefault();
@@ -231,7 +209,7 @@ export default function GodEyeView() {
 		window.addEventListener('keydown', key);
 		return () => window.removeEventListener('keydown', key);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [togglePlay, selected, focus]);
+	}, [togglePlay, selected, focus, active]);
 
 	// the engine centers the map in the free area between the panels
 	const detailOpen = !!selected && mode === 'entities';
@@ -269,6 +247,7 @@ export default function GodEyeView() {
 				onSelect={onSelect}
 				onFocus={doFocus}
 				onDive={dive}
+				paused={!active}
 			/>
 
 			{!ready && <GodEyeLoading sync={boot.sync} unreachable={boot.unreachable} />}
@@ -291,6 +270,20 @@ export default function GodEyeView() {
 					onMode={onMode}
 					onPick={doFocus}
 					focusActive={!!focus}
+					center={
+						ready && graph && focus ? (
+							<Glass className="flex max-w-full items-center gap-3 px-3 py-1.5 text-xs">
+								<span className="min-w-0 truncate">
+									Focus · <b>{focusNode?.label || shortAddr(focus)}</b>
+									<span className="hidden text-text-muted xl:inline">
+										{' '}
+										and its {graph.nodes.length - 1} biggest counterparties
+									</span>
+								</span>
+								<IconButton onClick={exitFocus}>Exit focus</IconButton>
+							</Glass>
+						) : null
+					}
 				/>
 			)}
 
@@ -318,54 +311,23 @@ export default function GodEyeView() {
 						</div>
 					)}
 
-					{focus && (
-						<Glass
-							style={panelVars}
-							className="absolute left-1/2 top-[var(--gt)] z-10 flex -translate-x-1/2 items-center gap-3 px-3 py-1.5 text-xs"
-						>
-							<span>
-								Focus · <b>{focusNode?.label || shortAddr(focus)}</b>
-								<span className="text-text-muted"> and its {graph.nodes.length - 1} biggest counterparties</span>
-							</span>
-							<IconButton onClick={exitFocus}>Exit focus</IconButton>
-						</Glass>
-					)}
-
 					{detailOpen && token && selected && !wide && !sheet && (
-						<button
-							onClick={() => setSheet(true)}
+						<MobileDetailBar
 							style={panelVars}
-							className={`${GLASS} absolute bottom-[var(--gb)] left-3 right-3 z-10 flex items-center gap-2.5 px-3.5 py-2.5 text-left`}
-						>
-							<Dot color={KIND_META[selectedNode?.kind ?? 'wallet'].color} size={9} />
-							<span className="min-w-0 flex-1">
-								<span className="block truncate text-sm font-semibold">{selectedNode?.label || shortAddr(selected)}</span>
-								{selectedNode && selectedNode.kind !== 'mint' && (
-									<span className="block text-[11px] text-text-muted">
-										{fmt(selectedNode.balance)} {token ? boot.tokens.find((t) => t.key === token)?.symbol : ''}
-									</span>
-								)}
-							</span>
-							<span className="rounded-lg border border-usdu-orange/50 bg-usdu-orange/10 px-2.5 py-1 text-xs">Details ▲</span>
-							<span
-								role="button"
-								aria-label="Deselect"
-								onClick={(e) => {
-									e.stopPropagation();
-									setSelected(null);
-								}}
-								className="px-1 text-text-muted"
-							>
-								✕
-							</span>
-						</button>
+							color={KIND_META[selectedNode?.kind ?? 'wallet'].color}
+							title={selectedNode?.label || shortAddr(selected)}
+							sub={
+								selectedNode && selectedNode.kind !== 'mint'
+									? `${fmt(selectedNode.balance)} ${boot.tokens.find((t) => t.key === token)?.symbol ?? ''}`
+									: undefined
+							}
+							onOpen={() => setSheet(true)}
+							onClose={() => setSelected(null)}
+						/>
 					)}
 
 					{detailOpen && token && selected && (wide || sheet) && (
-						<div
-							style={panelVars}
-							className="absolute bottom-[var(--gb)] right-3 top-[var(--gt)] z-10 w-[340px] max-w-[calc(100%-24px)] max-md:top-auto max-md:h-[46%]"
-						>
+						<div style={panelVars} className={DETAIL_PANEL}>
 							<GodEyeDetail
 								token={token}
 								address={selected}
@@ -373,6 +335,7 @@ export default function GodEyeView() {
 								onClose={() => setSelected(null)}
 								onFocus={doFocus}
 								onJump={jump}
+								onTimeline={(a) => onTimeline(a, token)}
 							/>
 						</div>
 					)}

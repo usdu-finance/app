@@ -17,6 +17,9 @@ export default function HomeLayout({ children }: LayoutProps) {
 		setIsMobileMenuOpen(!isMobileMenuOpen);
 	};
 
+	// sub pages (e.g. /transparency/<address>) keep their section highlighted
+	const isActive = (href: string) => router.pathname === href || router.pathname.startsWith(`${href}/`);
+
 	const closeMobileMenu = () => {
 		setIsMobileMenuOpen(false);
 	};
@@ -59,7 +62,7 @@ export default function HomeLayout({ children }: LayoutProps) {
 										key={item.name}
 										href={item.href}
 										className={`flex items-center gap-2 transition-colors text-sm font-medium ${
-											router.pathname === item.href
+											isActive(item.href)
 												? 'text-usdu-orange'
 												: 'text-text-secondary hover:text-usdu-orange'
 										}`}
@@ -113,7 +116,7 @@ export default function HomeLayout({ children }: LayoutProps) {
 											key={item.name}
 											href={item.href}
 											className={`flex items-center gap-3 transition-colors text-sm font-medium rounded-lg px-3 py-2 ${
-												router.pathname === item.href
+												isActive(item.href)
 													? 'bg-usdu-surface text-usdu-orange'
 													: 'text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface'
 											}`}
