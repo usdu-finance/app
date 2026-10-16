@@ -8,9 +8,9 @@ export const APP_REFETCH = parseInt(process.env.NEXT_PUBLIC_APP_REFETCH || '6000
 export const PROJECT = {
 	name: 'USDU Finance',
 	blockchains: ['Ethereum'],
-	tagline: 'Low-Cost Stable Funding for On-Chain Credit',
+	tagline: 'Governed stablecoins in USD, EUR and CHF',
 	description:
-		'Protocol-issued, non-algorithmic stablecoins — USDU, EURU and CHFU — offering fixed-term funding for structured finance and credit markets. Convertible through Curve pools and stable swap modules for USDC, USDT, EURC, dEURO, ZCHF and more.',
+		'USDU, EURU and CHFU are protocol-issued, non-algorithmic stablecoins. Only modules approved by an Aragon DAO can mint and burn them, you swap in and out through Morpho-backed modules and Curve pools, and every flow can be traced on-chain.',
 	logo: '/assets/usdu-full-text-1024x346.png',
 };
 
@@ -110,12 +110,12 @@ export const SEO = {
 		'/dashboard/strategy'
 	),
 	home: {
-		title: `${APP_NAME} - Institutional-Grade Stablecoin for Credit Markets`,
-		description: `${PROJECT.description} Offering 4-6% fixed-term funding rates with DAO governance.`,
+		title: `${APP_NAME} - Governed Stablecoins in USD, EUR and CHF`,
+		description: PROJECT.description,
 		openGraph: {
-			title: `${APP_NAME} - Institutional-Grade Stablecoin`,
+			title: `${APP_NAME} - Governed Stablecoins in USD, EUR and CHF`,
 			description:
-				'Non-algorithmic USD, EUR, and CHF stablecoins for structured finance and credit markets. Fully convertible to USDC with transparent governance.',
+				'USDU, EURU and CHFU: non-algorithmic stablecoins minted only by DAO-approved modules, swappable through Morpho-backed modules and Curve pools, and traceable on-chain.',
 			type: 'website' as const,
 			url: APP_URL,
 		},
@@ -133,18 +133,6 @@ export const SEO = {
 			description: 'Transparent governance of USDU protocol modules with expiration-based proposals and secure timelock controls.',
 			type: 'website' as const,
 			url: `${APP_URL}/modules`,
-		},
-	},
-	maturities: {
-		title: `Fixed-Term Funding Maturities - ${APP_NAME}`,
-		description:
-			'Explore USDU fixed-term funding options with competitive rates from 30 days to 1 year. Institutional-grade structured finance solutions with predictable fixed-rate funding.',
-		openGraph: {
-			title: `Fixed-Term Funding Maturities - ${APP_NAME}`,
-			description:
-				'Predictable, fixed-rate funding options designed for institutional borrowers with terms ranging from 30 days to 1 year.',
-			type: 'website' as const,
-			url: `${APP_URL}/maturities`,
 		},
 	},
 	governance: pageSeo(

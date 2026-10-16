@@ -1,76 +1,77 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCubes, faLandmark, faEye, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import Link from 'next/link';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faArrowRight, faCubes, faEye, faLandmark } from '@fortawesome/free-solid-svg-icons';
+import type { LandingStats } from '@/hooks/useLandingStats';
+import { Reveal, SectionHead, Skeleton, SECTION, INNER } from './shared';
 
-const pillars = [
-	{
-		icon: faCubes,
-		title: 'Modules',
-		description:
-			'Only approved modules can mint and burn USDU. See which modules are active, what is pending and when they expire.',
-		href: '/modules',
-		cta: 'Explore modules',
-	},
-	{
-		icon: faLandmark,
-		title: 'Governance',
-		description:
-			'An Aragon DAO approves every module, with multisigs, a delay and a veto window. A voting system is planned.',
-		href: '/governance',
-		cta: 'See how it is governed',
-	},
-	{
-		icon: faEye,
-		title: 'Transparency',
-		description:
-			'GodEye maps how USDU and its sibling stablecoins move between addresses on-chain, with a timeline to replay it.',
-		href: '/transparency',
-		cta: 'Open GodEye',
-	},
-];
+export default function Pillars({ stats }: { stats: LandingStats }) {
+	const pillars = [
+		{
+			icon: faCubes,
+			title: 'Modules',
+			description:
+				'Only approved modules can mint and burn the stablecoins. See which are active, what is pending and when each one expires.',
+			href: '/modules',
+			cta: 'Explore modules',
+			figure: stats.activeModules,
+			figureLabel: 'active modules',
+		},
+		{
+			icon: faLandmark,
+			title: 'Governance',
+			description:
+				'An Aragon DAO approves every module. A time lock of 7 days to 4 weeks and a veto window leave room to react. A voting system is planned.',
+			href: '/governance',
+			cta: 'See how it is governed',
+		},
+		{
+			icon: faEye,
+			title: 'Transparency',
+			description: 'GodEye maps how the stablecoins move between holders, minters, pools and vaults, with a timeline to replay it.',
+			href: '/transparency',
+			cta: 'Open GodEye',
+		},
+	];
 
-export default function Pillars() {
 	return (
-		<section className="py-20 bg-usdu-card">
-			<div className="container mx-auto px-4">
-				<motion.div
-					initial={{ opacity: 0, y: 30 }}
-					whileInView={{ opacity: 1, y: 0 }}
-					transition={{ duration: 0.6 }}
-					viewport={{ once: true }}
-					className="text-center mb-16"
-				>
-					<h2 className="text-4xl md:text-5xl font-bold text-usdu-black mb-6">Open by Design</h2>
-					<p className="text-xl text-text-secondary max-w-3xl mx-auto">
-						USDU rests on three pillars. Everything the protocol does can be checked on-chain.
-					</p>
-				</motion.div>
+		<section className={`${SECTION} bg-usdu-black`}>
+			<div className={INNER}>
+				<SectionHead
+					dark
+					eyebrow="Open by design"
+					title="Three pillars you can verify yourself."
+					description="Nothing here asks for trust in a dashboard. Modules, governance and flows are all readable on-chain."
+				/>
 
-				<div className="grid md:grid-cols-3 gap-8">
-					{pillars.map((pillar, index) => (
-						<motion.div
-							key={pillar.title}
-							initial={{ opacity: 0, y: 30 }}
-							whileInView={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.6, delay: index * 0.1 }}
-							viewport={{ once: true }}
-							className="bg-usdu-bg p-8 rounded-xl border border-usdu-surface hover:shadow-lg transition-shadow flex flex-col"
-						>
-							<div className="w-16 h-16 bg-usdu-black rounded-xl flex items-center justify-center mb-6">
-								<FontAwesomeIcon icon={pillar.icon} className="w-8 h-8 text-usdu-card" />
+				<div className="grid gap-6 md:grid-cols-3">
+					{pillars.map((p, i) => (
+						<Reveal key={p.title} delay={i * 0.08} className="h-full">
+							<div className="flex h-full flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8">
+								<span className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-usdu-orange text-white">
+									<FontAwesomeIcon icon={p.icon} className="h-5 w-5" />
+								</span>
+								<h3 className="text-xl font-bold text-white">{p.title}</h3>
+								<p className="mt-3 leading-relaxed text-white/70">{p.description}</p>
+								{p.figureLabel && (stats.isLoading || p.figure !== null) && (
+									<p className="mt-5 flex items-baseline gap-2">
+										{p.figure === null || p.figure === undefined ? (
+											<Skeleton dark className="h-8 w-10" />
+										) : (
+											<span className="text-3xl font-bold tabular-nums text-white">{p.figure}</span>
+										)}
+										<span className="text-sm text-white/60">{p.figureLabel}</span>
+									</p>
+								)}
+								<Link
+									href={p.href}
+									className="mt-auto inline-flex items-center gap-2 pt-6 font-medium text-usdu-orange hover:text-white"
+								>
+									{p.cta}
+									<FontAwesomeIcon icon={faArrowRight} className="h-3 w-3" />
+								</Link>
 							</div>
-							<h3 className="text-xl font-bold text-usdu-black mb-4">{pillar.title}</h3>
-							<p className="text-text-secondary mb-6 leading-relaxed">{pillar.description}</p>
-							<Link
-								href={pillar.href}
-								className="inline-flex items-center gap-2 text-usdu-orange hover:text-opacity-80 font-medium mt-auto"
-							>
-								{pillar.cta}
-								<FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />
-							</Link>
-						</motion.div>
+						</Reveal>
 					))}
 				</div>
 			</div>
