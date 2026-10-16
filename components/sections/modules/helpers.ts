@@ -16,18 +16,52 @@ export function getModuleCurrency(stablecoin: string | undefined): string | unde
 	return MODULE_CURRENCIES.find((c) => c.stablecoin.toLowerCase() === stablecoin?.toLowerCase())?.currency;
 }
 
+/** Key of one module on one stablecoin. A module can be registered on several stablecoins, each with its own flow. */
+export function moduleKey(stablecoin: string, module: string): string {
+	return `${stablecoin}:${module}`.toLowerCase();
+}
+
+export type ModuleType = 'curve' | 'morpho' | 'bridge' | 'streamer' | 'other';
+
+export const MODULE_TYPES: Record<ModuleType, { name: string; color: string }> = {
+	curve: { name: 'Curve adapter', color: '#0d9488' },
+	morpho: { name: 'Morpho / vault adapter', color: '#2563eb' },
+	bridge: { name: 'Swap bridge', color: '#db2777' },
+	streamer: { name: 'Streamer / savings', color: '#16a34a' },
+	other: { name: 'Other', color: '#64748b' },
+};
+
+/** Derives the module type from its free-text message (same heuristics as the indexer's godeye labels). */
+export function getModuleType(message: string | undefined): ModuleType {
+	const m = message ?? '';
+	if (/saving|streamer|reward/i.test(m)) return 'streamer';
+	if (/curve|pool|uniswap/i.test(m)) return 'curve';
+	if (/morpho|vault|termmax/i.test(m)) return 'morpho';
+	if (/bridge|swap/i.test(m)) return 'bridge';
+	return 'other';
+}
+
+export type ModuleStatusKey = 'pending' | 'active' | 'revoked' | 'expired' | 'unknown';
+
+export const STATUS_ORDER: Record<ModuleStatusKey, number> = { pending: 0, active: 1, revoked: 2, expired: 3, unknown: 4 };
+
 /**
- * Groups history items by module address
+ * Groups history items by stablecoin + module (see moduleKey), newest first
  */
 export function groupHistoryByModule(history: StablecoinModuleHistoryItem[]) {
 	const grouped: Record<string, StablecoinModuleHistoryItem[]> = {};
 	history.forEach((item) => {
-		const moduleAddress = item.module.toLowerCase();
-		if (!grouped[moduleAddress]) {
-			grouped[moduleAddress] = [];
+		const key = moduleKey(item.stablecoin, item.module);
+		if (!grouped[key]) {
+			grouped[key] = [];
 		}
-		grouped[moduleAddress].push(item);
+		grouped[key].push(item);
 	});
+	Object.values(grouped).forEach((items) =>
+		items.sort((a, b) =>
+			a.createdAt === b.createdAt ? b.logIndex - a.logIndex : a.createdAt < b.createdAt ? 1 : -1
+		)
+	);
 	return grouped;
 }
 
@@ -38,19 +72,19 @@ export function createAllModules(
 	modules: StablecoinModule[],
 	historyByModule: Record<string, StablecoinModuleHistoryItem[]>
 ) {
-	const moduleAddresses = new Set(modules.map((m) => m.module.toLowerCase()));
+	const mapped = new Set(modules.map((m) => moduleKey(m.stablecoin, m.module)));
 	const syntheticModules: StablecoinModule[] = [];
 
-	// Find pending proposals without a module mapping and create synthetic modules
-	Object.entries(historyByModule).forEach(([moduleAddress, items]) => {
-		if (moduleAddresses.has(moduleAddress)) return;
+	// Find pending proposals without a module mapping (on that stablecoin) and create synthetic modules
+	Object.entries(historyByModule).forEach(([key, items]) => {
+		if (mapped.has(key)) return;
 
 		const latestItem = items[0];
 
 		// Only create synthetic module if latest status is "Proposed" (pending)
 		if (latestItem.kind === 'Proposed') {
 			const now = BigInt(Math.floor(Date.now() / 1000));
-			const syntheticModule: StablecoinModule = {
+			syntheticModules.push({
 				chainId: latestItem.chainId,
 				stablecoin: latestItem.stablecoin,
 				module: latestItem.module,
@@ -64,58 +98,36 @@ export function createAllModules(
 				blockheight: latestItem.blockheight,
 				caller: latestItem.caller,
 				isExpired: latestItem.expiredAt ? latestItem.expiredAt < now : false,
-			};
-			syntheticModules.push(syntheticModule);
+			});
 		}
 	});
 
 	return [...modules, ...syntheticModules];
 }
 
+const STATUS_STYLE = {
+	expired: { label: 'Expired', color: 'text-gray-500', bgColor: 'bg-gray-100' },
+	active: { label: 'Active', color: 'text-green-600', bgColor: 'bg-green-100' },
+	pending: { label: 'Pending', color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+	revoked: { label: 'Revoked', color: 'text-red-600', bgColor: 'bg-red-100' },
+	unknown: { label: 'Unknown', color: 'text-gray-600', bgColor: 'bg-gray-100' },
+} as const;
+
 /**
- * Determines module status based on latest history
+ * Determines module status from the latest history entry of this module on this stablecoin:
+ * expired wins, then Set = active, Proposed = pending, Revoked = revoked.
  */
 export function getModuleStatus(
 	module: StablecoinModule,
 	historyByModule: Record<string, StablecoinModuleHistoryItem[]>
 ) {
-	const moduleHistory = historyByModule[module.module.toLowerCase()] || [];
-	const latestHistory = moduleHistory[0];
+	const latestKind = historyByModule[moduleKey(module.stablecoin, module.module)]?.[0]?.kind;
 
-	if (module.isExpired) {
-		return { status: 'expired', label: 'Expired', color: 'text-gray-500', bgColor: 'bg-gray-100' };
-	}
+	let status: ModuleStatusKey = 'unknown';
+	if (module.isExpired) status = 'expired';
+	else if (latestKind === 'Set') status = 'active';
+	else if (latestKind === 'Proposed') status = 'pending';
+	else if (latestKind === 'Revoked') status = 'revoked';
 
-	if ((!module.isExpired && latestHistory?.kind === 'Revoked') || latestHistory?.kind === 'Set') {
-		return { status: 'active', label: 'Active', color: 'text-green-600', bgColor: 'bg-green-100' };
-	}
-
-	if (latestHistory?.kind === 'Proposed') {
-		return { status: 'pending', label: 'Pending', color: 'text-yellow-600', bgColor: 'bg-yellow-100' };
-	}
-
-	if (latestHistory?.kind === 'Revoked') {
-		return { status: 'revoked', label: 'Revoked', color: 'text-red-600', bgColor: 'bg-red-100' };
-	}
-
-	return { status: 'unknown', label: 'Unknown', color: 'text-gray-600', bgColor: 'bg-gray-100' };
-}
-
-/**
- * Sorts modules by status: pending first, then active, then revoked, then expired
- */
-export function sortModules(
-	allModules: StablecoinModule[],
-	historyByModule: Record<string, StablecoinModuleHistoryItem[]>
-) {
-	return [...allModules].sort((a, b) => {
-		const statusA = getModuleStatus(a, historyByModule);
-		const statusB = getModuleStatus(b, historyByModule);
-
-		const statusOrder = { pending: 0, active: 1, revoked: 3, expired: 4, unknown: 5 };
-		return (
-			statusOrder[statusA.status as keyof typeof statusOrder] -
-			statusOrder[statusB.status as keyof typeof statusOrder]
-		);
-	});
+	return { status, ...STATUS_STYLE[status] };
 }
