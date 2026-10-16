@@ -9,8 +9,16 @@ import {
 import { faExternalLinkAlt } from '@fortawesome/free-solid-svg-icons';
 import Link from 'next/link';
 import { SOCIAL, PROJECT } from '@/lib/constants';
+import { ADDRESS } from '@usdu-finance/usdu-core';
+import { mainnet } from 'viem/chains';
 import Image from 'next/image';
 import packageInfo from '../../package.json';
+
+const STABLECOINS = [
+	{ symbol: 'USDU', address: ADDRESS[mainnet.id].usduStable },
+	{ symbol: 'EURU', address: ADDRESS[mainnet.id].euruStable },
+	{ symbol: 'CHFU', address: ADDRESS[mainnet.id].chfuStable },
+];
 
 interface FooterItemProps {
 	link: string;
@@ -84,26 +92,28 @@ export default function Footer() {
 							Protocol
 						</h3>
 						<ul className="space-y-4">
-							<li>
-								<a
-									href={SOCIAL.Etherscan}
-									target="_blank"
-									rel="noopener noreferrer"
-									className="inline-flex items-center gap-1 text-text-secondary hover:text-usdu-orange transition-colors text-sm">
-									Etherscan
-									<FontAwesomeIcon
-										icon={faExternalLinkAlt}
-										className="w-3 h-3"
-									/>
-								</a>
-							</li>
+							{STABLECOINS.map((coin) => (
+								<li key={coin.symbol}>
+									<a
+										href={`https://etherscan.io/token/${coin.address}`}
+										target="_blank"
+										rel="noopener noreferrer"
+										className="inline-flex items-center gap-1 text-text-secondary hover:text-usdu-orange transition-colors text-sm">
+										{coin.symbol} on Etherscan
+										<FontAwesomeIcon
+											icon={faExternalLinkAlt}
+											className="w-3 h-3"
+										/>
+									</a>
+								</li>
+							))}
 							<li>
 								<a
 									href={SOCIAL.Coingecko}
 									target="_blank"
 									rel="noopener noreferrer"
 									className="inline-flex items-center gap-1 text-text-secondary hover:text-usdu-orange transition-colors text-sm">
-									CoinGecko
+									USDU on CoinGecko
 									<FontAwesomeIcon
 										icon={faExternalLinkAlt}
 										className="w-3 h-3"
@@ -116,7 +126,7 @@ export default function Footer() {
 									target="_blank"
 									rel="noopener noreferrer"
 									className="inline-flex items-center gap-1 text-text-secondary hover:text-usdu-orange transition-colors text-sm">
-									DeFiLlama
+									USDU on DeFiLlama
 									<FontAwesomeIcon
 										icon={faExternalLinkAlt}
 										className="w-3 h-3"
