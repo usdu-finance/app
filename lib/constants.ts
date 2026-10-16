@@ -147,16 +147,14 @@ export const SEO = {
 			url: `${APP_URL}/maturities`,
 		},
 	},
-	transparency: {
-		title: `Transparency & Risk Management - ${APP_NAME}`,
-		description:
-			'Real-time transparency into USDU protocol metrics, risk controls, audit reports, and governance activities. Full institutional-grade disclosure and accountability.',
-		openGraph: {
-			title: `Transparency & Risk Management - ${APP_NAME}`,
-			description:
-				'Real-time protocol metrics, comprehensive audit reports, and transparent governance ensuring institutional-grade accountability.',
-			type: 'website' as const,
-			url: `${APP_URL}/transparency`,
-		},
-	},
+	governance: pageSeo(
+		'Governance',
+		'How USDU is governed: the Aragon DAO, its multisigs, the delay and veto window for modules, and the upcoming voting system.',
+		'/governance'
+	),
+	transparency: pageSeo(
+		'Transparency',
+		'GodEye shows where USDU and its sibling stablecoins flow on-chain: every holder, minter, pool and vault, with a timeline.',
+		'/godeye'
+	),
 } as const;

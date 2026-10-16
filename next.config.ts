@@ -8,6 +8,9 @@ const nextConfig: NextConfig = {
   },
   // Ensure Page Router is used
   pageExtensions: ['tsx', 'ts', 'jsx', 'js'],
+  async redirects() {
+    return [{ source: '/transparency', destination: '/godeye', permanent: false }];
+  },
 };
 
 export default nextConfig;

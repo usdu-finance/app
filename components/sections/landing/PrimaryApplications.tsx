@@ -113,10 +113,10 @@ export default function PrimaryApplications() {
 								Launch App
 							</Link>
 							<Link
-								href="/transparency"
+								href="/modules"
 								className="inline-flex items-center justify-center gap-2 border border-usdu-card text-usdu-card px-6 py-3 rounded-xl hover:bg-usdu-orange hover:text-white transition-colors font-medium"
 							>
-								View Documentation
+								Explore Modules
 							</Link>
 						</div>
 					</div>

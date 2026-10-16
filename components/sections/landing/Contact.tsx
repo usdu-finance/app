@@ -95,7 +95,7 @@ export default function Contact() {
 							href="/dashboard"
 							icon={<FontAwesomeIcon icon={faArrowRight} className="w-4 h-4" />}
 						/>
-						<ButtonInput label="View Documentation" variant="outline" size="lg" href="/transparency" />
+						<ButtonInput label="View Governance" variant="outline" size="lg" href="/governance" />
 					</div>
 				</motion.div>
 			</div>

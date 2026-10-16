@@ -1,7 +1,7 @@
 import Hero from '@/components/sections/landing/Hero';
 import ProtocolOverview from '@/components/sections/landing/ProtocolOverview';
 import PrimaryApplications from '@/components/sections/landing/PrimaryApplications';
-import TransparencyRisk from '@/components/sections/landing/TransparencyRisk';
+import Pillars from '@/components/sections/landing/Pillars';
 import UnderstandingProtocol from '@/components/sections/landing/UnderstandingProtocol';
 import Contact from '@/components/sections/landing/Contact';
 import OperationalStructure from '@/components/sections/landing/OperationalStructure';
@@ -22,7 +22,7 @@ export default function HomePage() {
 			<Hero />
 			<ProtocolOverview />
 			<PrimaryApplications />
-			<TransparencyRisk />
+			<Pillars />
 			<UnderstandingProtocol />
 			<OperationalStructure />
 			<LiveMarkets />
