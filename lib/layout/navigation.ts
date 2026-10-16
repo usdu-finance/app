@@ -2,9 +2,9 @@ import { NavigationItem } from '@/components/layout/Layout.types';
 import { faFileContract, faHome, faDroplet, faPercentage, faLayerGroup, faRightLeft } from '@fortawesome/free-solid-svg-icons';
 
 export const homeNavigation: NavigationItem[] = [
-	{ name: 'Maturities', href: '/maturities' },
-	{ name: 'Transparency', href: '/transparency' },
 	{ name: 'Modules', href: '/modules' },
+	{ name: 'Governance', href: '/governance' },
+	{ name: 'Transparency', href: '/transparency' },
 ];
 
 export const dashboardNavigation = [
