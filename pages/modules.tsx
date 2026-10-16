@@ -148,7 +148,7 @@ export default function ModulesPage() {
 			setSearch('');
 			setStatusFilter('all');
 		}
-		setTimeout(() => rowRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+		setTimeout(() => rowRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
 	};
 
 	if (isLoading) {
@@ -251,7 +251,7 @@ export default function ModulesPage() {
 												ref={(el) => {
 													rowRefs.current[key] = el;
 												}}
-												className={open ? 'ring-1 ring-brand rounded-lg' : ''}
+												className={`scroll-mt-24 ${open ? 'ring-1 ring-brand rounded-lg' : ''}`}
 											>
 												<TableRow
 													headers={HEADERS}

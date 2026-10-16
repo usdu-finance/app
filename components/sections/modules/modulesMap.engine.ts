@@ -581,7 +581,7 @@ export class ModulesMapEngine {
 				this.tap = { id: '', t: 0 };
 			} else {
 				this.tap = { id: n?.id ?? '', t: now };
-				this.events.onSelect(n && !n.isHub ? n.id : null);
+				this.events.onSelect(n ? n.id : null);
 			}
 		}
 		if (this.pts.size === 0) p.down = false;

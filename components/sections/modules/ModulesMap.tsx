@@ -37,9 +37,9 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 	const engine = useRef<ModulesMapEngine | null>(null);
 	const cb = useRef({ selected, onSelect });
 	cb.current = { selected, onSelect };
-	const byKeyRef = useRef(new Map<string, Reg[]>());
 	const [tip, setTip] = useState<{ id: string; x: number; y: number } | null>(null);
 
+	const [mapSel, setMapSel] = useState<string | null>(null);
 	const [tab, setTab] = useState<(typeof TABS)[number]>('all');
 
 	const { input, byKey, hubStats } = useMemo(() => {
@@ -148,13 +148,8 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 
 	useEffect(() => {
 		const e = new ModulesMapEngine(canvas.current!, {
-			onSelect: (id) => {
-				// the engine reports the module address; the page selects the first matching per-stablecoin row
-				const regs = id ? [...byKeyRef.current.values()].find((r) => r[0].m.module.toLowerCase() === id) : undefined;
-				const key = regs?.[0].key ?? null;
-				const cur = cb.current.selected;
-				cb.current.onSelect(key && regs?.some((r) => r.key === cur) ? null : key);
-			},
+			// a click only selects on the map (pinned info card); Details performs the table action
+			onSelect: (id) => setMapSel((cur) => (id && id !== cur ? id : null)),
 			onHover: setTip,
 		});
 		engine.current = e;
@@ -178,19 +173,125 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 		[input, hubAgg]
 	);
 	useEffect(() => engine.current?.setData(mapInput), [mapInput]);
-	byKeyRef.current = byKey;
+	// a row expanded in the table shows up as the selected node
 	useEffect(() => {
 		const regs = selected ? byKey.get(selected) : undefined;
-		engine.current?.setSelected(regs ? regs[0].m.module.toLowerCase() : null);
+		if (regs) setMapSel(regs[0].m.module.toLowerCase());
 	}, [selected, byKey]);
+	useEffect(() => engine.current?.setSelected(mapSel), [mapSel]);
 
-	const hubIdx = tip?.id.startsWith('hub:') ? MODULE_CURRENCIES.findIndex((c) => `hub:${c.currency}` === tip.id) : -1;
-	const regs = tip ? [...byKey.values()].find((r) => r[0].m.module.toLowerCase() === tip.id) : undefined;
-	const info = regs?.[0];
-	const f = info ? figures?.get(info.m.module.toLowerCase()) : undefined;
-	const sym = regs && regs.length === 1 ? regs[0].currency : undefined;
-	const fig = figureRows(f, sym);
 	const w = canvas.current?.clientWidth ?? 600;
+	const regsOf = (id: string) => [...byKey.values()].find((r) => r[0].m.module.toLowerCase() === id);
+	const hubOf = (id: string) => MODULE_CURRENCIES.findIndex((c) => `hub:${c.currency}` === id);
+	const closeSel = () => setMapSel(null);
+
+	/** one line summary for the compact mobile bar */
+	const summary = (id: string) => {
+		const hi = hubOf(id);
+		if (hi >= 0) return `${hubAgg[hi].all} modules · ${hubAgg[hi].active} active`;
+		const rs = regsOf(id);
+		if (!rs) return '';
+		const st = (r: Reg) => `${r.label.toLowerCase()}${r.pending && r.status !== 'pending' ? ' + proposal' : ''}`;
+		return rs.length > 1 ? rs.map((r) => `${r.currency}: ${st(r)}`).join(' · ') : `${rs[0].currency} · ${st(rs[0])}`;
+	};
+	const titleOf = (id: string) => {
+		const hi = hubOf(id);
+		if (hi >= 0) return MODULE_CURRENCIES[hi].currency;
+		return regsOf(id)?.[0].m.message || 'Unnamed Module';
+	};
+	const colorOf = (id: string) => {
+		const rs = regsOf(id);
+		return rs ? MODULE_TYPES[getModuleType(rs[0].m.message)].color : '#0c0c0c';
+	};
+
+	/** shared body of the hover tooltip and the pinned card */
+	const renderInfo = (id: string) => {
+		const hi = hubOf(id);
+		const regs = regsOf(id);
+		const info = regs?.[0];
+		if (hi >= 0) {
+			const h = hubAgg[hi];
+			return (
+				<>
+					<div className="font-semibold">{MODULE_CURRENCIES[hi].currency}</div>
+					<div className="text-[11px] text-text-muted">{shortenAddress(MODULE_CURRENCIES[hi].stablecoin as Address)}</div>
+					<div className="text-[11px] text-text-muted">
+						{h.all} modules · {h.active} active
+					</div>
+					{h.rows.length > 0 && (
+						<div className="mt-1 grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 text-[11px]">
+							{h.rows.map((r) => (
+								<React.Fragment key={r.label}>
+									<span className="text-text-muted" title={r.title}>
+										{r.label}
+									</span>
+									<span className={r.negative ? 'text-red-600' : 'text-usdu-black'}>{r.value}</span>
+								</React.Fragment>
+							))}
+						</div>
+					)}
+					<div className="mt-1 text-[10px] text-text-muted">
+						Sum over all its modules incl. inactive
+						{h.shared > 0 && `, excl. ${h.shared} shared module${h.shared > 1 ? 's' : ''}`}
+					</div>
+				</>
+			);
+		}
+		if (!info || !regs) return null;
+		const fig = figureRows(figures?.get(info.m.module.toLowerCase()), regs.length === 1 ? regs[0].currency : undefined);
+		return (
+			<>
+				<div className="font-semibold" style={{ color: colorOf(id) }}>
+					{info.m.message || 'Unnamed Module'}
+				</div>
+				<div className="text-[11px] text-text-muted">{shortenAddress(info.m.module as Address)}</div>
+				{regs.length > 1 ? (
+					<div className="text-[11px] text-text-muted">{summary(id)}</div>
+				) : (
+					<div className="text-[11px] text-text-muted">
+						{info.currency} · {info.label} · expires {expiryText(info.m.expiredAt)}
+					</div>
+				)}
+				{regs.length === 1 && info.pending && info.status !== 'pending' && (
+					<div className="text-[11px] text-yellow-700">
+						Proposal pending: expires {expiryText(info.pending.expiredAt)} · {proposalTiming(info.pending)}
+					</div>
+				)}
+				{fig.length > 0 && (
+					<div className="mt-2 grid grid-cols-[auto_auto_auto_auto] justify-start gap-x-4 gap-y-1 text-[11px]">
+						{fig.map((r) => (
+							<React.Fragment key={r.label}>
+								<span className="text-text-muted" title={r.title}>
+									{r.label}
+								</span>
+								<span className={`whitespace-nowrap ${r.negative ? 'text-red-600' : 'text-usdu-black'}`}>{r.value}</span>
+							</React.Fragment>
+						))}
+						{regs.length > 1 && <span className="col-span-4 text-text-muted">module totals, shared by all stablecoins</span>}
+					</div>
+				)}
+			</>
+		);
+	};
+
+	/** Details actions: one per stablecoin registration of the module */
+	const detailButtons = (id: string, cls: string) => {
+		const rs = regsOf(id);
+		if (!rs) return null;
+		return rs.map((r) => (
+			<button
+				key={r.key}
+				onClick={() => cb.current.onSelect(r.key)}
+				className={`${cls} ${selected === r.key ? 'bg-usdu-orange/20' : ''}`}
+			>
+				{rs.length > 1 ? `Details ${r.currency}` : 'Details'}
+			</button>
+		));
+	};
+	const DETAIL_BTN = 'rounded-lg border border-usdu-orange/50 bg-usdu-orange/10 px-2.5 py-1 text-xs hover:bg-usdu-orange/20';
+
+	const pinned = mapSel && (hubOf(mapSel) >= 0 || regsOf(mapSel)) ? mapSel : null;
+	const hoverId = tip && tip.id !== pinned && (hubOf(tip.id) >= 0 || regsOf(tip.id)) ? tip.id : null;
 
 	return (
 		<div className="relative h-[520px] md:h-[680px] rounded-lg border border-usdu-surface overflow-hidden select-none">
@@ -216,7 +317,7 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 				))}
 			</div>
 
-			<div className="absolute right-3 bottom-3 flex flex-col gap-1.5">
+			<div className={`absolute right-3 flex flex-col gap-1.5 ${pinned ? 'bottom-3 max-md:bottom-[5.25rem]' : 'bottom-3'}`}>
 				<button
 					className={`${BTN} text-xs font-medium`}
 					aria-label="Fit view"
@@ -233,7 +334,11 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 				</button>
 			</div>
 
-			<div className={`${GLASS} absolute left-3 bottom-3 max-w-[calc(100%-5.5rem)] px-3 py-2 text-[11px] text-text-secondary`}>
+			<div
+				className={`${GLASS} absolute left-3 bottom-3 max-w-[calc(100%-5.5rem)] px-3 py-2 text-[11px] text-text-secondary ${
+					pinned ? 'max-md:hidden' : ''
+				}`}
+			>
 				<div className="flex flex-wrap gap-x-3 gap-y-1">
 					{Object.values(MODULE_TYPES).map((t) => (
 						<span key={t.name} className="flex items-center gap-1.5">
@@ -245,77 +350,49 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 				<div className="mt-1 text-text-muted">Pulsing = pending · dashed = expired / revoked · drag, scroll, double-click</div>
 			</div>
 
-			{tip && (hubIdx >= 0 || info) && (
+			{/* hover tooltip: desktop only, never wider than the map */}
+			{hoverId && tip && (
 				<div
-					className={`${GLASS} pointer-events-none absolute z-40 max-w-[340px] px-4 py-3 text-xs`}
+					className={`${GLASS} pointer-events-none absolute z-40 max-md:hidden w-max max-w-[min(340px,calc(100%-8px))] px-4 py-3 text-xs`}
 					style={{ left: Math.max(4, Math.min(tip.x + 16, w - 350)), top: tip.y + 16 }}
 				>
-					{info ? (
-						<>
-							<div className="font-semibold" style={{ color: MODULE_TYPES[getModuleType(info.m.message)].color }}>
-								{info.m.message || 'Unnamed Module'}
-							</div>
-							<div className="text-[11px] text-text-muted">{shortenAddress(info.m.module as Address)}</div>
-							{regs!.length > 1 ? (
-								<div className="text-[11px] text-text-muted">
-									{regs!.map((r) => `${r.currency}: ${r.label.toLowerCase()}${r.pending && r.status !== 'pending' ? ' + proposal' : ''}`).join(' · ')}
-								</div>
-							) : (
-								<div className="text-[11px] text-text-muted">
-									{info.currency} · {info.label} · expires {expiryText(info.m.expiredAt)}
-								</div>
-							)}
-							{regs!.length === 1 && info.pending && info.status !== 'pending' && (
-								<div className="text-[11px] text-yellow-700">
-									Proposal pending: expires {expiryText(info.pending.expiredAt)} · {proposalTiming(info.pending)}
-								</div>
-							)}
-							{fig.length > 0 && (
-								<div className="mt-2 grid grid-cols-[auto_auto_auto_auto] justify-start gap-x-4 gap-y-1 text-[11px]">
-									{fig.map((r) => (
-										<React.Fragment key={r.label}>
-											<span className="text-text-muted" title={r.title}>
-												{r.label}
-											</span>
-											<span className={`whitespace-nowrap ${r.negative ? 'text-red-600' : 'text-usdu-black'}`}>
-												{r.value}
-											</span>
-										</React.Fragment>
-									))}
-									{regs!.length > 1 && (
-										<span className="col-span-4 text-text-muted">module totals, shared by all stablecoins</span>
-									)}
-								</div>
-							)}
-						</>
-					) : (
-						<>
-							<div className="font-semibold">{MODULE_CURRENCIES[hubIdx].currency}</div>
-							<div className="text-[11px] text-text-muted">
-								{shortenAddress(MODULE_CURRENCIES[hubIdx].stablecoin as Address)}
-							</div>
-							<div className="text-[11px] text-text-muted">
-								{hubAgg[hubIdx].all} modules · {hubAgg[hubIdx].active} active
-							</div>
-							{hubAgg[hubIdx].rows.length > 0 && (
-								<div className="mt-1 grid grid-cols-[auto_1fr_auto_1fr] gap-x-2 text-[11px]">
-									{hubAgg[hubIdx].rows.map((r) => (
-										<React.Fragment key={r.label}>
-											<span className="text-text-muted" title={r.title}>
-												{r.label}
-											</span>
-											<span className={r.negative ? 'text-red-600' : 'text-usdu-black'}>{r.value}</span>
-										</React.Fragment>
-									))}
-								</div>
-							)}
-							<div className="mt-1 text-[10px] text-text-muted">
-								Sum over all its modules incl. inactive
-								{hubAgg[hubIdx].shared > 0 &&
-									`, excl. ${hubAgg[hubIdx].shared} shared module${hubAgg[hubIdx].shared > 1 ? 's' : ''}`}
-							</div>
-						</>
-					)}
+					{renderInfo(hoverId)}
+				</div>
+			)}
+
+			{/* pinned card (desktop): stays for the selected node, Details performs the table action */}
+			{pinned && (
+				<div className={`${GLASS} absolute left-3 top-12 z-30 max-md:hidden w-max max-w-[340px] px-4 py-3 text-xs`}>
+					<button
+						aria-label="Deselect"
+						onClick={closeSel}
+						className="absolute right-2.5 top-2 text-text-muted hover:text-usdu-black"
+					>
+						✕
+					</button>
+					<div className="pr-5">{renderInfo(pinned)}</div>
+					{regsOf(pinned) && <div className="mt-2 flex flex-wrap gap-1.5">{detailButtons(pinned, DETAIL_BTN)}</div>}
+				</div>
+			)}
+
+			{/* compact bottom bar (phones), like GodEye's MobileDetailBar */}
+			{pinned && (
+				<div className={`${GLASS} absolute bottom-3 left-3 right-3 z-30 flex items-center gap-2.5 px-3.5 py-2.5 md:hidden`}>
+					<span className="inline-block h-[9px] w-[9px] shrink-0 rounded-full" style={{ background: colorOf(pinned) }} />
+					<span className="min-w-0 flex-1">
+						<span className="block truncate text-sm font-semibold">{titleOf(pinned)}</span>
+						<span className="block truncate text-[11px] text-text-muted">
+							{hubOf(pinned) >= 0
+								? shortenAddress(MODULE_CURRENCIES[hubOf(pinned)].stablecoin as Address)
+								: shortenAddress(regsOf(pinned)![0].m.module as Address)}
+							{' · '}
+							{summary(pinned)}
+						</span>
+					</span>
+					{regsOf(pinned) && <span className="flex shrink-0 gap-1">{detailButtons(pinned, `${DETAIL_BTN} whitespace-nowrap`)}</span>}
+					<button aria-label="Deselect" onClick={closeSel} className="px-1 text-text-muted">
+						✕
+					</button>
 				</div>
 			)}
 		</div>
