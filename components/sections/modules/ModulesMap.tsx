@@ -324,7 +324,7 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 					title="Fit view"
 					onClick={() => engine.current?.fit(true)}
 				>
-					{'[\u00a0]'}
+					Fit
 				</button>
 				<button className={BTN} aria-label="Zoom in" onClick={() => engine.current?.zoomBy(1.5)}>
 					+
