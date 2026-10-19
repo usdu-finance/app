@@ -142,7 +142,10 @@ export default function GodEyeView({ active = true, onTimeline }: Props) {
 		setFitKey((k) => k + 1);
 	}, []);
 
+	// resetting the canvas without a new graph arriving would leave it empty, so every action that
+	// resets the context first checks that it really changes what is queried
 	const onToken = (k: string) => {
+		if (k === token) return;
 		setToken(k);
 		setFocus(null);
 		setSelected(null);
@@ -150,6 +153,7 @@ export default function GodEyeView({ active = true, onTimeline }: Props) {
 		resetContext();
 	};
 	const onMode = (m: GodEyeMode) => {
+		if (m === mode) return;
 		setMode(m);
 		setFocus(null);
 		setHidden(new Set());
@@ -158,15 +162,22 @@ export default function GodEyeView({ active = true, onTimeline }: Props) {
 	};
 	const doFocus = useCallback(
 		(address: string) => {
+			setSelected(address);
+			// already focused: keep the graph, just bring the node back into view
+			if (address === focus && mode === 'entities') {
+				setHidden(new Set());
+				map.current?.flyTo(address);
+				return;
+			}
 			setFocus(address);
 			setMode('entities');
 			setHidden(new Set());
-			setSelected(address);
 			resetContext();
 		},
-		[resetContext]
+		[resetContext, focus, mode]
 	);
 	const exitFocus = () => {
+		if (!focus) return;
 		setFocus(null);
 		resetContext();
 	};
@@ -177,10 +188,11 @@ export default function GodEyeView({ active = true, onTimeline }: Props) {
 		} else doFocus(address);
 	};
 	const dive = (kind: GodEyeKind) => {
+		const requery = mode !== 'entities' || !!focus;
 		setMode('entities');
 		setFocus(null);
 		setHidden(new Set(KIND_ORDER.filter((k) => k !== kind && k !== 'mint' && k !== 'others')));
-		resetContext();
+		if (requery) resetContext();
 	};
 	const toggleKind = (k: GodEyeKind) =>
 		setHidden((h) => {
