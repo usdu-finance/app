@@ -39,7 +39,20 @@ export type GodEyeNode = {
 	last: number;
 };
 
-export type GodEyeEdge = { s: string; t: string; amount: number; count: number; first: number; last: number; via?: boolean };
+export type GodEyeCounterpartFlow = { symbol: string; amount: number; count: number };
+export type GodEyeEdge = {
+	s: string;
+	t: string;
+	amount: number;
+	count: number;
+	first: number;
+	last: number;
+	via?: boolean;
+	cp?: GodEyeCounterpartFlow[];
+};
+
+// paid = backing coin that went in to mint the stablecoin (USDC -> USDU), received = coin that came out when burning it
+export type GodEyeCounterpart = { symbol: string; paid: number; received: number; count: number; last: number };
 
 export type GodEyeKindStats = { kind: GodEyeKind; addresses: number; balance: number; inflow: number; outflow: number };
 
@@ -106,6 +119,7 @@ export type GodEyeAddress = {
 	sources: GodEyePeer[];
 	destinations: GodEyePeer[];
 	origin: GodEyeOrigin[];
+	counterparts: GodEyeCounterpart[];
 	recent: { txHash: string; t: number; from: string; to: string; amount: number }[];
 };
 

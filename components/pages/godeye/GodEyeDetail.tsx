@@ -165,6 +165,33 @@ export default function GodEyeDetail({ token, address, fallbackLabel, onClose, o
 							<HistoryChart history={a.history} color={kcol} />
 						</div>
 
+						{a.counterparts.length > 0 && (
+							<div>
+								<SectionTitle right="swap modules">Counterpart currency</SectionTitle>
+								{a.counterparts.map((c) => (
+									<div key={c.symbol} className="flex items-center justify-between gap-2 py-1 text-[13px]">
+										<span>
+											<span className="font-semibold">{c.symbol}</span>
+											<span className="ml-1.5 text-[11px] text-text-muted">{c.count.toLocaleString()} swaps</span>
+										</span>
+										<span className="text-right text-[11px] tabular-nums">
+											{c.paid > 0 && (
+												<span className="text-green-600">
+													{fmt(c.paid)} {c.symbol} → {a.token.symbol}
+												</span>
+											)}
+											{c.paid > 0 && c.received > 0 && <br />}
+											{c.received > 0 && (
+												<span className="text-rose-600">
+													{fmt(c.received)} {c.symbol} ← {a.token.symbol}
+												</span>
+											)}
+										</span>
+									</div>
+								))}
+							</div>
+						)}
+
 						<div>
 							<SectionTitle right="2 hops">Where the funds came from</SectionTitle>
 							{a.origin.length === 0 && <div className="text-xs text-text-muted">No inbound transfers.</div>}

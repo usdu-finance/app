@@ -34,7 +34,7 @@ type SNode = {
 	sr: number;
 };
 
-type SEdge = { a: SNode; b: SNode; amount: number; via: boolean; norm: number; phase: number; speed: number };
+type SEdge = { a: SNode; b: SNode; amount: number; via: boolean; cp: string; norm: number; phase: number; speed: number };
 
 const ANCHORS: GodEyeKind[] = ['wallet', 'position', 'minter', 'savings', 'equity', 'bridge', 'dex', 'contract'];
 
@@ -165,7 +165,14 @@ export class GodEyeEngine {
 		return !!n && !n.dead;
 	}
 
-	setGraph(g: GodEyeGraph, rank: GodEyeRank) {
+	setGraph(raw: GodEyeGraph, rank: GodEyeRank) {
+		// the indexer may still send backing-currency nodes, which have no kind meta here
+		const known = new Set(raw.nodes.filter((n) => n.kind in KIND_META).map((n) => n.id));
+		const g: GodEyeGraph = {
+			...raw,
+			nodes: raw.nodes.filter((n) => known.has(n.id)),
+			edges: raw.edges.filter((e) => known.has(e.s) && known.has(e.t)),
+		};
 		this.mode = g.mode;
 		this.rank = rank;
 		const metricOf = (n: GodEyeNode) => {
@@ -252,6 +259,7 @@ export class GodEyeEngine {
 				b,
 				amount: e.amount,
 				via: !!e.via,
+				cp: (e.cp ?? []).map((f) => `${f.symbol} ${fmt(f.amount)}`).join(' · '),
 				norm: Math.log1p(e.amount) / Math.log1p(maxEdge),
 				phase: Math.random(),
 				speed: 0.7 + Math.random() * 0.6,
@@ -539,6 +547,27 @@ export class GodEyeEngine {
 			ctx.moveTo(a.sx, a.sy);
 			ctx.quadraticCurveTo(c.cx, c.cy, b.sx, b.sy);
 			ctx.stroke();
+			if (hl && e.cp && c.len > 60) {
+				// backing coin behind a mint/burn through a module, e.g. "USDC 1.2M"
+				const mx = 0.25 * a.sx + 0.5 * c.cx + 0.25 * b.sx;
+				const my = 0.25 * a.sy + 0.5 * c.cy + 0.25 * b.sy;
+				ctx.save();
+				ctx.font = '600 11px sans-serif';
+				ctx.textAlign = 'center';
+				ctx.textBaseline = 'middle';
+				const w = ctx.measureText(e.cp).width + 12;
+				const al = Math.min(a.alpha, b.alpha);
+				ctx.fillStyle = rgba('#ffffff', 0.92 * al);
+				ctx.strokeStyle = rgba('#d97706', 0.8 * al);
+				ctx.lineWidth = 1;
+				ctx.beginPath();
+				ctx.roundRect(mx - w / 2, my - 9, w, 18, 9);
+				ctx.fill();
+				ctx.stroke();
+				ctx.fillStyle = rgba('#b45309', al);
+				ctx.fillText(e.cp, mx, my + 0.5);
+				ctx.restore();
+			}
 			if (!dim && !(heavy && !hl && e.norm < 0.5) && c.len > 24) {
 				const cnt = hl ? 4 : 1 + Math.floor(e.norm * 3);
 				const pr = (0.8 + 1.6 * e.norm) * clamp(cam.zoom * 1.5, 0.7, 1.8) * (hl ? 1.3 : 1);
