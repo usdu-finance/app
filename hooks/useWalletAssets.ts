@@ -76,7 +76,7 @@ export function useWalletAssets(owner: `0x${string}` | undefined): WalletAssetsD
 		const bridged = new Map<string, AssetDef>();
 		for (const m of modules) {
 			const group = CURRENCY_GROUP[m.currency];
-			if (!group || bridged.has(m.coinAddress.toLowerCase())) continue;
+			if (!group || !m.coinAddress || bridged.has(m.coinAddress.toLowerCase())) continue;
 			bridged.set(
 				m.coinAddress.toLowerCase(),
 				token(m.coinSymbol, m.coinSymbol, undefined, m.coinAddress, { decimals: m.coinDecimals, group })
