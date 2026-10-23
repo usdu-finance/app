@@ -22,9 +22,9 @@ export function tvlSeries(points: ModuleSnapshot[]): SeriesPoint[] {
 	return points.map((p) => ({ t: p.day, v: p.totalMinted }));
 }
 
-/** Revenue accrued per day, from the change of the cumulative total. Fees and strategy yield are both included. */
+/** Cumulative revenue over time. Fees and strategy yield are both included. */
 export function revenueSeries(points: ModuleSnapshot[]): SeriesPoint[] {
-	return points.slice(1).map((p, i) => ({ t: p.day, v: Math.max(p.totalRevenue - points[i]!.totalRevenue, 0) }));
+	return points.map((p) => ({ t: p.day, v: p.totalRevenue }));
 }
 
 /** Swap volume (in + out) per day. Days without swaps are zero; the days follow the snapshot days. */

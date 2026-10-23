@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRewardStreams } from '@/hooks/useRewardStreams';
 import { useStreamerVaultPosition } from '@/hooks/useStreamerVaultPosition';
 import { useStreamerVault } from '@/hooks/useStreamerVault';
-import { aprSeries, yieldSeries } from '@/lib/vault-series';
+import { aprSeries } from '@/lib/vault-series';
 import { useStreamerVaultCostBasis } from '@/hooks/useStreamerVaultCostBasis';
 import { useStreamerVaultDaily } from '@/hooks/useStreamerVaultDaily';
 import { useStreamerVaultHistory, type VaultHistoryEntry } from '@/hooks/useStreamerVaultHistory';
@@ -30,7 +30,7 @@ import { SEO } from '@/lib/constants';
 
 const TABS = ['Stake', 'Unstake'];
 const CHART_DAYS = 365;
-const CHART_TABS = ['TVL', 'Yield', 'APR'];
+const CHART_TABS = ['TVL', 'Price', 'APR'];
 const STEPS = [
 	{
 		icon: <FontAwesomeIcon icon={faArrowRightToBracket} className="w-3 h-3 text-usdu-card" />,
@@ -161,27 +161,30 @@ function StrategyDetailPageContent() {
 	const dailyPoints = [...logs, { day: now, tvl: stream.staked, price: stream.price, supply: stream.supply }];
 
 	const tvlPoints = dailyPoints.map((p) => ({ t: p.day, v: p.tvl }));
-	const yieldPoints = yieldSeries(dailyPoints);
+	const pricePoints = dailyPoints.map((p) => ({ t: p.day, v: p.price }));
 	const aprPoints = aprSeries(dailyPoints);
 	// the charts show the last year, the headline figures below keep their own windows
 	const inWindow = (p: { t: number }) => p.t >= now - CHART_DAYS * 86_400;
 
 	const lastApr = aprPoints[aprPoints.length - 1];
-	const recentYield = yieldPoints.slice(-7);
-	const avgYield = recentYield.length > 0 ? recentYield.reduce((sum, p) => sum + p.v, 0) / recentYield.length : 0;
 
 	const fmtPercent = (v: number) => `${v.toFixed(2)}%`;
 	const chart = {
 		TVL: { points: tvlPoints.filter(inWindow), variant: 'area' as const, headline: fmtAmount(stream.staked), format: fmtAmount },
-		Yield: {
-			points: yieldPoints.filter(inWindow),
-			variant: 'bars' as const,
-			headline: `${fmtAmount(avgYield)} / day`,
-			format: (v: number) => `${formatCompactNumber(v, 2, '')} ${currency}`,
+		Price: {
+			points: pricePoints.filter(inWindow),
+			variant: 'line' as const,
+			headline: `${stream.price.toFixed(4)} ${currency}`,
+			format: (v: number) => `${v.toFixed(4)} ${currency}`,
 		},
-		APR: { points: aprPoints.filter(inWindow), variant: 'area' as const, headline: lastApr ? fmtPercent(lastApr.v) : '—', format: fmtPercent },
+		APR: {
+			points: aprPoints.filter(inWindow),
+			variant: 'area' as const,
+			headline: lastApr ? fmtPercent(lastApr.v) : '—',
+			format: fmtPercent,
+		},
 	}[chartTab]!;
-	const chartSubtitle = { TVL: 'Total value locked', Yield: 'Average rewards per day, last 7 days', APR: 'Realized, 7-day rolling' }[
+	const chartSubtitle = { TVL: 'Total value locked', Price: `${stream.symbol} price in ${currency}`, APR: 'Realized, 7-day rolling' }[
 		chartTab
 	];
 	const realizedDays = Math.min(Math.floor((now - (dailyPoints[0]?.day ?? now)) / 86_400), 7);
@@ -243,7 +246,7 @@ function StrategyDetailPageContent() {
 			<HeroSteps steps={STEPS} />
 
 			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-				{/* TVL / Yield / APR over time */}
+				{/* TVL / Price / APR over time */}
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface space-y-4">
 					<div className="flex items-start justify-between gap-4">
 						<div>
@@ -253,12 +256,18 @@ function StrategyDetailPageContent() {
 						<p className="text-2xl font-bold text-text-primary text-right">{chart.headline}</p>
 					</div>
 
-					{chart.points.length > 1 || (chart.variant === 'bars' && chart.points.length > 0) ? (
+					{chart.points.length > 1 ? (
 						<TimeSeriesChart
 							points={chart.points}
 							variant={chart.variant}
 							formatValue={chart.format}
-							formatTick={chartTab === 'APR' ? (v) => `${v.toFixed(1)}%` : (v) => formatCompactNumber(v, 1, '')}
+							formatTick={
+								chartTab === 'APR'
+									? (v) => `${v.toFixed(1)}%`
+									: chartTab === 'Price'
+										? (v) => v.toFixed(4)
+										: (v) => formatCompactNumber(v, 1, '')
+							}
 						/>
 					) : (
 						<p className="py-12 text-center text-text-secondary">Not enough data yet.</p>

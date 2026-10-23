@@ -277,9 +277,9 @@ function SwapDetailPageContent() {
 		},
 		Revenue: {
 			points: revenueSeries(dailyPoints),
-			variant: 'bars' as const,
+			variant: 'area' as const,
 			headline: fmtAmount(Number(formatUnits(selectedModule.totalRevenue, 18))),
-			subtitle: 'Lifetime revenue, per day: swap fees and strategy yield',
+			subtitle: 'Accumulated revenue: swap fees and strategy yield',
 		},
 		Volume: {
 			points: volumeSeries(dailyPoints, swapDays),

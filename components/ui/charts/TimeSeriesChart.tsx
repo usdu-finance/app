@@ -7,7 +7,7 @@ export interface TimeSeriesPoint {
 
 interface Props {
 	points: TimeSeriesPoint[];
-	variant?: 'area' | 'bars';
+	variant?: 'area' | 'bars' | 'line'; // line is an area with the y-axis zoomed to the data instead of growing from zero
 	formatValue: (v: number) => string;
 	formatTick?: (v: number) => string; // compact y-axis labels, defaults to formatValue
 	height?: number;
@@ -54,7 +54,12 @@ export default function TimeSeriesChart({ points, variant = 'area', formatValue,
 
 	const tMin = points[0]?.t ?? 0;
 	const tMax = points[points.length - 1]?.t ?? 1;
-	const yMax = niceMax(Math.max(...points.map((p) => p.v), 0));
+	const isLine = variant === 'line';
+	const dataMax = Math.max(...points.map((p) => p.v), 0);
+	const dataMin = points.length > 0 ? Math.min(...points.map((p) => p.v)) : 0;
+	const pad = (dataMax - dataMin) * 0.15 || dataMax * 0.005 || 1;
+	const yMin = isLine ? dataMin - pad : 0;
+	const yMax = isLine ? dataMax + pad : niceMax(dataMax);
 
 	// columns sit in equal slots by index, the area is placed by time
 	const slot = points.length > 0 ? innerW / points.length : 0;
@@ -62,7 +67,7 @@ export default function TimeSeriesChart({ points, variant = 'area', formatValue,
 		isBars
 			? MARGIN.left + slot * (i + 0.5)
 			: MARGIN.left + (tMax === tMin ? innerW / 2 : (((points[i]?.t ?? tMin) - tMin) / (tMax - tMin)) * innerW);
-	const y = (v: number) => MARGIN.top + innerH - (v / yMax) * innerH;
+	const y = (v: number) => MARGIN.top + innerH - ((v - yMin) / (yMax - yMin)) * innerH;
 
 	const onMove = (e: React.PointerEvent<SVGSVGElement>) => {
 		const px = e.clientX - e.currentTarget.getBoundingClientRect().left;
@@ -85,7 +90,7 @@ export default function TimeSeriesChart({ points, variant = 'area', formatValue,
 
 	const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(i)},${y(p.v)}`).join(' ');
 	const lastIndex = points.length - 1;
-	const area = lastIndex >= 0 ? `${line} L${x(lastIndex)},${y(0)} L${x(0)},${y(0)} Z` : '';
+	const area = lastIndex >= 0 ? `${line} L${x(lastIndex)},${y(yMin)} L${x(0)},${y(yMin)} Z` : '';
 
 	const active = hover !== null ? points[hover] : undefined;
 	const tooltipLeft = hover !== null ? Math.min(Math.max(x(hover), 70), Math.max(width - 70, 70)) : 0;
@@ -97,13 +102,13 @@ export default function TimeSeriesChart({ points, variant = 'area', formatValue,
 					width={width}
 					height={height}
 					role="img"
-					aria-label={isBars ? 'Column chart' : 'Area chart'}
+					aria-label={isBars ? 'Column chart' : isLine ? 'Line chart' : 'Area chart'}
 					onPointerMove={onMove}
 					onPointerLeave={() => setHover(null)}
 				>
 					{/* grid + y axis */}
 					{Array.from({ length: Y_TICKS + 1 }, (_, i) => {
-						const v = (yMax / Y_TICKS) * i;
+						const v = yMin + ((yMax - yMin) / Y_TICKS) * i;
 						return (
 							<g key={i}>
 								<line
@@ -178,7 +183,7 @@ export default function TimeSeriesChart({ points, variant = 'area', formatValue,
 										x1={x(hover)}
 										x2={x(hover)}
 										y1={MARGIN.top}
-										y2={y(0)}
+										y2={y(yMin)}
 										className="stroke-text-secondary"
 										strokeWidth={1}
 									/>
