@@ -29,6 +29,7 @@ import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
 
 const TABS = ['Stake', 'Unstake'];
+const CHART_DAYS = 365;
 const CHART_TABS = ['TVL', 'Yield', 'APR'];
 const STEPS = [
 	{
@@ -162,6 +163,8 @@ function StrategyDetailPageContent() {
 	const tvlPoints = dailyPoints.map((p) => ({ t: p.day, v: p.tvl }));
 	const yieldPoints = yieldSeries(dailyPoints);
 	const aprPoints = aprSeries(dailyPoints);
+	// the charts show the last year, the headline figures below keep their own windows
+	const inWindow = (p: { t: number }) => p.t >= now - CHART_DAYS * 86_400;
 
 	const lastApr = aprPoints[aprPoints.length - 1];
 	const recentYield = yieldPoints.slice(-7);
@@ -169,14 +172,14 @@ function StrategyDetailPageContent() {
 
 	const fmtPercent = (v: number) => `${v.toFixed(2)}%`;
 	const chart = {
-		TVL: { points: tvlPoints, variant: 'area' as const, headline: fmtAmount(stream.staked), format: fmtAmount },
+		TVL: { points: tvlPoints.filter(inWindow), variant: 'area' as const, headline: fmtAmount(stream.staked), format: fmtAmount },
 		Yield: {
-			points: yieldPoints,
+			points: yieldPoints.filter(inWindow),
 			variant: 'bars' as const,
 			headline: `${fmtAmount(avgYield)} / day`,
 			format: (v: number) => `${formatCompactNumber(v, 2, '')} ${currency}`,
 		},
-		APR: { points: aprPoints, variant: 'area' as const, headline: lastApr ? fmtPercent(lastApr.v) : '—', format: fmtPercent },
+		APR: { points: aprPoints.filter(inWindow), variant: 'area' as const, headline: lastApr ? fmtPercent(lastApr.v) : '—', format: fmtPercent },
 	}[chartTab]!;
 	const chartSubtitle = { TVL: 'Total value locked', Yield: 'Average rewards per day, last 7 days', APR: 'Realized, 7-day rolling' }[
 		chartTab
