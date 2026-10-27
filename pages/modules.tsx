@@ -15,7 +15,7 @@ import {
 	getModuleCurrency,
 	getModuleType,
 	moduleKey,
-	figureRows,
+	moduleFigureRows,
 	MODULE_TYPES,
 	STATUS_ORDER,
 	type ModuleStatusKey,
@@ -342,18 +342,28 @@ export default function ModulesPage() {
 														const shared =
 															inTab.filter((x) => x.module.toLowerCase() === m.module.toLowerCase()).length >
 															1;
-														const items = figureRows(f, shared ? undefined : sym);
+														const items = moduleFigureRows(f, shared ? undefined : sym);
 														return (
-															<div className="flex flex-wrap gap-x-8 gap-y-2">
-																{items.map((r) => (
-																	<div key={r.label} title={r.title}>
-																		<p className="text-text-secondary">{r.label}</p>
-																		<p className={r.negative ? 'text-red-600' : 'text-usdu-black'}>
-																			{r.value}
-																		</p>
+															<div className="flex flex-col">
+																{[...new Set(items.map((r) => r.currency))].map((cur) => (
+																	<div
+																		key={cur ?? 'all'}
+																		className="grid grid-cols-2 gap-x-8 gap-y-2 border-t border-usdu-surface py-2 first:border-t-0 first:pt-0 sm:w-fit"
+																	>
+																		{cur && <p className="col-span-2 font-medium text-usdu-black">{cur}</p>}
+																		{items
+																			.filter((r) => r.currency === cur)
+																			.map((r) => (
+																				<div key={r.label} title={r.title}>
+																					<p className="text-text-secondary">{r.label}</p>
+																					<p className={r.negative ? 'text-red-600' : 'text-usdu-black'}>
+																						{r.value}
+																					</p>
+																				</div>
+																			))}
 																	</div>
 																))}
-																{shared && (
+																{shared && !f?.byCurrency && (
 																	<p className="self-end text-xs text-text-secondary">
 																		Module totals, shared by all its stablecoins
 																	</p>
