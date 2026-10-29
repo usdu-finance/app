@@ -6,12 +6,15 @@ import { mainnet } from 'viem/chains';
 import { APP_REFETCH } from '@/lib/constants';
 import { USDU_CURVE_ADAPTER_V1_1_USDC_2 } from '@/lib/whitelisted-tokens';
 import { usePoolData } from './usePoolData';
+import { useCurveSeedAdapter, type SeedAdapterLeg } from './useCurveSeedAdapter';
 
 /** Raw on-chain figures of a module (18 decimals). Missing when the module does not implement or reverts the call. */
 export interface ModuleFigures {
 	debt?: bigint; // totalMinted
 	funds?: bigint; // totalAssets
 	revenue?: bigint; // totalRevenue
+	/** modules registered on several stablecoins that report per stablecoin (CurveSeedAdapterV1), keyed by symbol */
+	byCurrency?: Record<string, SeedAdapterLeg>;
 }
 
 const FNS = ['totalMinted', 'totalAssets', 'totalRevenue'] as const;
@@ -23,6 +26,7 @@ const FNS = ['totalMinted', 'totalAssets', 'totalRevenue'] as const;
  */
 export function useModuleFigures(addresses: string[]): Map<string, ModuleFigures> {
 	const { virtualPrice, adapterLPBalance } = usePoolData();
+	const seedAdapter = useCurveSeedAdapter();
 	const unique = useMemo(() => [...new Set(addresses.map((a) => a.toLowerCase()))].sort(), [addresses]);
 
 	const contracts = useMemo(
@@ -51,8 +55,10 @@ export function useModuleFigures(addresses: string[]): Map<string, ModuleFigures
 			// same override as useModulesFinancials: the Curve adapter holds LP tokens
 			if (a === USDU_CURVE_ADAPTER_V1_1_USDC_2.toLowerCase() && virtualPrice && adapterLPBalance)
 				f.funds = (virtualPrice * adapterLPBalance) / parseUnits('1', 18);
+			// the seed adapter is no IModuleRevenueV1: debt and funds come from its debts mapping and LP holdings
+			if (seedAdapter && a === seedAdapter.address.toLowerCase()) f.byCurrency = seedAdapter.byCurrency;
 			out.set(a, f);
 		});
 		return out;
-	}, [data, unique, virtualPrice, adapterLPBalance]);
+	}, [data, unique, virtualPrice, adapterLPBalance, seedAdapter]);
 }

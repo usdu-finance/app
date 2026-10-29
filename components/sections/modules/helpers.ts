@@ -200,6 +200,8 @@ export function formatFigure(raw: bigint | undefined, symbol?: string): string |
 
 export interface FigureRow {
 	label: 'Debt' | 'Funds' | 'Claimable' | 'Revenue';
+	/** set when a shared module reports per stablecoin */
+	currency?: string;
 	value: string;
 	/** negative claimable = deficit, rendered red */
 	negative?: boolean;
@@ -222,4 +224,13 @@ export function figureRows(f: { debt?: bigint; funds?: bigint; revenue?: bigint 
 	}
 	add('Revenue', formatFigure(f.revenue, symbol), { title: 'Realized: totalRevenue' });
 	return rows;
+}
+
+/** figureRows, but a module reporting per stablecoin (CurveSeedAdapterV1) yields the rows of every stablecoin, each valued in its own symbol. */
+export function moduleFigureRows(
+	f: { debt?: bigint; funds?: bigint; revenue?: bigint; byCurrency?: Record<string, { debt: bigint; funds: bigint }> } | undefined,
+	symbol?: string
+): FigureRow[] {
+	if (!f?.byCurrency) return figureRows(f, symbol);
+	return Object.entries(f.byCurrency).flatMap(([currency, leg]) => figureRows(leg, currency).map((r) => ({ ...r, currency })));
 }

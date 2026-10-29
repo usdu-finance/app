@@ -30,7 +30,7 @@ import { SEO } from '@/lib/constants';
 
 const TABS = ['Stake', 'Unstake'];
 const CHART_DAYS = 365;
-const CHART_TABS = ['TVL', 'Price', 'APR'];
+const CHART_TABS = ['APR', 'Price', 'TVL'];
 const STEPS = [
 	{
 		icon: <FontAwesomeIcon icon={faArrowRightToBracket} className="w-3 h-3 text-usdu-card" />,
@@ -156,9 +156,11 @@ function StrategyDetailPageContent() {
 	const earningsRaw = position.stakedRaw + costBasis.withdrawn - costBasis.deposited;
 	const fmtAmount = (v: number) => `${formatCompactNumber(v, 1, '')} ${currency}`;
 
-	// daily logs from the indexer plus the live on-chain value as the latest point
+	// daily logs from the indexer plus the live on-chain value as the latest point. A snapshot already taken
+	// today is replaced by the live value, so today shows once and not as a step below the live figure.
 	const now = Math.floor(Date.now() / 1000);
-	const dailyPoints = [...logs, { day: now, tvl: stream.staked, price: stream.price, supply: stream.supply }];
+	const today = Math.floor(now / 86_400) * 86_400;
+	const dailyPoints = [...logs.filter((l) => l.day < today), { day: today, tvl: stream.staked, price: stream.price, supply: stream.supply }];
 
 	const tvlPoints = dailyPoints.map((p) => ({ t: p.day, v: p.tvl }));
 	const pricePoints = dailyPoints.map((p) => ({ t: p.day, v: p.price }));

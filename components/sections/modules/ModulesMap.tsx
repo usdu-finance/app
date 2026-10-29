@@ -7,6 +7,7 @@ import type { ModuleFigures } from '@/hooks/useModuleFigures';
 import { expiryText, proposalTiming, matchesStatus, type PendingProposal } from './helpers';
 import {
 	figureRows,
+	moduleFigureRows,
 	MODULE_CURRENCIES,
 	MODULE_TYPES,
 	getModuleCurrency,
@@ -61,18 +62,21 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 		// because their figures belong to the contract and would be counted once per stablecoin
 		const hubStats = MODULE_CURRENCIES.map((c) => {
 			const own: Reg[] = [];
+			const sharedIds: string[] = [];
 			let shared = 0;
-			groups.forEach((regs) => {
+			groups.forEach((regs, id) => {
 				const hit = regs.find((r) => r.currency === c.currency);
 				if (!hit) return;
-				if (regs.length > 1) shared++;
-				else own.push(hit);
+				if (regs.length > 1) {
+					shared++;
+					sharedIds.push(id);
+				} else own.push(hit);
 			});
 			const all = own.length + shared;
 			const active = [...groups.values()].filter((regs) =>
 				regs.some((r) => r.currency === c.currency && !isInactive(r.status))
 			).length;
-			return { currency: c.currency, own, shared, all, active };
+			return { currency: c.currency, own, shared, sharedIds, all, active };
 		});
 		const order: ModuleType[] = ['curve', 'morpho', 'bridge', 'streamer', 'other'];
 		groups.forEach((regs, id) => {
@@ -122,6 +126,17 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 					revenue = 0n,
 					nBoth = 0,
 					nRev = 0;
+				// shared modules count only if they report per stablecoin (CurveSeedAdapterV1), then just their leg in this one
+				let sharedLeft = h.shared;
+				let bothFromShared = 0;
+				h.sharedIds.forEach((id) => {
+					const leg = figures?.get(id)?.byCurrency?.[h.currency];
+					if (!leg) return;
+					debt += leg.debt;
+					funds += leg.funds;
+					bothFromShared++;
+					sharedLeft--;
+				});
 				h.own.forEach((r) => {
 					const f = figures?.get(r.m.module.toLowerCase());
 					if (!f) return;
@@ -135,8 +150,10 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 						nRev++;
 					}
 				});
+				nBoth += bothFromShared;
 				return {
 					...h,
+					sharedLeft,
 					rows:
 						nBoth + nRev
 							? figureRows(nBoth ? { debt, funds, revenue: nRev ? revenue : undefined } : { revenue }, h.currency)
@@ -232,13 +249,13 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 					)}
 					<div className="mt-1 text-[10px] text-text-muted">
 						Sum over all its modules incl. inactive
-						{h.shared > 0 && `, excl. ${h.shared} shared module${h.shared > 1 ? 's' : ''}`}
+						{h.sharedLeft > 0 && `, excl. ${h.sharedLeft} shared module${h.sharedLeft > 1 ? 's' : ''}`}
 					</div>
 				</>
 			);
 		}
 		if (!info || !regs) return null;
-		const fig = figureRows(figures?.get(info.m.module.toLowerCase()), regs.length === 1 ? regs[0].currency : undefined);
+		const fig = moduleFigureRows(figures?.get(info.m.module.toLowerCase()), regs.length === 1 ? regs[0].currency : undefined);
 		return (
 			<>
 				<div className="font-semibold" style={{ color: colorOf(id) }}>
@@ -258,16 +275,30 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 					</div>
 				)}
 				{fig.length > 0 && (
-					<div className="mt-2 grid grid-cols-[auto_auto_auto_auto] justify-start gap-x-4 gap-y-1 text-[11px]">
-						{fig.map((r) => (
-							<React.Fragment key={r.label}>
-								<span className="text-text-muted" title={r.title}>
-									{r.label}
-								</span>
-								<span className={`whitespace-nowrap ${r.negative ? 'text-red-600' : 'text-usdu-black'}`}>{r.value}</span>
-							</React.Fragment>
+					<div className="mt-2 flex flex-col text-[11px]">
+						{[...new Set(fig.map((r) => r.currency))].map((cur) => (
+							<div
+								key={cur ?? 'all'}
+								className="grid grid-cols-[auto_auto_auto_auto] justify-start gap-x-4 gap-y-0.5 border-t border-black/10 py-1.5 first:border-t-0 first:pt-0"
+							>
+								{cur && <span className="col-span-4 font-semibold text-usdu-black">{cur}</span>}
+								{fig
+									.filter((r) => r.currency === cur)
+									.map((r) => (
+										<React.Fragment key={r.label}>
+											<span className="text-text-muted" title={r.title}>
+												{r.label}
+											</span>
+											<span className={`whitespace-nowrap ${r.negative ? 'text-red-600' : 'text-usdu-black'}`}>
+												{r.value}
+											</span>
+										</React.Fragment>
+									))}
+							</div>
 						))}
-						{regs.length > 1 && <span className="col-span-4 text-text-muted">module totals, shared by all stablecoins</span>}
+						{regs.length > 1 && !figures?.get(info.m.module.toLowerCase())?.byCurrency && (
+							<span className="text-text-muted">module totals, shared by all stablecoins</span>
+						)}
 					</div>
 				)}
 			</>
