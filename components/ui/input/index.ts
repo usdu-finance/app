@@ -14,3 +14,5 @@ export { SelectInput } from './SelectInput';
 export type { SelectOption } from './SelectInput';
 export { default as ApproveActionInput } from './ApproveActionInput';
 export type { ApprovalStep } from './ApproveActionInput';
+export { default as TokenSelectModal } from './TokenSelectModal';
+export type { TokenOption } from './TokenSelectModal';
