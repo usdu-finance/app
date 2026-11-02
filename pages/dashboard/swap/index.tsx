@@ -452,7 +452,9 @@ function ZapInCard() {
 						limitDigit={receiveToken.decimals}
 						disabled
 						note={
-							hasQuote ? `Min. received: ${fmtAmount(routeMinOut, receiveToken.decimals)} ${receiveToken.symbol}` : undefined
+							hasQuote
+								? `Min. received: ${fmtAmount(routeMinOut, receiveToken.decimals)} ${receiveToken.symbol} (0.5% slippage)`
+								: undefined
 						}
 						error={noRoute ? noRouteReason : undefined}
 					/>
@@ -555,15 +557,6 @@ function ZapInCard() {
 									: '-'
 							}
 						/>
-						<DetailRow
-							label="Min. received"
-							value={
-								hasQuote
-									? `${fmtAmount(routeMinOut, receiveToken.decimals)} ${receiveToken.symbol} (${fmtUsd(routeMinOut, receiveToken.decimals, priceOf(receiveToken.address))})`
-									: '-'
-							}
-						/>
-						<DetailRow label="Slippage" value="0.5% per priced swap" />
 						<DetailRow label="Zapper">
 							{ZAPPER_SWAP_ADDRESS ? <AddressLink address={ZAPPER_SWAP_ADDRESS} /> : <span>Not deployed yet</span>}
 						</DetailRow>
