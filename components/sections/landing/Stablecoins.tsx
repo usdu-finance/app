@@ -22,9 +22,6 @@ const COINS: {
 	assets: string[];
 	pool: string;
 	rewards: string;
-	/** primary swap module (stable swap page) and the reward streamer vault (strategy page) */
-	swapModule: string;
-	streamerVault: string;
 }[] = [
 	{
 		symbol: 'USDU',
@@ -36,8 +33,6 @@ const COINS: {
 		assets: ['USDC', 'USDT'],
 		pool: 'USDC / USDU on Curve',
 		rewards: 'rUSDU',
-		swapModule: A.usduSwapBridgeMorphoV1_steakUSDC_module,
-		streamerVault: A.usduStreamerVaultV1,
 	},
 	{
 		symbol: 'EURU',
@@ -49,8 +44,6 @@ const COINS: {
 		assets: ['EURC', 'dEURO'],
 		pool: 'USDU / EURU on Curve',
 		rewards: 'rEURU',
-		swapModule: A.euruSwapBridgeMorphoV1_steakEURC_module,
-		streamerVault: A.euruStreamerVaultV1,
 	},
 	{
 		symbol: 'CHFU',
@@ -62,8 +55,6 @@ const COINS: {
 		assets: ['ZCHF'],
 		pool: 'USDU / CHFU on Curve',
 		rewards: 'rCHFU',
-		swapModule: A.chfuSwapBridgeMorphoV1_ZCHF_module,
-		streamerVault: A.chfuStreamerVaultV1,
 	},
 ];
 
@@ -138,13 +129,13 @@ export default function Stablecoins({ stats }: { stats: LandingStats }) {
 
 									<div className="mt-auto flex flex-wrap gap-x-6 gap-y-2 pt-8 font-medium">
 										<Link
-											href={`/dashboard/swap/${c.swapModule}/stable`}
+											href={`/dashboard/zap/swap?to=${c.symbol}`}
 											className="inline-flex items-center gap-2 text-usdu-orange hover:text-usdu-black"
 										>
 											Swap <FontAwesomeIcon icon={faArrowRight} className="h-3 w-3" />
 										</Link>
 										<Link
-											href={`/dashboard/strategy/${c.streamerVault}/rewards`}
+											href={`/dashboard/zap/swap?to=${c.rewards}`}
 											className="inline-flex items-center gap-2 text-usdu-orange hover:text-usdu-black"
 										>
 											Earn <FontAwesomeIcon icon={faArrowRight} className="h-3 w-3" />

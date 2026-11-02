@@ -12,12 +12,6 @@ const LINKS = [
 	{ label: 'Telegram', href: SOCIAL.Telegram, icon: faTelegram },
 ];
 
-const TEXT_LINKS = [
-	{ label: 'DefiLlama', href: SOCIAL.Defillama },
-	{ label: 'CoinGecko', href: SOCIAL.Coingecko },
-	{ label: 'Aragon DAO', href: SOCIAL.Aragon },
-];
-
 export default function Cta() {
 	return (
 		<section className="bg-usdu-bg px-4 pb-16 md:px-8 md:pb-24 lg:px-16">
@@ -59,15 +53,6 @@ export default function Cta() {
 											className="inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2 text-sm font-medium text-white transition-colors hover:border-usdu-orange hover:text-usdu-orange"
 										>
 											<FontAwesomeIcon icon={l.icon} className="h-4 w-4" />
-											{l.label}
-										</a>
-									</li>
-								))}
-							</ul>
-							<ul className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-white/60">
-								{TEXT_LINKS.map((l) => (
-									<li key={l.label}>
-										<a href={l.href} target="_blank" rel="noopener noreferrer" className="hover:text-usdu-orange">
 											{l.label}
 										</a>
 									</li>
