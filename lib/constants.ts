@@ -32,6 +32,8 @@ export const getCurvePoolUrl = (poolAddress: string) => `https://www.curve.finan
 export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
 export const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL;
+// ZapperSwapEnsoV1 on Ethereum. Unset until deployed (and added to usdu-core's ADDRESS): the zap card then only previews routes.
+export const ZAPPER_SWAP_ADDRESS = process.env.NEXT_PUBLIC_ZAPPER_SWAP_ADDRESS as `0x${string}` | undefined;
 
 // Local storage keys
 export const STORAGE_KEYS = {
