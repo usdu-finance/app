@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCoins, faGift, faHandHoldingDollar, faBolt } from '@fortawesome/free-solid-svg-icons';
+import { faCoins, faGift, faHandHoldingDollar, faBolt, faArrowRightArrowLeft, faSeedling } from '@fortawesome/free-solid-svg-icons';
 import Link from 'next/link';
 import { NextSeo } from 'next-seo';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWalletAssets, type WalletAsset, type StablecoinGroup } from '@/hooks/useWalletAssets';
+import { useCryptoAssets } from '@/hooks/useCryptoAssets';
 import { useRewardStreams } from '@/hooks/useRewardStreams';
 import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
-import { ButtonInput } from '@/components/ui/input';
 import { StatCard } from '@/components/ui/stats';
 import { DonutChart, type DonutSlice } from '@/components/ui/charts';
 import { TokenLogo } from '@/components/ui/logo';
@@ -33,6 +33,12 @@ const STABLE_GROUPS: { group: StablecoinGroup; label: string; dot: string }[] = 
 	{ group: 'CHF', label: 'CHF stablecoins', dot: 'bg-error' },
 ];
 
+// The U-stable of each peg group; staking it gives the matching reward vault share (r + symbol)
+const STABLE_OF: Record<StablecoinGroup, string> = { USD: 'USDU', EUR: 'EURU', CHF: 'CHFU' };
+
+// The zap page prefilled to spend the whole balance of `from`
+const zapHref = (from: string, to?: string) => `/dashboard/zap/swap?from=${from}${to ? `&to=${to}` : ''}&amount=max`;
+
 function compareAssets(tab: string, a: WalletAsset, b: WalletAsset): number {
 	switch (tab) {
 		case 'Balance':
@@ -49,6 +55,7 @@ function compareAssets(tab: string, a: WalletAsset, b: WalletAsset): number {
 function DashboardPageContent() {
 	const { isConnected, address } = useAuth();
 	const { assets, isLoading, error } = useWalletAssets(address as `0x${string}` | undefined);
+	const { assets: cryptoAll, isLoading: isLoadingCrypto } = useCryptoAssets(address as `0x${string}` | undefined);
 	const { streams } = useRewardStreams();
 	const { sortTab, sortReverse, handleSort } = useSort('Value');
 	const [showZero, setShowZero] = useState(false);
@@ -65,8 +72,6 @@ function DashboardPageContent() {
 				.sort((a, b) => b.value - a.value),
 		[streams, assets]
 	);
-	// only the U-stables can be staked, each into its own reward vault
-	const stakeVaults = useMemo(() => Object.fromEntries(streams.map((s) => [s.currency, s.vault])), [streams]);
 	const stablecoinTotal = assets.filter((a) => a.group).reduce((sum, a) => sum + a.value, 0);
 	const rewardsTotal = rewards.reduce((sum, r) => sum + r.value, 0);
 	const rewardSlices: DonutSlice[] = rewards.map((r) => ({ key: r.key, label: r.symbol, value: r.value, className: r.color }));
@@ -81,6 +86,11 @@ function DashboardPageContent() {
 				.sort((a, b) => dir * compareAssets(sortTab, a, b)),
 		})).filter((g) => showZero || g.assets.length > 0);
 	}, [assets, sortTab, sortReverse, showZero]);
+
+	const cryptoAssets = useMemo(() => {
+		const dir = sortReverse ? -1 : 1;
+		return cryptoAll.filter((a) => showZero || a.balance > 0).sort((a, b) => dir * compareAssets(sortTab, a, b));
+	}, [cryptoAll, sortTab, sortReverse, showZero]);
 
 	return (
 		<div className="space-y-8">
@@ -168,18 +178,26 @@ function DashboardPageContent() {
 											colSpan={4}
 											tab={sortTab}
 											actionCol={
-												stakeVaults[a.symbol] ? (
-													<ButtonInput
-														label="Stake"
-														href={`/dashboard/strategy/${stakeVaults[a.symbol]}/rewards`}
-														variant="outline"
-														size="sm"
-														className="w-full"
-													/>
-												) : (
-													// foreign stablecoins need wrapping into their U-stable first, not supported yet
-													<ButtonInput label="Stake" variant="outline" size="sm" className="w-full" disabled />
-												)
+												<div className="flex items-center justify-end gap-1">
+													{[
+														{
+															label: 'Swap',
+															icon: faArrowRightArrowLeft,
+															to: a.symbol === STABLE_OF[g.group] ? undefined : STABLE_OF[g.group],
+														},
+														{ label: 'Stake', icon: faSeedling, to: `r${STABLE_OF[g.group]}` },
+													].map((action) => (
+														<Link
+															key={action.label}
+															href={zapHref(a.address, action.to)}
+															title={`${action.label} ${a.symbol}`}
+															aria-label={`${action.label} ${a.symbol}`}
+															className="flex items-center justify-center w-9 h-9 rounded-lg border border-usdu-orange text-usdu-orange hover:bg-usdu-orange hover:text-white transition-colors"
+														>
+															<FontAwesomeIcon icon={action.icon} className="w-4 h-4" />
+														</Link>
+													))}
+												</div>
 											}
 										>
 											<div className="flex items-center gap-2">
@@ -196,6 +214,65 @@ function DashboardPageContent() {
 						</div>
 					))
 				)}
+			</Card>
+
+			<Card variant="panel" className="space-y-8">
+				<PageHeader
+					title="Crypto Assets"
+					description="The largest crypto assets in your wallet, valued in USDU. Swap or stake them straight into a stablecoin or reward vault."
+				/>
+
+				<Table>
+					<TableHead headers={HEADERS} colSpan={4} actionCol tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+					<TableBody>
+						{!isConnected || isLoadingCrypto || cryptoAssets.length === 0 ? (
+							<TableRowEmpty>
+								{!isConnected
+									? 'Connect your wallet to see your assets.'
+									: isLoadingCrypto
+										? 'Loading crypto assets...'
+										: 'No crypto assets in this wallet.'}
+							</TableRowEmpty>
+						) : (
+							cryptoAssets.map((a) => (
+								<TableRow
+									key={a.key}
+									headers={HEADERS}
+									colSpan={4}
+									tab={sortTab}
+									actionCol={
+										<div className="flex items-center justify-end gap-1">
+											{[
+												{ label: 'Swap', icon: faArrowRightArrowLeft, to: 'USDU' },
+												{ label: 'Stake', icon: faSeedling, to: 'rUSDU' },
+											].map((action) => (
+												<Link
+													key={action.label}
+													href={zapHref(a.address, action.to)}
+													title={`${action.label} ${a.symbol}`}
+													aria-label={`${action.label} ${a.symbol}`}
+													className="flex items-center justify-center w-9 h-9 rounded-lg border border-usdu-orange text-usdu-orange hover:bg-usdu-orange hover:text-white transition-colors"
+												>
+													<FontAwesomeIcon icon={action.icon} className="w-4 h-4" />
+												</Link>
+											))}
+										</div>
+									}
+								>
+									<div className="flex items-center gap-2">
+										<TokenLogo logoURI={a.logoURI} currency={a.symbol} size={6} />
+										<span>{a.name}</span>
+									</div>
+									<span>{formatCompactNumber(a.balance, a.balance < 1 ? 6 : 4, '', ` ${a.symbol}`)}</span>
+									<span>
+										{a.price > 0 ? `${a.price.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDU` : '-'}
+									</span>
+									<span>{a.price > 0 ? formatCompactNumber(a.value, 2, '', ' USDU') : '-'}</span>
+								</TableRow>
+							))
+						)}
+					</TableBody>
+				</Table>
 			</Card>
 
 			<Card variant="panel" className="space-y-8">
