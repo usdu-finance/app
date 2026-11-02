@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { erc20Abi, formatUnits, isAddress, parseUnits, zeroAddress, type Address } from 'viem';
+import { erc20Abi, formatUnits, isAddress, parseUnits, type Address } from 'viem';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useBalance, useReadContracts } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
@@ -225,7 +225,7 @@ export default function ZapInCard({
 							address: payToken.address as Address,
 							abi: erc20Abi,
 							functionName: 'allowance' as const,
-							args: [address as Address, ZAPPER_SWAP_ADDRESS ?? zeroAddress],
+							args: [address as Address, ZAPPER_SWAP_ADDRESS],
 						},
 					]
 				: [],
@@ -264,7 +264,7 @@ export default function ZapInCard({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [prefillState.tokens, prefillState.amount, balanceRaw, payToken.address]);
 
-	const { isAvailable, approve, zap, isPending, isConfirming, isConfirmed, reset } = useZapperSwap();
+	const { approve, zap, isPending, isConfirming, isConfirmed, reset } = useZapperSwap();
 	const [pendingStep, setPendingStep] = useState<'approve' | 'zap' | null>(null);
 	const isBusy = isPending || isConfirming;
 
@@ -422,15 +422,10 @@ export default function ZapInCard({
 									]
 						}
 						isActing={isBusy && pendingStep === 'zap'}
-						disabled={!isAvailable || !hasQuote || amountRaw === 0n || insufficientBalance || isBusy}
+						disabled={!hasQuote || amountRaw === 0n || insufficientBalance || isBusy}
 						onAction={handleAction}
 						isConnected={isConnected}
 						onConnect={() => open()}
-						hint={
-							!isAvailable
-								? 'The zapper contract is not deployed yet. You can preview routes, but not send a zap.'
-								: undefined
-						}
 					/>
 				</div>
 
@@ -506,7 +501,7 @@ export default function ZapInCard({
 							}
 						/>
 						<DetailRow label="Zapper">
-							{ZAPPER_SWAP_ADDRESS ? <AddressLink address={ZAPPER_SWAP_ADDRESS} /> : <span>Not deployed yet</span>}
+							<AddressLink address={ZAPPER_SWAP_ADDRESS} />
 						</DetailRow>
 					</div>
 				</div>

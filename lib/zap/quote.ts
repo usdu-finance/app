@@ -5,9 +5,7 @@ import { client, isProtocolToken, type ZapRegistry, type ZapToken } from './regi
 import { ZAPPER_SWAP_ADDRESS } from '@/lib/constants';
 import { buildRoute, findPaths, quoteRoutes, SLIPPAGE_BPS, type Route, type RouteStep } from './routes';
 
-// Enso needs a sender to build calldata. With a zapper deployed that sender, and the receiver, is the zapper itself,
-// so quotes are wallet-independent and cacheable. Without one the quote is for display only and carries no calldata.
-const QUOTE_ONLY_SENDER: Address = '0x000000000000000000000000000000000000dEaD';
+// Enso calldata is built with the zapper as sender and receiver, so quotes are wallet-independent and cacheable.
 const MAX_ENTRY_TOKENS = 3;
 
 const sameAddr = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
@@ -33,12 +31,12 @@ export async function getTokenMeta(registry: ZapRegistry, address: Address): Pro
 	});
 }
 
-function ensoStep(from: ZapToken, to: ZapToken, amountIn: bigint, r: EnsoRoute, withTx: boolean): RouteStep {
+function ensoStep(from: ZapToken, to: ZapToken, amountIn: bigint, r: EnsoRoute): RouteStep {
 	return {
 		kind: 'enso',
 		label: 'Enso aggregator',
 		spender: r.tx.to,
-		tx: withTx ? r.tx : undefined,
+		tx: r.tx,
 		tokenIn: from,
 		tokenOut: to,
 		amountIn,
@@ -69,9 +67,8 @@ export async function quoteZap(
 	const native = isKnown ? await quoteRoutes(registry, tokenIn, tokenOut, amountIn) : [];
 	if (native.some((r) => r.available) || !isEnsoEnabled()) return { routes: native, complete: true };
 
-	const sender = ZAPPER_SWAP_ADDRESS ?? QUOTE_ONLY_SENDER;
+	const sender = ZAPPER_SWAP_ADDRESS;
 	const slippageBps = Number(SLIPPAGE_BPS);
-	const withTx = !!ZAPPER_SWAP_ADDRESS;
 
 	// Direct Enso route, plus hybrid routes through each entry coin that has a native path onward
 	const entries = registry.tokens
@@ -82,14 +79,14 @@ export async function quoteZap(
 		.slice(0, MAX_ENTRY_TOKENS);
 
 	const direct = ensoRoute({ tokenIn: tokenIn.address, tokenOut: tokenOut.address, amountIn, fromAddress: sender, slippageBps }).then(
-		(r): Route => buildRoute('enso', [ensoStep(tokenIn, tokenOut, amountIn, r, withTx)])
+		(r): Route => buildRoute('enso', [ensoStep(tokenIn, tokenOut, amountIn, r)])
 	);
 
 	const hybrid = entries.map(async ({ token: entry }): Promise<Route> => {
 		const leg = await ensoRoute({ tokenIn: tokenIn.address, tokenOut: entry.address, amountIn, fromAddress: sender, slippageBps });
 		const onward = (await quoteRoutes(registry, entry, tokenOut, leg.amountOut)).find((r) => r.available);
 		if (!onward) throw new Error('no native path with capacity');
-		return buildRoute(`enso>${onward.id}`, [ensoStep(tokenIn, entry, amountIn, leg, withTx), ...onward.steps]);
+		return buildRoute(`enso>${onward.id}`, [ensoStep(tokenIn, entry, amountIn, leg), ...onward.steps]);
 	});
 
 	const settled = await Promise.allSettled([direct, ...hybrid]);

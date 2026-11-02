@@ -21,8 +21,6 @@ export interface ZapperSwapStepJson {
 }
 
 export interface ZapperSwapData {
-	/** Whether a zapper address is configured; without one the zap card can only preview routes. */
-	isAvailable: boolean;
 	approve: (token: `0x${string}`, amount: bigint) => Promise<`0x${string}`>;
 	zap: (args: {
 		tokenIn: `0x${string}`;
@@ -56,7 +54,6 @@ export function useZapperSwap(): ZapperSwapData {
 
 	const approve = useCallback(
 		async (token: `0x${string}`, amount: bigint) => {
-			if (!ZAPPER_SWAP_ADDRESS) throw new Error('Zapper is not deployed yet');
 			try {
 				const txHash = await writeContractAsync({
 					address: token,
@@ -76,7 +73,6 @@ export function useZapperSwap(): ZapperSwapData {
 
 	const zap = useCallback<ZapperSwapData['zap']>(
 		async ({ tokenIn, amountIn, steps, tokenOut, minAmountOut, recipient, value }) => {
-			if (!ZAPPER_SWAP_ADDRESS) throw new Error('Zapper is not deployed yet');
 			try {
 				const txHash = await writeContractAsync({
 					address: ZAPPER_SWAP_ADDRESS,
@@ -102,5 +98,5 @@ export function useZapperSwap(): ZapperSwapData {
 		[writeContractAsync]
 	);
 
-	return { isAvailable: !!ZAPPER_SWAP_ADDRESS, approve, zap, isPending, isConfirming, isConfirmed, reset };
+	return { approve, zap, isPending, isConfirming, isConfirmed, reset };
 }

@@ -22,7 +22,7 @@ export interface RouteStep {
 	module?: Address;
 	/** Module and vault steps: in mints/deposits, out redeems. */
 	direction?: 'in' | 'out';
-	/** Enso steps: the transaction to send as-is, present only when the quote was made for a wallet. */
+	/** Enso steps: the transaction to send as-is, built for the zapper as sender and receiver. */
 	tx?: { to: Address; data: `0x${string}`; value: string };
 	minAmountOut?: bigint;
 	priceImpact?: number | null;

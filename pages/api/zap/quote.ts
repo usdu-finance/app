@@ -9,8 +9,7 @@ import { addressParam, amountParam, cached, cacheDrop, sendError, sendJson } fro
  * GET /api/zap/quote?tokenIn=0x..&tokenOut=0x..&amountIn=<wei>
  * Every route from tokenIn to tokenOut for the amount, best first. tokenIn can be any ERC-20 or ETH: tokens the
  * protocol knows are routed through the swap modules, Curve pools and reward vaults; anything else uses Enso for
- * the first leg. Each route includes `zapSteps`, the arguments for ZapperSwapEnsoV1.zap, once NEXT_PUBLIC_ZAPPER_SWAP_ADDRESS
- * is set; without it Enso routes are quoted for display only.
+ * the first leg. Each route includes `zapSteps`, the arguments for ZapperSwapEnsoV1.zap.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 	if (req.method !== 'GET') return sendError(res, 405, 'Method not allowed');
