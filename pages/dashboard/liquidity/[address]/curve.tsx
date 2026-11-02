@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { erc20Abi, formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWallet, faDroplet, faScaleBalanced, faLayerGroup, faCoins } from '@fortawesome/free-solid-svg-icons';
+import { faDroplet, faScaleBalanced, faLayerGroup, faCoins } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
 import { ICurveStableSwapNG_ABI, ITwocrypto_ABI } from '@usdu-finance/usdu-core';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +11,7 @@ import { useCurvePools } from '@/hooks/useCurvePools';
 import { useSwapBalances } from '@/hooks/useSwapBalances';
 import { useCurveLiquidity } from '@/hooks/useCurveLiquidity';
 import { PageHeader } from '@/components/ui/layout';
-import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
+import { TokenInput, ApproveActionInput, TabInput } from '@/components/ui/input';
 import { StatGrid } from '@/components/ui/stats';
 import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
@@ -131,25 +131,24 @@ function LiquidityCurveDetailPageContent() {
 	const noInput = isAdd ? amount0 === 0n && amount1 === 0n : lpAmount === 0n;
 	const noLiquidity = !!selectedPool && selectedPool.totalSupply === 0n;
 
+	const handleApprove = async (index: 0 | 1) => {
+		if (!selectedPool) return;
+		try {
+			setPendingStep('approve');
+			await approve(selectedPool.tokens[index].address, selectedPool.poolAddress, index === 0 ? amount0 : amount1);
+		} catch {
+			setPendingStep(null);
+		}
+	};
+
 	const handleAction = async () => {
 		if (!selectedPool || noInput) return;
 
 		try {
+			setPendingStep('submit');
 			if (isAdd) {
-				if (needsApproval0) {
-					setPendingStep('approve');
-					await approve(selectedPool.tokens[0].address, selectedPool.poolAddress, amount0);
-					return;
-				}
-				if (needsApproval1) {
-					setPendingStep('approve');
-					await approve(selectedPool.tokens[1].address, selectedPool.poolAddress, amount1);
-					return;
-				}
-				setPendingStep('submit');
 				await addLiquidity(selectedPool.kind, selectedPool.poolAddress, [amount0, amount1], minMintRaw);
 			} else {
-				setPendingStep('submit');
 				await removeLiquidity(selectedPool.kind, selectedPool.poolAddress, lpAmount, minWithdrawRaw);
 			}
 		} catch {
@@ -157,20 +156,18 @@ function LiquidityCurveDetailPageContent() {
 		}
 	};
 
-	const approvalSymbol = needsApproval0 ? selectedPool?.tokens[0].symbol : selectedPool?.tokens[1].symbol;
-	const actionLabel = !isConnected
-		? 'Connect Wallet'
-		: isBusy
-			? pendingStep === 'approve'
-				? 'Approving...'
-				: isAdd
-					? 'Adding...'
-					: 'Removing...'
-			: isAdd && (needsApproval0 || needsApproval1)
-				? `Approve ${approvalSymbol}`
-				: isAdd
-					? 'Add Liquidity'
-					: 'Remove Liquidity';
+	// only tokens that are actually deposited need an approval; show both while nothing is entered
+	const approvals =
+		isAdd && selectedPool
+			? ([0, 1] as const)
+					.filter((idx) => noInput || (idx === 0 ? amount0 : amount1) > 0n)
+					.map((idx) => ({
+						tokenSymbol: selectedPool.tokens[idx].symbol,
+						needsApproval: noInput || (idx === 0 ? needsApproval0 : needsApproval1),
+						isApproving: isBusy && pendingStep === 'approve',
+						onApprove: () => handleApprove(idx),
+					}))
+			: [];
 
 	if (!router.isReady || isLoading) {
 		return (
@@ -341,22 +338,21 @@ function LiquidityCurveDetailPageContent() {
 						</>
 					)}
 
-					<ButtonInput
-						label={actionLabel}
-						size="lg"
-						className="w-full"
+					<ApproveActionInput
+						actionLabel={isAdd ? 'Add Liquidity' : 'Remove Liquidity'}
+						approvals={approvals}
+						isActing={isBusy && pendingStep === 'submit'}
 						disabled={
-							isConnected &&
-							(noInput ||
-								insufficient0 ||
-								insufficient1 ||
-								insufficientLp ||
-								isBusy ||
-								(isAdd && !noLiquidity && mintRaw === 0n))
+							noInput ||
+							insufficient0 ||
+							insufficient1 ||
+							insufficientLp ||
+							isBusy ||
+							(isAdd && !noLiquidity && mintRaw === 0n)
 						}
-						loading={isConnected && isBusy}
-						onClick={isConnected ? handleAction : () => open()}
-						icon={!isConnected ? <FontAwesomeIcon icon={faWallet} className="w-4 h-4" /> : undefined}
+						onAction={handleAction}
+						isConnected={isConnected}
+						onConnect={() => open()}
 					/>
 				</div>
 

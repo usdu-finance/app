@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWallet, faDroplet, faScaleBalanced, faLayerGroup, faTag } from '@fortawesome/free-solid-svg-icons';
+import { faDroplet, faScaleBalanced, faLayerGroup, faTag } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
 import { ICurveStableSwapNG_ABI, ITwocrypto_ABI } from '@usdu-finance/usdu-core';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +11,7 @@ import { useCurvePools } from '@/hooks/useCurvePools';
 import { useSwapBalances } from '@/hooks/useSwapBalances';
 import { useSwap } from '@/hooks/useSwap';
 import { PageHeader } from '@/components/ui/layout';
-import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
+import { TokenInput, ApproveActionInput, TabInput } from '@/components/ui/input';
 import { StatGrid } from '@/components/ui/stats';
 import { DetailRow } from '@/components/ui/modal';
 import AddressLink from '@/components/ui/AddressLink';
@@ -130,38 +130,29 @@ function SwapCurveDetailPageContent() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [isConfirmed]);
 
-	const needsApproval = amountRaw > 0n && allowanceRaw < amountRaw;
 	const insufficientBalance = amountRaw > 0n && amountRaw > inputBalanceRaw;
 	const noLiquidity = !!selectedPool && selectedPool.totalSupply === 0n;
+
+	const handleApprove = async () => {
+		if (!selectedPool || amountRaw === 0n) return;
+		try {
+			setPendingStep('approve');
+			await approve(selectedPool.tokens[zeroForOne ? 0 : 1].address, selectedPool.poolAddress, amountRaw);
+		} catch {
+			setPendingStep(null);
+		}
+	};
 
 	const handleAction = async () => {
 		if (!selectedPool || amountRaw === 0n || minOutRaw === 0n) return;
 
 		try {
-			if (needsApproval) {
-				setPendingStep('approve');
-				await approve(selectedPool.tokens[zeroForOne ? 0 : 1].address, selectedPool.poolAddress, amountRaw);
-				return;
-			}
-
 			setPendingStep('swap');
 			await curveExchange(selectedPool.kind, selectedPool.poolAddress, i, j, amountRaw, minOutRaw);
 		} catch {
 			setPendingStep(null);
 		}
 	};
-
-	const actionLabel = !isConnected
-		? 'Connect Wallet'
-		: noLiquidity
-			? 'No Liquidity'
-			: isBusy
-				? pendingStep === 'approve'
-					? 'Approving...'
-					: 'Swapping...'
-				: needsApproval
-					? `Approve ${inTok?.symbol}`
-					: 'Swap';
 
 	if (!router.isReady || isLoading) {
 		return (
@@ -283,14 +274,21 @@ function SwapCurveDetailPageContent() {
 						}
 					/>
 
-					<ButtonInput
-						label={actionLabel}
-						size="lg"
-						className="w-full"
-						disabled={isConnected && (noLiquidity || amountRaw === 0n || outputRaw === 0n || insufficientBalance || isBusy)}
-						loading={isConnected && isBusy}
-						onClick={isConnected ? handleAction : () => open()}
-						icon={!isConnected ? <FontAwesomeIcon icon={faWallet} className="w-4 h-4" /> : undefined}
+					<ApproveActionInput
+						actionLabel={noLiquidity ? 'No Liquidity' : 'Swap'}
+						approvals={[
+							{
+								tokenSymbol: inTok?.symbol ?? '',
+								needsApproval: amountRaw === 0n || allowanceRaw < amountRaw,
+								isApproving: isBusy && pendingStep === 'approve',
+								onApprove: handleApprove,
+							},
+						]}
+						isActing={isBusy && pendingStep === 'swap'}
+						disabled={noLiquidity || amountRaw === 0n || outputRaw === 0n || insufficientBalance || isBusy}
+						onAction={handleAction}
+						isConnected={isConnected}
+						onConnect={() => open()}
 					/>
 				</div>
 

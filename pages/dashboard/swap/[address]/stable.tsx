@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { formatUnits } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWallet, faArrowRightToBracket, faArrowRightFromBracket, faVault } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRightToBracket, faArrowRightFromBracket, faVault } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSwapModules } from '@/hooks/useSwapModules';
@@ -13,7 +13,7 @@ import { useModuleSwapHistory, type ModuleSwapEntry } from '@/hooks/useModuleSwa
 import { useSort } from '@/hooks/ui/useSort';
 import { PageHeader } from '@/components/ui/layout';
 import Card from '@/components/ui/Card';
-import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
+import { TokenInput, ApproveActionInput, TabInput } from '@/components/ui/input';
 import { TimeSeriesChart } from '@/components/ui/charts';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
@@ -184,22 +184,25 @@ function SwapDetailPageContent() {
 	const maxRaw = walletMaxRaw !== undefined ? (walletMaxRaw < moduleCapacityRaw ? walletMaxRaw : moduleCapacityRaw) : undefined;
 
 	const allowanceRaw = direction === 'in' ? balances.coinAllowanceRaw : balances.targetAllowanceRaw;
-	const needsApproval = amountRaw > 0n && allowanceRaw < amountRaw;
 	const insufficientBalance = amountRaw > 0n && amountRaw > inputBalanceRaw;
 	const exceedsCapacity = amountRaw > 0n && amountRaw > moduleCapacityRaw;
 	const isBusy = isPending || isConfirming;
+
+	const handleApprove = async () => {
+		if (!selectedModule || amountRaw === 0n) return;
+		try {
+			setPendingStep('approve');
+			const token = direction === 'in' ? selectedModule.coinAddress : selectedModule.targetAddress;
+			await approve(token, selectedModule.routerAddress, amountRaw);
+		} catch {
+			setPendingStep(null);
+		}
+	};
 
 	const handleAction = async () => {
 		if (!selectedModule || amountRaw === 0n) return;
 
 		try {
-			if (needsApproval) {
-				setPendingStep('approve');
-				const token = direction === 'in' ? selectedModule.coinAddress : selectedModule.targetAddress;
-				await approve(token, selectedModule.routerAddress, amountRaw);
-				return;
-			}
-
 			setPendingStep('swap');
 			if (direction === 'in') {
 				await swapIn(selectedModule.routerAddress, selectedModule.moduleAddress, amountRaw);
@@ -210,16 +213,6 @@ function SwapDetailPageContent() {
 			setPendingStep(null);
 		}
 	};
-
-	const actionLabel = !isConnected
-		? 'Connect Wallet'
-		: isBusy
-			? pendingStep === 'approve'
-				? 'Approving...'
-				: 'Swapping...'
-			: needsApproval
-				? `Approve ${inputSymbol}`
-				: 'Swap';
 
 	if (!router.isReady || isLoadingModules) {
 		return (
@@ -402,14 +395,21 @@ function SwapDetailPageContent() {
 						}
 					/>
 
-					<ButtonInput
-						label={actionLabel}
-						size="lg"
-						className="w-full"
-						disabled={isConnected && (amountRaw === 0n || insufficientBalance || exceedsCapacity || isBusy)}
-						loading={isConnected && isBusy}
-						onClick={isConnected ? handleAction : () => open()}
-						icon={!isConnected ? <FontAwesomeIcon icon={faWallet} className="w-4 h-4" /> : undefined}
+					<ApproveActionInput
+						actionLabel="Swap"
+						approvals={[
+							{
+								tokenSymbol: inputSymbol,
+								needsApproval: amountRaw === 0n || allowanceRaw < amountRaw,
+								isApproving: isBusy && pendingStep === 'approve',
+								onApprove: handleApprove,
+							},
+						]}
+						isActing={isBusy && pendingStep === 'swap'}
+						disabled={amountRaw === 0n || insufficientBalance || exceedsCapacity || isBusy}
+						onAction={handleAction}
+						isConnected={isConnected}
+						onConnect={() => open()}
 					/>
 				</div>
 

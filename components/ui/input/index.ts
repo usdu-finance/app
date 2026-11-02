@@ -12,3 +12,5 @@ export { default as LiquidationSlider } from './LiquidationSlider';
 export { default as TextInput } from './TextInput';
 export { SelectInput } from './SelectInput';
 export type { SelectOption } from './SelectInput';
+export { default as ApproveActionInput } from './ApproveActionInput';
+export type { ApprovalStep } from './ApproveActionInput';

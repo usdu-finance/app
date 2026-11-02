@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { formatUnits } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faWallet, faHourglassHalf, faArrowRightFromBracket, faArrowRightToBracket } from '@fortawesome/free-solid-svg-icons';
+import { faHourglassHalf, faArrowRightFromBracket, faArrowRightToBracket } from '@fortawesome/free-solid-svg-icons';
 import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRewardStreams } from '@/hooks/useRewardStreams';
@@ -15,7 +15,7 @@ import { useStreamerVaultHistory, type VaultHistoryEntry } from '@/hooks/useStre
 import { useSort } from '@/hooks/ui/useSort';
 import { PageHeader } from '@/components/ui/layout';
 import Card from '@/components/ui/Card';
-import { TokenInput, ButtonInput, TabInput } from '@/components/ui/input';
+import { TokenInput, ApproveActionInput, TabInput } from '@/components/ui/input';
 import { TimeSeriesChart } from '@/components/ui/charts';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
@@ -197,21 +197,33 @@ function StrategyDetailPageContent() {
 	const outputBalanceRaw = isStake ? position.sharesRaw : position.assetBalanceRaw;
 	const outputPreviewRaw = isStake ? position.previewShares : position.previewAssets;
 
-	const needsApproval = isStake && amountRaw > 0n && position.allowanceRaw < amountRaw;
 	const insufficientBalance = amountRaw > 0n && amountRaw > inputBalanceRaw;
 	const isBusy = isPending || isConfirming;
+
+	// Rewards are split across all stakers, so the stake changes the APR.
+	const amountNum = Number(formatUnits(amountRaw, 18));
+	const projectedStaked = Math.max(isStake ? stream.staked + amountNum : stream.staked - amountNum, 0);
+	const projectedApr = projectedStaked > 0 ? ((stream.ratePerDay * 365) / projectedStaked) * 100 : 0;
+	const aprNote =
+		amountRaw > 0n && stream.apr > 0
+			? `Projected APR after ${isStake ? 'stake' : 'unstake'}: ${projectedApr.toFixed(2)}% (currently ${stream.apr.toFixed(2)}%)`
+			: undefined;
+
+	const handleApprove = async () => {
+		if (amountRaw === 0n) return;
+		try {
+			setPendingStep('approve');
+			await approve(stream.asset, stream.vault, amountRaw);
+		} catch {
+			setPendingStep(null);
+		}
+	};
 
 	const handleAction = async () => {
 		if (!address || amountRaw === 0n) return;
 		const account = address as `0x${string}`;
 
 		try {
-			if (needsApproval) {
-				setPendingStep('approve');
-				await approve(stream.asset, stream.vault, amountRaw);
-				return;
-			}
-
 			setPendingStep('action');
 			if (isStake) {
 				await deposit(stream.vault, amountRaw, account);
@@ -222,20 +234,6 @@ function StrategyDetailPageContent() {
 			setPendingStep(null);
 		}
 	};
-
-	const actionLabel = !isConnected
-		? 'Connect Wallet'
-		: isBusy
-			? pendingStep === 'approve'
-				? 'Approving...'
-				: isStake
-					? 'Staking...'
-					: 'Unstaking...'
-			: needsApproval
-				? `Approve ${currency}`
-				: isStake
-					? 'Stake'
-					: 'Unstake';
 
 	return (
 		<div className="space-y-8">
@@ -321,20 +319,32 @@ function StrategyDetailPageContent() {
 						label="You receive (estimated)"
 						symbol={outputSymbol}
 						output={formatUnits(outputPreviewRaw, 18)}
+						note={aprNote}
 						disabled
 						limitLabel={isConnected ? 'Balance' : undefined}
 						limit={outputBalanceRaw}
 						limitDigit={18}
 					/>
 
-					<ButtonInput
-						label={actionLabel}
-						size="lg"
-						className="w-full"
-						disabled={isConnected && (amountRaw === 0n || insufficientBalance || isBusy)}
-						loading={isConnected && isBusy}
-						onClick={isConnected ? handleAction : () => open()}
-						icon={!isConnected ? <FontAwesomeIcon icon={faWallet} className="w-4 h-4" /> : undefined}
+					<ApproveActionInput
+						actionLabel={isStake ? 'Stake' : 'Unstake'}
+						approvals={
+							isStake
+								? [
+										{
+											tokenSymbol: currency,
+											needsApproval: amountRaw === 0n || position.allowanceRaw < amountRaw,
+											isApproving: isBusy && pendingStep === 'approve',
+											onApprove: handleApprove,
+										},
+									]
+								: []
+						}
+						isActing={isBusy && pendingStep === 'action'}
+						disabled={amountRaw === 0n || insufficientBalance || isBusy}
+						onAction={handleAction}
+						isConnected={isConnected}
+						onConnect={() => open()}
 					/>
 				</div>
 
