@@ -61,6 +61,11 @@ export const SEO = {
 		'Mint or redeem USDU, EURU and CHFU through the swap router, or swap directly against Curve pools backing USDU.',
 		'/dashboard/swap'
 	),
+	zapSwap: pageSeo(
+		'Zap In',
+		'Pay with any token and end up in USDU, EURU, CHFU or their reward vaults in a single transaction.',
+		'/dashboard/zap/swap'
+	),
 	swapModule: pageSeo(
 		'Swap Module',
 		'Mint or redeem a USDU stablecoin against its backing asset through a swap module, with live fees and capacity.',
