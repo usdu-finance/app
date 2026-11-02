@@ -59,10 +59,15 @@ function ensoStep(from: ZapToken, to: ZapToken, amountIn: bigint, r: EnsoRoute, 
  * so the app executes the whole list in one transaction. Enso calldata is built for the zapper as sender and
  * receiver, which makes quotes wallet-independent.
  */
-export async function quoteZap(registry: ZapRegistry, tokenIn: ZapToken, tokenOut: ZapToken, amountIn: bigint): Promise<Route[]> {
+export async function quoteZap(
+	registry: ZapRegistry,
+	tokenIn: ZapToken,
+	tokenOut: ZapToken,
+	amountIn: bigint
+): Promise<{ routes: Route[]; complete: boolean }> {
 	const isKnown = registry.tokens.some((t) => sameAddr(t.address, tokenIn.address));
 	const native = isKnown ? await quoteRoutes(registry, tokenIn, tokenOut, amountIn) : [];
-	if (native.some((r) => r.available) || !isEnsoEnabled()) return native;
+	if (native.some((r) => r.available) || !isEnsoEnabled()) return { routes: native, complete: true };
 
 	const sender = ZAPPER_SWAP_ADDRESS ?? QUOTE_ONLY_SENDER;
 	const slippageBps = Number(SLIPPAGE_BPS);
@@ -89,7 +94,12 @@ export async function quoteZap(registry: ZapRegistry, tokenIn: ZapToken, tokenOu
 
 	const settled = await Promise.allSettled([direct, ...hybrid]);
 	const routes = [...native, ...settled.flatMap((s) => (s.status === 'fulfilled' && s.value.available ? [s.value] : []))];
-	return routes.sort(
-		(a, b) => Number(b.available) - Number(a.available) || (a.amountOut < b.amountOut ? 1 : a.amountOut > b.amountOut ? -1 : 0)
-	);
+	// A failed candidate (rate limit, no liquidity) may have been the best one, so such a result must not be cached for long
+	const complete = settled.every((s) => s.status === 'fulfilled');
+	return {
+		routes: routes.sort(
+			(a, b) => Number(b.available) - Number(a.available) || (a.amountOut < b.amountOut ? 1 : a.amountOut > b.amountOut ? -1 : 0)
+		),
+		complete,
+	};
 }

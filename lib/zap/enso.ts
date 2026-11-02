@@ -16,6 +16,18 @@ export interface EnsoRoute {
 
 export const isEnsoEnabled = () => !!process.env.ENSO_API_KEY;
 
+const MIN_GAP_MS = 350;
+const MAX_RETRIES = 4;
+let nextSlot = 0;
+
+/** Hands out request slots MIN_GAP_MS apart, across all concurrent quotes on this server instance. */
+async function turn(): Promise<void> {
+	const now = Date.now();
+	const slot = Math.max(now, nextSlot);
+	nextSlot = slot + MIN_GAP_MS;
+	if (slot > now) await new Promise((resolve) => setTimeout(resolve, slot - now));
+}
+
 /** One Enso route (calldata included, receiver = fromAddress), cached 10s per pair, amount and wallet. */
 export async function ensoRoute(params: {
 	tokenIn: Address;
@@ -39,9 +51,14 @@ export async function ensoRoute(params: {
 	});
 
 	const data = await cached(`enso:${query}`.toLowerCase(), 10_000, async () => {
-		const r = await fetch(`${ENSO_ROUTE_URL}?${query}`, { headers: { Authorization: `Bearer ${apiKey}` } });
-		if (!r.ok) throw new Error(`enso ${r.status}`);
-		return r.json();
+		// Enso rate limits per key (429 on bursts): requests are spaced out and a 429 is retried with backoff
+		for (let attempt = 0; ; attempt++) {
+			await turn();
+			const r = await fetch(`${ENSO_ROUTE_URL}?${query}`, { headers: { Authorization: `Bearer ${apiKey}` } });
+			if (r.ok) return r.json();
+			if (r.status !== 429 || attempt >= MAX_RETRIES) throw new Error(`enso ${r.status}`);
+			await new Promise((resolve) => setTimeout(resolve, 600 * (attempt + 1)));
+		}
 	});
 
 	return {

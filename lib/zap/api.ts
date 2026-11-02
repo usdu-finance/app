@@ -13,6 +13,8 @@ export async function cached<T>(key: string, ttlMs: number, load: () => Promise<
 	return value;
 }
 
+export const cacheDrop = (key: string) => void store.delete(key);
+
 export const param = (req: NextApiRequest, name: string): string | undefined => {
 	const v = req.query[name];
 	return typeof v === 'string' ? v : undefined;

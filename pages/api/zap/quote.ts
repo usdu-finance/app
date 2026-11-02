@@ -3,7 +3,7 @@ import { getRegistry } from '@/lib/zap/registry';
 import { getTokenMeta, quoteZap } from '@/lib/zap/quote';
 import { serialize } from '@/lib/zap/routes';
 import { isEnsoEnabled } from '@/lib/zap/enso';
-import { addressParam, amountParam, cached, sendError, sendJson } from '@/lib/zap/api';
+import { addressParam, amountParam, cached, cacheDrop, sendError, sendJson } from '@/lib/zap/api';
 
 /**
  * GET /api/zap/quote?tokenIn=0x..&tokenOut=0x..&amountIn=<wei>
@@ -26,9 +26,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 		const [inToken, outToken] = await Promise.all([getTokenMeta(registry, tokenIn), getTokenMeta(registry, tokenOut)]);
 		if (!inToken || !outToken) return sendError(res, 400, 'Unknown token');
 
-		const routes = await cached(`quote:${tokenIn}:${tokenOut}:${amountIn}`.toLowerCase(), 10_000, () =>
-			quoteZap(registry, inToken, outToken, amountIn)
-		);
+		const key = `quote:${tokenIn}:${tokenOut}:${amountIn}`.toLowerCase();
+		const { routes } = await cached(key, 10_000, async () => {
+			const result = await quoteZap(registry, inToken, outToken, amountIn);
+			if (!result.complete) setTimeout(() => cacheDrop(key), 0); // partial results are served once, never reused
+			return result;
+		});
 
 		// Say why there is nothing to show: a token outside the protocol can only be routed through Enso
 		const isNative = registry.tokens.some((t) => t.address.toLowerCase() === tokenIn.toLowerCase());
