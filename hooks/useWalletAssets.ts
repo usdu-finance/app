@@ -96,14 +96,14 @@ export function useWalletAssets(owner: `0x${string}` | undefined): WalletAssetsD
 	const vaultDefs = useMemo(() => defs.filter((d) => d.vaultOf), [defs]);
 
 	const contracts = useMemo(() => {
-		if (!owner) return [];
+		// Without a wallet only the vault share prices are read: balances stay 0, but every asset is still listed and priced
 		return [
-			...defs.map((d) => ({
+			...(owner ? defs : []).map((d) => ({
 				chainId: mainnet.id,
 				address: d.address,
 				abi: erc20Abi,
 				functionName: 'balanceOf' as const,
-				args: [owner] as const,
+				args: [owner!] as const,
 			})),
 			...vaultDefs.map((d) => ({
 				chainId: mainnet.id,
@@ -120,9 +120,9 @@ export function useWalletAssets(owner: `0x${string}` | undefined): WalletAssetsD
 	});
 
 	return useMemo(() => {
-		const loading = isLoadingPools || isLoadingModules || (!!owner && isLoading);
+		const loading = isLoadingPools || isLoadingModules || isLoading;
 		const err = error?.message ?? poolError ?? modulesError;
-		if (!owner || !data) return { assets: [], totalValue: 0, isLoading: loading, error: err };
+		if (!data) return { assets: [], totalValue: 0, isLoading: loading, error: err };
 
 		// Stablecoin prices in USDU: pool.price is 1 coin1 in coin0 (USDU)
 		const prices: Record<string, number> = { USDU: 1 };
@@ -132,12 +132,12 @@ export function useWalletAssets(owner: `0x${string}` | undefined): WalletAssetsD
 		}
 
 		const assets = defs.map((d, i): WalletAsset => {
-			const raw = (data[i]?.result as bigint | undefined) ?? 0n;
+			const raw = owner ? ((data[i]?.result as bigint | undefined) ?? 0n) : 0n;
 			// Bridged coins are minted/redeemed at par, so they're valued at the U-stable of their peg group
 			let price = d.group ? (prices[GROUP_CURRENCY[d.group]] ?? 0) : 0;
 
 			if (d.vaultOf) {
-				const vaultPrice = data[defs.length + vaultDefs.indexOf(d)]?.result as bigint | undefined;
+				const vaultPrice = data[(owner ? defs.length : 0) + vaultDefs.indexOf(d)]?.result as bigint | undefined;
 				price = parseFloat(formatUnits(vaultPrice ?? 10n ** 18n, 18)) * (prices[d.vaultOf] ?? 0);
 			} else if (d.key.startsWith('LP-')) {
 				const pool = pools.find((p) => p.poolAddress === d.address);

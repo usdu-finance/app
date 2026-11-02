@@ -71,7 +71,7 @@ export function getMergedTokenList(cowTokens: TokenConfig[], chainId: number): T
 	return Array.from(byAddress.values());
 }
 
-export function searchTokens(tokens: TokenConfig[], query: string): TokenConfig[] {
+export function searchTokens<T extends Pick<TokenConfig, 'symbol' | 'name' | 'address'>>(tokens: T[], query: string): T[] {
 	if (!query.trim()) return tokens;
 	const q = query.toLowerCase();
 	return tokens.filter(

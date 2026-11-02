@@ -11,6 +11,7 @@ import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
+import ZapInCard from '@/components/pages/zap/ZapInCard';
 import { formatCompactNumber } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
@@ -165,6 +166,8 @@ function SwapListPageContent() {
 			/>
 
 			<HeroSteps steps={STEPS} />
+
+			<ZapInCard />
 
 			<Card variant="panel" className="space-y-8">
 				<PageHeader

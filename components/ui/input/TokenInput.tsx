@@ -1,5 +1,7 @@
 import { formatUnits } from 'viem';
 import { useRef } from 'react';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { BigNumberInput } from './BigNumberInput';
 import { TokenLogo } from '@/components/ui/logo';
 import { formatCurrency } from '@/lib/utils';
@@ -22,6 +24,10 @@ interface Props {
 	onMin?: () => void;
 	onMax?: () => void;
 	onReset?: () => void;
+	/** Turns the token badge into a button, e.g. to open a token picker. Works even when the input is disabled. */
+	onTokenClick?: () => void;
+	/** Logo for tokens the logo lookup doesn't know, e.g. an imported token. */
+	logoURI?: string;
 	autoFocus?: boolean;
 	disabled?: boolean;
 	showButtons?: boolean;
@@ -50,6 +56,8 @@ export default function TokenInput({
 	onMin = () => {},
 	onMax = () => {},
 	onReset = () => {},
+	onTokenClick,
+	logoURI,
 	error,
 	warning,
 }: Props) {
@@ -98,11 +106,28 @@ export default function TokenInput({
 						)}
 					</div>
 
-					<div className="mr-2">
-						<TokenLogo currency={symbol} size={6} />
-					</div>
+					{onTokenClick ? (
+						<button
+							type="button"
+							className="flex items-center gap-2 pl-2 pr-3 py-1.5 rounded-full border border-input-border bg-card hover:border-brand transition-colors flex-shrink-0"
+							onClick={(e) => {
+								e.stopPropagation();
+								onTokenClick();
+							}}
+						>
+							<TokenLogo currency={symbol} logoURI={logoURI} size={6} />
+							<span className="text-text-primary font-semibold">{symbol || 'Select'}</span>
+							<FontAwesomeIcon icon={faChevronDown} className="w-3 h-3 text-text-secondary" />
+						</button>
+					) : (
+						<>
+							<div className="mr-2">
+								<TokenLogo currency={symbol} logoURI={logoURI} size={6} />
+							</div>
 
-					<div className="text-input-label text-left">{symbol}</div>
+							<div className="text-input-label text-left">{symbol}</div>
+						</>
+					)}
 				</div>
 
 				{limitLabel != undefined || max != undefined || min != undefined || reset != undefined ? (

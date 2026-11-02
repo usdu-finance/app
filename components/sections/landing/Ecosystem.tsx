@@ -1,5 +1,6 @@
 import React from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowUpRightFromSquare, faLandmark } from '@fortawesome/free-solid-svg-icons';
 import { ADDRESS } from '@usdu-finance/usdu-core';
@@ -29,11 +30,22 @@ const PARTNERS = [
 ];
 
 const ASSETS = [
-	{ symbol: 'USDC', logo: '/coin/usdc.svg' },
-	{ symbol: 'USDT', logo: '/coin/usdt.svg' },
-	{ symbol: 'EURC' },
-	{ symbol: 'dEURO', logo: '/coin/deuro.svg' },
-	{ symbol: 'ZCHF', logo: '/coin/zchf.svg' },
+	{ symbol: 'USDC', to: 'USDU', logo: '/coin/usdc.svg' },
+	{ symbol: 'USDT', to: 'USDU', logo: '/coin/usdt.svg' },
+	{ symbol: 'EURC', to: 'EURU', logo: '/coin/eurc.png' },
+	{ symbol: 'dEURO', to: 'EURU', logo: '/coin/deuro.svg' },
+	{ symbol: 'ZCHF', to: 'CHFU', logo: '/coin/zchf.svg' },
+];
+
+// Any of these can be zapped into a stablecoin or reward vault in one transaction, routed through Enso
+const ZAP_ASSETS = [
+	{ symbol: 'ETH', logo: '/coin/eth.svg' },
+	{ symbol: 'WBTC', logo: '/coin/wbtc.svg' },
+	{ symbol: 'cbBTC', logo: '/coin/cbbtc.png' },
+	{ symbol: 'wstETH', logo: '/coin/wsteth.svg' },
+	{ symbol: 'LINK', logo: '/coin/link.png' },
+	{ symbol: 'UNI', logo: '/coin/uni.png' },
+	{ symbol: 'AAVE', logo: '/coin/aave.png' },
 ];
 
 export default function Ecosystem() {
@@ -75,25 +87,29 @@ export default function Ecosystem() {
 					))}
 				</div>
 
-				<Reveal className="mt-10 flex flex-col gap-4 rounded-2xl border border-usdu-surface p-6 md:flex-row md:items-center md:justify-between">
-					<p className="font-medium text-usdu-black">Assets you can swap in and out against</p>
-					<ul className="flex flex-wrap gap-3">
-						{ASSETS.map((a) => (
-							<li
-								key={a.symbol}
-								className="inline-flex items-center gap-2 rounded-full border border-usdu-surface bg-usdu-bg py-1.5 pl-2 pr-4 text-sm font-medium text-usdu-black"
-							>
-								{a.logo ? (
-									<Image src={a.logo} alt="" width={20} height={20} className="h-5 w-5 rounded-full" />
-								) : (
-									<span className="flex h-5 w-5 items-center justify-center rounded-full bg-usdu-black text-[10px] font-bold text-white">
-										€
-									</span>
-								)}
-								{a.symbol}
-							</li>
-						))}
-					</ul>
+				<Reveal className="mt-10 divide-y divide-usdu-surface rounded-2xl border border-usdu-surface">
+					{[
+						{ title: 'Assets you can swap in and out against', assets: ASSETS },
+						{ title: 'Or zap in with crypto, and many more tokens', assets: ZAP_ASSETS },
+					].map((row) => (
+						<div key={row.title} className="flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between">
+							<p className="font-medium text-usdu-black">{row.title}</p>
+							<ul className="flex flex-wrap gap-3">
+								{row.assets.map((a) => (
+									<li key={a.symbol}>
+										{/* each chip opens the zap page paying with that token, into the stablecoin it bridges to */}
+										<Link
+											href={`/dashboard/zap/swap?from=${a.symbol}&to=${'to' in a ? a.to : 'USDU'}`}
+											className="inline-flex items-center gap-2 rounded-full border border-usdu-surface bg-usdu-bg py-1.5 pl-2 pr-4 text-sm font-medium text-usdu-black transition-shadow hover:shadow-lg"
+										>
+											<Image src={a.logo} alt="" width={20} height={20} className="h-5 w-5 rounded-full" />
+											{a.symbol}
+										</Link>
+									</li>
+								))}
+							</ul>
+						</div>
+					))}
 				</Reveal>
 			</div>
 		</section>

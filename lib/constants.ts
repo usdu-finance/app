@@ -1,3 +1,6 @@
+import { ADDRESS } from '@usdu-finance/usdu-core';
+import { mainnet } from 'viem/chains';
+
 // App constants
 export const APP_NAME = 'USDU Finance';
 export const APP_DESCRIPTION = 'A decentralized finance application for USDU protocol';
@@ -32,6 +35,8 @@ export const getCurvePoolUrl = (poolAddress: string) => `https://www.curve.finan
 export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
 export const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL;
+// ZapperSwapEnsoV1 on Ethereum, from usdu-core
+export const ZAPPER_SWAP_ADDRESS = ADDRESS[mainnet.id].zapperSwapEnsoV1;
 
 // Local storage keys
 export const STORAGE_KEYS = {
@@ -58,6 +63,11 @@ export const SEO = {
 		'Swap',
 		'Mint or redeem USDU, EURU and CHFU through the swap router, or swap directly against Curve pools backing USDU.',
 		'/dashboard/swap'
+	),
+	zapSwap: pageSeo(
+		'Zap In',
+		'Pay with any token and end up in USDU, EURU, CHFU or their reward vaults in a single transaction.',
+		'/dashboard/zap/swap'
 	),
 	swapModule: pageSeo(
 		'Swap Module',
