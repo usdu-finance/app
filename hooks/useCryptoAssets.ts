@@ -68,10 +68,10 @@ export function useCryptoAssets(owner: `0x${string}` | undefined) {
 	const { data: cowTokens } = useQuery({ queryKey: ['cow-token-list'], queryFn: fetchCowTokenList, staleTime: 60 * 60 * 1000 });
 
 	const assets = useMemo<WalletAsset[]>(() => {
-		if (!owner) return [];
+		// Without a wallet every token is still listed and priced, with a 0 balance
 		return CRYPTO.map((t) => {
 			const isEth = t.address.toLowerCase() === NATIVE_ETH.toLowerCase();
-			const raw = isEth ? (eth?.value ?? 0n) : ((balances?.[erc20s.indexOf(t)]?.result as bigint | undefined) ?? 0n);
+			const raw = !owner ? 0n : isEth ? (eth?.value ?? 0n) : ((balances?.[erc20s.indexOf(t)]?.result as bigint | undefined) ?? 0n);
 			const balance = parseFloat(formatUnits(raw, t.decimals));
 			const price = prices?.[t.address.toLowerCase()] ?? 0;
 			return {
@@ -88,5 +88,5 @@ export function useCryptoAssets(owner: `0x${string}` | undefined) {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [owner, balances, eth, prices, cowTokens]);
 
-	return { assets, isLoading: !!owner && (isLoadingBalances || isLoadingPrices) };
+	return { assets, isLoading: (!!owner && isLoadingBalances) || isLoadingPrices };
 }

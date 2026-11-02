@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/ui/layout';
 import Card from '@/components/ui/Card';
 import { formatCompactNumber } from '@/lib/utils';
 import { SEO } from '@/lib/constants';
+import { withDemoBalances } from '@/lib/demo/dashboard';
 
 const HEADERS = ['Asset', 'Balance', 'Price', 'Value'];
 
@@ -54,11 +55,16 @@ function compareAssets(tab: string, a: WalletAsset, b: WalletAsset): number {
 
 function DashboardPageContent() {
 	const { isConnected, address } = useAuth();
-	const { assets, isLoading, error } = useWalletAssets(address as `0x${string}` | undefined);
-	const { assets: cryptoAll, isLoading: isLoadingCrypto } = useCryptoAssets(address as `0x${string}` | undefined);
+	const { assets: walletAssets, isLoading, error } = useWalletAssets(address as `0x${string}` | undefined);
+	const { assets: walletCrypto, isLoading: isLoadingCrypto } = useCryptoAssets(address as `0x${string}` | undefined);
 	const { streams } = useRewardStreams();
 	const { sortTab, sortReverse, handleSort } = useSort('Value');
 	const [showZero, setShowZero] = useState(false);
+
+	// Visitors without a wallet get a preview with demo balances at live prices
+	const isDemo = !isConnected;
+	const assets = useMemo(() => (isDemo ? withDemoBalances(walletAssets) : walletAssets), [isDemo, walletAssets]);
+	const cryptoAll = useMemo(() => (isDemo ? withDemoBalances(walletCrypto) : walletCrypto), [isDemo, walletCrypto]);
 
 	// every reward stream is listed, with 0 when the wallet holds none of its shares, largest position first
 	// (the sort is stable, so equal values keep the stream order)
@@ -96,25 +102,27 @@ function DashboardPageContent() {
 		<div className="space-y-8">
 			<PageHeader title="Dashboard" description="Your wallet at a glance: every asset the protocol recognizes, valued in USDU." />
 
+			{isDemo && (
+				<p className="rounded-lg border border-usdu-surface bg-usdu-bg px-4 py-3 text-sm text-text-secondary">
+					Preview with demo balances at live prices. Connect your wallet to see your own assets.
+				</p>
+			)}
+
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 				<StatCard
 					icon={faCoins}
 					label="Stablecoin Assets"
-					value={isConnected ? formatCompactNumber(stablecoinTotal, 2, '', ' USDU') : '—'}
-					loading={isConnected && isLoading}
+					value={formatCompactNumber(stablecoinTotal, 2, '', ' USDU')}
+					loading={isLoading}
 				/>
 				<StatCard
 					icon={faGift}
 					label="Reward Assets"
-					value={isConnected ? formatCompactNumber(rewardsTotal, 2, '', ' USDU') : '—'}
-					loading={isConnected && isLoading}
+					value={formatCompactNumber(rewardsTotal, 2, '', ' USDU')}
+					loading={isLoading}
 				/>
 				{/* Borrowing isn't wired into the dashboard yet */}
-				<StatCard
-					icon={faHandHoldingDollar}
-					label="Borrow Assets"
-					value={isConnected ? formatCompactNumber(0, 2, '', ' USDU') : '—'}
-				/>
+				<StatCard icon={faHandHoldingDollar} label="Borrow Assets" value={formatCompactNumber(0, 2, '', ' USDU')} />
 			</div>
 
 			<Card variant="panel" className="space-y-8">
@@ -139,18 +147,12 @@ function DashboardPageContent() {
 					description="USDU, EURU and CHFU plus every stablecoin the protocol bridges or pools, grouped by currency and valued at par in USDU."
 				/>
 
-				{!isConnected || isLoading || error || stableGroups.length === 0 ? (
+				{isLoading || error || stableGroups.length === 0 ? (
 					<Table>
 						<TableHead headers={HEADERS} colSpan={4} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
 						<TableBody>
 							<TableRowEmpty>
-								{!isConnected
-									? 'Connect your wallet to see your assets.'
-									: isLoading
-										? 'Loading stablecoin assets...'
-										: error
-											? `Error: ${error}`
-											: 'No stablecoins in this wallet.'}
+								{isLoading ? 'Loading stablecoin assets...' : error ? `Error: ${error}` : 'No stablecoins in this wallet.'}
 							</TableRowEmpty>
 						</TableBody>
 					</Table>
@@ -225,13 +227,9 @@ function DashboardPageContent() {
 				<Table>
 					<TableHead headers={HEADERS} colSpan={4} actionCol tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
 					<TableBody>
-						{!isConnected || isLoadingCrypto || cryptoAssets.length === 0 ? (
+						{isLoadingCrypto || cryptoAssets.length === 0 ? (
 							<TableRowEmpty>
-								{!isConnected
-									? 'Connect your wallet to see your assets.'
-									: isLoadingCrypto
-										? 'Loading crypto assets...'
-										: 'No crypto assets in this wallet.'}
+								{isLoadingCrypto ? 'Loading crypto assets...' : 'No crypto assets in this wallet.'}
 							</TableRowEmpty>
 						) : (
 							cryptoAssets.map((a) => (
@@ -286,42 +284,38 @@ function DashboardPageContent() {
 						<DonutChart
 							slices={rewardSlices}
 							centerLabel="Total staked"
-							centerValue={isConnected ? formatCompactNumber(rewardsTotal, 2, '', ' USDU') : '—'}
+							centerValue={formatCompactNumber(rewardsTotal, 2, '', ' USDU')}
 							size={240}
 						/>
 					</div>
 
 					<div className="w-full divide-y divide-usdu-surface">
-						{!isConnected ? (
-							<p className="text-text-secondary py-3">Connect your wallet to see your rewards.</p>
-						) : (
-							rewards.map((r) => (
-								<div key={r.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-									<div className="flex items-center gap-3">
-										<span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
-										<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
-										<div>
-											<Link
-												href={`/dashboard/strategy/${r.vault}/rewards`}
-												className="text-usdu-black font-medium hover:text-usdu-orange hover:underline transition-colors"
-											>
-												{r.name}
-											</Link>
-											<p className="text-text-secondary text-sm flex items-center gap-1">
-												<FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-orange" />
-												{`${r.apr.toFixed(2)}% APR`}
-											</p>
-										</div>
-									</div>
-									<div className="text-right">
-										<p className="text-usdu-black font-medium">{formatCompactNumber(r.value, 2, '', ' USDU')}</p>
-										<p className="text-text-secondary text-sm">
-											{rewardsTotal > 0 ? `${((r.value / rewardsTotal) * 100).toFixed(1)}%` : '0%'}
+						{rewards.map((r) => (
+							<div key={r.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+								<div className="flex items-center gap-3">
+									<span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
+									<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
+									<div>
+										<Link
+											href={`/dashboard/strategy/${r.vault}/rewards`}
+											className="text-usdu-black font-medium hover:text-usdu-orange hover:underline transition-colors"
+										>
+											{r.name}
+										</Link>
+										<p className="text-text-secondary text-sm flex items-center gap-1">
+											<FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-orange" />
+											{`${r.apr.toFixed(2)}% APR`}
 										</p>
 									</div>
 								</div>
-							))
-						)}
+								<div className="text-right">
+									<p className="text-usdu-black font-medium">{formatCompactNumber(r.value, 2, '', ' USDU')}</p>
+									<p className="text-text-secondary text-sm">
+										{rewardsTotal > 0 ? `${((r.value / rewardsTotal) * 100).toFixed(1)}%` : '0%'}
+									</p>
+								</div>
+							</div>
+						))}
 					</div>
 				</div>
 			</Card>
