@@ -214,7 +214,7 @@ export default function TableHeadSearchable({
 						</button>
 
 						{filterOpen && (
-							<div className="absolute right-0 top-full mt-2 z-50 w-52 rounded-lg bg-card shadow-card border border-table-alt py-3">
+							<div className="absolute right-0 top-full mt-2 z-50 w-52 max-h-96 overflow-y-auto rounded-lg bg-card shadow-card border border-table-alt py-3">
 								{filterOptions.length > 0 && (
 									<>
 										<div className="px-4 pb-2">

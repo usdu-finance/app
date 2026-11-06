@@ -64,6 +64,11 @@ export const SEO = {
 		'Mint or redeem USDU, EURU and CHFU through the swap router, or swap directly against Curve pools backing USDU.',
 		'/dashboard/swap'
 	),
+	morpho: pageSeo(
+		'Morpho',
+		'Scan the borrowable Morpho Blue markets on Ethereum: borrow rate, borrowable amount and the collateral it takes.',
+		'/dashboard/morpho'
+	),
 	zapSwap: pageSeo(
 		'Zap In',
 		'Pay with any token and end up in USDU, EURU, CHFU or their reward vaults in a single transaction.',
