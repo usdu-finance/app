@@ -142,3 +142,6 @@ export type GodEyeJourney = {
 	peers: GodEyeJourneyPeer[];
 	days: GodEyeJourneyDay[];
 };
+
+export type GodEyeTransfer = { txHash: string; t: number; from: string; to: string; amount: number };
+export type GodEyeTransfers = { transfers: GodEyeTransfer[]; more: boolean };

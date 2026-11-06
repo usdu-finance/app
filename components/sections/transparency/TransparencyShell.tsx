@@ -24,8 +24,8 @@ const STEPS = [
 	},
 ];
 
-/** page frame shared by the GodEye map and the per-address deep timeline, so switching between them keeps the layout */
-export default function TransparencyShell({ children }: { children: ReactNode }) {
+/** page frame shared by the GodEye map and the per-address deep timeline, so switching between them keeps the layout; `below` stacks further sections under the map */
+export default function TransparencyShell({ children, below }: { children: ReactNode; below?: ReactNode }) {
 	return (
 		<div className="px-4 md:px-8 lg:px-16 pt-32 pb-24 bg-usdu-card min-h-screen space-y-8">
 			<div className="text-center">
@@ -41,6 +41,8 @@ export default function TransparencyShell({ children }: { children: ReactNode })
 			<div className="relative h-[calc(100vh-8rem)] min-h-[680px] rounded-lg border border-usdu-surface overflow-hidden text-usdu-black">
 				{children}
 			</div>
+
+			{below}
 		</div>
 	);
 }
