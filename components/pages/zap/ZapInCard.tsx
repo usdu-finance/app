@@ -15,6 +15,7 @@ import AddressLink from '@/components/ui/AddressLink';
 
 const NATIVE_ETH = '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE';
 const ZAP_STABLES = ['USDU', 'EURU', 'CHFU'];
+const PROTOCOL_SYMBOLS = [...ZAP_STABLES, 'rUSDU', 'rEURU', 'rCHFU'];
 
 interface ZapToken {
 	symbol: string;
@@ -82,7 +83,7 @@ const stepDetails = (st: ZapStep) =>
 export interface ZapInPrefill {
 	/** Pay token: a symbol (e.g. USDC) or an address. */
 	from?: string;
-	/** Receive token: one of USDU, EURU, CHFU, rUSDU, rEURU, rCHFU (symbol or address). */
+	/** Receive token: any token in the list (symbol or address), e.g. USDU, rEURU, ETH, USDC. */
 	to?: string;
 	/** A decimal amount like "1.5", or "max" for the whole wallet balance. */
 	amount?: string;
@@ -99,30 +100,19 @@ export default function ZapInCard({
 	const { isConnected, address } = useAuth();
 	const { open } = useAppKit();
 
-	const { data: registry } = useQuery({
-		queryKey: ['zap-tokens'],
-		queryFn: () => getJson<{ targets: ZapToken[]; enso: boolean }>('/api/zap/tokens'),
-		staleTime: 30_000,
-	});
 	const { data: cowTokens, isLoading: isLoadingTokenList } = useQuery({
 		queryKey: ['cow-token-list'],
 		queryFn: fetchCowTokenList,
 		staleTime: 60 * 60 * 1000,
 	});
 
-	// Pay list: protocol stables, reward shares and ETH first, then the whole CoW list (search also takes a pasted address)
-	const payTokens = useMemo<TokenOption[]>(() => {
+	// One list for both sides: protocol stables, reward shares and ETH first, then the whole CoW list (search also takes a pasted address)
+	const tokens = useMemo<TokenOption[]>(() => {
 		const protocol = [...ZAP_STABLES, 'rUSDU', 'rEURU', 'rCHFU', 'ETH'].map((s) => asOption(TOKENS[s]));
 		const merged = getMergedTokenList(cowTokens ?? [], 1).map(asOption);
 		const seen = new Set(protocol.map((t) => t.address.toLowerCase()));
 		return [...protocol, ...merged.filter((t) => !seen.has(t.address.toLowerCase()))];
 	}, [cowTokens]);
-
-	// Receive list: the three stablecoins and their reward vault shares, minus whatever is being paid with
-	const receiveTokens = useMemo<TokenOption[]>(
-		() => (registry?.targets ?? []).map((t) => asOption({ ...t, ...TOKENS[t.symbol], address: t.address })),
-		[registry]
-	);
 
 	const [payToken, setPayToken] = useState<TokenOption>(() => asOption(TOKENS.USDC));
 	const [receiveToken, setReceiveToken] = useState<TokenOption>(() => asOption(TOKENS.USDU));
@@ -146,7 +136,7 @@ export default function ZapInCard({
 		q ? list.find((t) => t.address.toLowerCase() === q.toLowerCase() || t.symbol.toLowerCase() === q.toLowerCase()) : undefined;
 
 	// A pay token outside every list can still be addressed by its contract address
-	const unknownFrom = !!prefill?.from && isAddress(prefill.from) && !matchToken(payTokens, prefill.from);
+	const unknownFrom = !!prefill?.from && isAddress(prefill.from) && !matchToken(tokens, prefill.from);
 	const { data: fromMeta, isFetched: fromMetaFetched } = useReadContracts({
 		contracts: unknownFrom
 			? [
@@ -158,11 +148,11 @@ export default function ZapInCard({
 		query: { enabled: unknownFrom },
 	});
 
-	const listsReady = !!registry && !isLoadingTokenList && (!unknownFrom || fromMetaFetched);
+	const listsReady = !isLoadingTokenList && (!unknownFrom || fromMetaFetched);
 	useEffect(() => {
 		if (!prefill || prefillState.tokens || !listsReady) return;
 		const from =
-			matchToken(payTokens, prefill.from) ??
+			matchToken(tokens, prefill.from) ??
 			(unknownFrom && fromMeta?.[0]?.result
 				? asOption({
 						address: prefill.from!,
@@ -171,17 +161,17 @@ export default function ZapInCard({
 						name: (fromMeta![2]?.result as string) ?? undefined,
 					})
 				: undefined);
-		const to = matchToken(receiveTokens, prefill.to);
+		const to = matchToken(tokens, prefill.to);
 		const nextPay = from ?? payToken;
 		let nextReceive = to ?? receiveToken;
 		if (nextPay.address.toLowerCase() === nextReceive.address.toLowerCase()) {
-			nextReceive = receiveTokens.find((r) => r.address.toLowerCase() !== nextPay.address.toLowerCase()) ?? nextReceive;
+			nextReceive = tokens.find((r) => r.address.toLowerCase() !== nextPay.address.toLowerCase()) ?? nextReceive;
 		}
 		setPayToken(nextPay);
 		setReceiveToken(nextReceive);
 		setApplied({ key: prefillKey, tokens: true, amount: false });
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [prefillKey, listsReady, payTokens, receiveTokens, fromMeta]);
+	}, [prefillKey, listsReady, tokens, fromMeta]);
 
 	useEffect(() => {
 		onTokensChange?.(payToken, receiveToken);
@@ -206,6 +196,9 @@ export default function ZapInCard({
 	});
 
 	const route = quote?.routes.find((r) => r.available);
+	const inProtocol = (t: TokenOption) => PROTOCOL_SYMBOLS.includes(t.symbol);
+	// Into the protocol is a zap in, out of it a zap out, and anything else is a plain swap through Enso
+	const action = inProtocol(receiveToken) ? 'Zap In' : inProtocol(payToken) ? 'Zap Out' : 'Swap';
 	// Enso calldata encodes the exact input amount, so a route only counts once its quote matches what is typed
 	const quoteMatchesInput = debouncedAmount === amountRaw;
 	const hasQuote = !!route && BigInt(route.amountOut) > 0n && quoteMatchesInput;
@@ -238,14 +231,22 @@ export default function ZapInCard({
 	const balanceRaw = isNativeEth ? (ethBalance?.value ?? 0n) : ((reads?.[0]?.result as bigint | undefined) ?? 0n);
 	const allowanceRaw = (reads?.[1]?.result as bigint | undefined) ?? 0n;
 
-	// The receive token is always an ERC-20 (a stablecoin or a reward share), never ETH
-	const { data: receiveBalanceData, refetch: refetchReceive } = useReadContracts({
-		contracts: address
-			? [{ address: receiveToken.address as Address, abi: erc20Abi, functionName: 'balanceOf' as const, args: [address as Address] }]
-			: [],
-		query: { enabled: !!address, refetchInterval: 30_000 },
+	const receivesEth = receiveToken.address.toLowerCase() === NATIVE_ETH.toLowerCase();
+	const { data: receiveBalanceData, refetch: refetchReceiveToken } = useReadContracts({
+		contracts:
+			address && !receivesEth
+				? [{ address: receiveToken.address as Address, abi: erc20Abi, functionName: 'balanceOf' as const, args: [address as Address] }]
+				: [],
+		query: { enabled: !!address && !receivesEth, refetchInterval: 30_000 },
 	});
-	const receiveBalanceRaw = (receiveBalanceData?.[0]?.result as bigint | undefined) ?? 0n;
+	const receiveEth = useBalance({ address: address as Address, query: { enabled: receivesEth && !!address } });
+	const receiveBalanceRaw = receivesEth
+		? (receiveEth.data?.value ?? 0n)
+		: ((receiveBalanceData?.[0]?.result as bigint | undefined) ?? 0n);
+	const refetchReceive = () => {
+		refetchReceiveToken();
+		receiveEth.refetch();
+	};
 
 	useEffect(() => {
 		if (!prefill?.amount || !prefillState.tokens || prefillState.amount) return;
@@ -285,7 +286,7 @@ export default function ZapInCard({
 		setAmountRawInput('');
 		// The receive side can't be the same coin; fall back to the first receive token that differs
 		if (t.address.toLowerCase() === receiveToken.address.toLowerCase()) {
-			setReceiveToken(receiveTokens.find((r) => r.address.toLowerCase() !== t.address.toLowerCase()) ?? receiveToken);
+			setReceiveToken(tokens.find((r) => r.address.toLowerCase() !== t.address.toLowerCase()) ?? receiveToken);
 		}
 	};
 
@@ -323,7 +324,7 @@ export default function ZapInCard({
 	const noRouteReason = quoteError
 		? 'Could not fetch a quote. Try again.'
 		: quote?.reason === 'enso-not-configured'
-			? `${payToken.symbol} is not part of the protocol, so it needs Enso routing, which is not configured on this server yet.`
+			? `${payToken.symbol} to ${receiveToken.symbol} goes outside the protocol, so it needs Enso routing, which is not configured on this server yet.`
 			: (quote?.routes[0]?.steps.find((s) => !s.available)?.reason ?? 'No route found for this pair.');
 
 	// USD prices for everything shown in the route: the pay and receive tokens and every token a step passes through
@@ -366,9 +367,10 @@ export default function ZapInCard({
 				{/* Zap */}
 				<div className="bg-usdu-bg p-6 rounded-xl border border-usdu-surface space-y-6">
 					<div>
-						<h3 className="font-semibold text-usdu-black text-lg">Zap In</h3>
+						<h3 className="font-semibold text-usdu-black text-lg">{action}</h3>
 						<p className="text-text-secondary">
-							Pay with any token and end up in USDU, EURU, CHFU or their reward vaults, in a single transaction.
+							Pay with any token and end up in USDU, EURU, CHFU, their reward vaults or any other token, in a single
+							transaction.
 						</p>
 					</div>
 
@@ -408,7 +410,7 @@ export default function ZapInCard({
 					/>
 
 					<ApproveActionInput
-						actionLabel="Zap In"
+						actionLabel={action}
 						approvals={
 							isNativeEth
 								? []
@@ -511,7 +513,7 @@ export default function ZapInCard({
 				isOpen={picker === 'pay'}
 				onClose={() => setPicker(null)}
 				onSelect={selectPay}
-				tokens={payTokens}
+				tokens={tokens}
 				title="You pay"
 				allowCustom
 				showPrices
@@ -521,10 +523,12 @@ export default function ZapInCard({
 				isOpen={picker === 'receive'}
 				onClose={() => setPicker(null)}
 				onSelect={setReceiveToken}
-				tokens={receiveTokens}
+				tokens={tokens}
 				exclude={[payToken.address]}
-				showPrices
 				title="You receive"
+				allowCustom
+				showPrices
+				isLoading={isLoadingTokenList}
 			/>
 		</>
 	);
