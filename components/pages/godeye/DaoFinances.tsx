@@ -20,16 +20,16 @@ export default function DaoFinances() {
 	const [token, setToken] = useState<string | null>(null);
 	const [selected, setSelected] = useState<number | null>(null);
 
-	// default to USDU once the ledgers are ready
+	// default to the combined view once the ledgers are ready
 	useEffect(() => {
 		if (!boot.ready) return;
-		setToken((cur) => cur ?? (boot.tokens.find((t) => t.symbol === 'USDU' && t.chainId === 1) ?? boot.tokens[0]).key);
+		setToken((cur) => cur ?? ALL);
 	}, [boot.ready, boot.tokens]);
 	// a quarter picked for one currency says nothing about another
 	useEffect(() => setSelected(null), [token]);
 
 	const stables = useMemo(() => STABLES.flatMap((s) => boot.tokens.filter((t) => t.chainId === 1 && t.symbol === s)), [boot.tokens]);
-	const options = useMemo(() => [...stables.map((t) => ({ value: t.key, label: t.symbol })), { value: ALL, label: 'All' }], [stables]);
+	const options = useMemo(() => [{ value: ALL, label: 'All' }, ...stables.map((t) => ({ value: t.key, label: t.symbol }))], [stables]);
 	const usd = token === ALL;
 	const currencies = useMemo(() => (usd ? stables : stables.filter((t) => t.key === token)), [usd, stables, token]);
 	const symbol = usd ? 'USD' : (currencies[0]?.symbol ?? '');
