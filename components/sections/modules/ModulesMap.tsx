@@ -41,7 +41,7 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 	const [tip, setTip] = useState<{ id: string; x: number; y: number } | null>(null);
 
 	const [mapSel, setMapSel] = useState<string | null>(null);
-	const [tab, setTab] = useState<(typeof TABS)[number]>('all');
+	const [tab, setTab] = useState<(typeof TABS)[number]>('active');
 
 	const { input, byKey, hubStats } = useMemo(() => {
 		const input: MapNodeInput[] = [];

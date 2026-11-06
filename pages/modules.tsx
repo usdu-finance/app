@@ -84,7 +84,7 @@ function Header({ children }: { children: React.ReactNode }) {
 export default function ModulesPage() {
 	const { modules: allModulesRaw, history: allHistory, isLoading, error } = useModuleDataAll(mainnet.id);
 
-	const [statusFilter, setStatusFilter] = useState<'all' | ModuleStatusKey>('all');
+	const [statusFilter, setStatusFilter] = useState<'all' | ModuleStatusKey>('active');
 	const [search, setSearch] = useState('');
 	const [selected, setSelected] = useState<string | null>(null);
 	const [, setTick] = useState(0);
