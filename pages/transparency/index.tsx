@@ -5,13 +5,13 @@ import { SEO } from '@/lib/constants';
 
 // canvas + ResizeObserver only exist in the browser
 const GodEye = dynamic(() => import('@/components/pages/godeye/GodEye'), { ssr: false });
-const DaoEarnings = dynamic(() => import('@/components/pages/godeye/DaoEarnings'), { ssr: false });
+const DaoFinances = dynamic(() => import('@/components/pages/godeye/DaoFinances'), { ssr: false });
 
 export default function TransparencyPage() {
 	return (
 		<>
 			<NextSeo title={SEO.transparency.title} description={SEO.transparency.description} openGraph={SEO.transparency.openGraph} />
-			<TransparencyShell below={<DaoEarnings />}>
+			<TransparencyShell below={<DaoFinances />}>
 				<GodEye />
 			</TransparencyShell>
 		</>
