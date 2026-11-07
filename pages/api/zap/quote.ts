@@ -7,9 +7,9 @@ import { addressParam, amountParam, cached, cacheDrop, sendError, sendJson } fro
 
 /**
  * GET /api/zap/quote?tokenIn=0x..&tokenOut=0x..&amountIn=<wei>
- * Every route from tokenIn to tokenOut for the amount, best first. tokenIn can be any ERC-20 or ETH: tokens the
+ * Every route from tokenIn to tokenOut for the amount, best first. Either side can be any ERC-20 or ETH: tokens the
  * protocol knows are routed through the swap modules, Curve pools and reward vaults; anything else uses Enso for
- * the first leg. Each route includes `zapSteps`, the arguments for ZapperSwapEnsoV1.zap.
+ * the outside leg. Each route includes `zapSteps`, the arguments for ZapperSwapEnsoV1.zap.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
 	if (req.method !== 'GET') return sendError(res, 405, 'Method not allowed');
@@ -32,9 +32,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 			return result;
 		});
 
-		// Say why there is nothing to show: a token outside the protocol can only be routed through Enso
-		const isNative = registry.tokens.some((t) => t.address.toLowerCase() === tokenIn.toLowerCase());
-		const reason = routes.some((r) => r.available) ? undefined : !isNative && !isEnsoEnabled() ? 'enso-not-configured' : 'no-route';
+		// Say why there is nothing to show: a token outside the protocol, on either side, can only be routed through Enso
+		const isNative = (a: string) => registry.tokens.some((t) => t.address.toLowerCase() === a.toLowerCase());
+		const needsEnso = !isNative(tokenIn) || !isNative(tokenOut);
+		const reason = routes.some((r) => r.available) ? undefined : needsEnso && !isEnsoEnabled() ? 'enso-not-configured' : 'no-route';
 
 		sendJson(res, serialize({ tokenIn, tokenOut, amountIn, routes, reason, fetchedAt: registry.fetchedAt }), 10);
 	} catch {
