@@ -1,13 +1,12 @@
 import { useMemo, useRef } from 'react';
-import { useGodEyeOutflows } from '@/hooks/useGodEye';
-import { EXPENSE_CATEGORIES, EXPENSE_LEDGER, type ExpenseCategory } from '@/lib/dao-expenses';
+import { categoryOf, EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/dao-expenses';
 import { dateStr, shortAddr } from './godeye.format';
-import { GodEyeTokenInfo } from './godeye.types';
 import { Glass, Seg, StatCard } from './GodEyeUi';
 import {
 	Amount,
 	buildSeries,
 	DAO,
+	DaoSectionProps,
 	explorerAddress,
 	FlowMonth,
 	FlowRow,
@@ -34,26 +33,8 @@ export default function DaoExpenses({
 	symbol,
 	selected,
 	onSelect,
-}: {
-	/** the currency switch, shared by both sections so they always show the same currency */
-	token: string | null;
-	currencyOptions: { value: string; label: string }[];
-	onToken: (token: string) => void;
-	/** the stablecoins to add up: one, or all three for the combined view */
-	currencies: GodEyeTokenInfo[];
-	/** combined view: every amount is converted to USD at the rate of the day it was paid */
-	usd: boolean;
-	rateOf: (symbol: string, t: number) => number;
-	fxReady: boolean;
-	fxError: string | null;
-	/** what amounts are shown in: the currency's symbol, or USD for the combined view */
-	symbol: string;
-	/** the quarter the table is filtered to, as an index into the series; null shows all time */
-	selected: number | null;
-	onSelect: (q: number | null) => void;
-}) {
-	const { rows: outflows, loading, error } = useGodEyeOutflows(currencies, DAO);
-
+	transfers: { data, loading, error },
+}: DaoSectionProps) {
 	const model = useMemo(() => {
 		type Stat = { category: ExpenseCategory; in: number; txs: Set<string>; last: number };
 		const months = new Map<number, FlowMonth>();
@@ -63,18 +44,13 @@ export default function DaoExpenses({
 		const allTxs = new Set<string>();
 		let total = 0;
 		let lastOut = 0;
-		// money that left but is not an expense, e.g. the initial funders getting their own capital back
-		let notCounted = 0;
 
-		const symbolOf = Object.fromEntries(currencies.map((c) => [c.key, c.symbol]));
-		for (const r of outflows) {
+		for (const r of data?.transfers ?? []) {
+			// Only what went to a wallet is paid out. Funds the DAO sends to a module or any other contract are an allocation, not a cost.
+			if (r.dir !== 'out' || r.kind !== 'wallet' || !currencies.includes(r.currency)) continue;
 			// the combined view values every payout in dollars at the rate of the day it was paid
-			const amount = usd ? r.amount * rateOf(symbolOf[r.token], r.t) : r.amount;
-			const category = EXPENSE_LEDGER[r.txHash.toLowerCase()] ?? 'uncategorised';
-			if (!EXPENSE_CATEGORIES[category].counted) {
-				notCounted += amount;
-				continue;
-			}
+			const amount = usd ? r.amount * rateOf(r.currency, r.t) : r.amount;
+			const category = categoryOf(r.txHash, r.coin);
 			const quarter = quarterOf(r.t);
 			for (const q of [-1, quarter]) {
 				const byCategory = stats.get(q) ?? new Map<ExpenseCategory, Stat>();
@@ -118,7 +94,6 @@ export default function DaoExpenses({
 			total,
 			payouts: allTxs.size,
 			lastOut,
-			notCounted,
 			rowsFor,
 			groups: (Object.keys(EXPENSE_CATEGORIES) as ExpenseCategory[])
 				.filter((c) => present.has(c))
@@ -126,23 +101,16 @@ export default function DaoExpenses({
 			...buildSeries(months),
 			symbol,
 		};
-	}, [outflows, currencies, usd, rateOf, symbol]);
+	}, [data, currencies, usd, rateOf, symbol]);
 
 	// the combined view cannot be valued until the exchange rates are in, and not at all if they failed
-	const ready = !loading && !(usd && (fxError || !fxReady));
+	const ready = !!data && !loading && !(usd && (fxError || !fxReady));
 	// Keep showing the previous numbers while a new currency loads, so toggling does not flash a loading state
 	const lastModel = useRef<typeof model | null>(null);
 	if (ready) lastModel.current = model;
 	const shown = lastModel.current;
 	const stale = !ready;
 	const selectedQuarter = selected !== null ? shown?.series.find((m) => m.q === selected) : undefined;
-	const notCounted =
-		(shown?.notCounted ?? 0) > 0 && shown ? (
-			<p className="text-xs text-text-muted">
-				Not counted: <Amount value={shown.notCounted} coin={shown.symbol} /> returned to the two initial funders, which was their
-				own capital.
-			</p>
-		) : null;
 
 	return (
 		<div className={SECTION}>
@@ -166,12 +134,12 @@ export default function DaoExpenses({
 				<Seg value={token ?? ''} options={currencyOptions} onChange={onToken} />
 			</div>
 
-			{error && <Glass className="p-4 text-sm text-rose-600">Could not load the expenses: {error}</Glass>}
+			{error && !shown && <Glass className="p-4 text-sm text-rose-600">Could not load the expenses: {error}</Glass>}
 			{usd && fxError && (
 				<Glass className="p-4 text-sm text-rose-600">Could not load exchange rates, so the combined view is unavailable.</Glass>
 			)}
 			{!error && !shown && !(usd && fxError) && <Glass className="p-6 text-center text-sm text-text-muted">Loading transfers…</Glass>}
-			{!error && !(usd && fxError) && shown && (
+			{!(usd && fxError) && shown && (
 				<div className={`space-y-3 transition-opacity ${stale ? 'opacity-60' : ''}`}>
 					<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 						<StatCard label="Total spent" value={<Amount value={shown.total} coin={shown.symbol} />} />
@@ -202,7 +170,6 @@ export default function DaoExpenses({
 						selected={selectedQuarter}
 						onClear={() => onSelect(null)}
 					/>
-					{notCounted}
 				</div>
 			)}
 		</div>

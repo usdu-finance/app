@@ -13,6 +13,34 @@ export async function cached<T>(key: string, ttlMs: number, load: () => Promise<
 	return value;
 }
 
+const swr = new Map<string, { at: number; value: unknown }>();
+const inflight = new Map<string, Promise<unknown>>();
+
+/**
+ * Stale-while-revalidate cache: nothing is loaded until someone asks. Within `ttlMs` the value is served as is; past it
+ * the old value is still served instantly while one reload runs in the background, so a visitor only ever waits for the
+ * very first load. Concurrent callers share one load, and a failed reload keeps serving the old value.
+ */
+export async function cachedSwr<T>(key: string, ttlMs: number, load: () => Promise<T>): Promise<T> {
+	const hit = swr.get(key) as { at: number; value: T } | undefined;
+	const reload = () => {
+		let p = inflight.get(key) as Promise<T> | undefined;
+		if (!p) {
+			p = load()
+				.then((value) => {
+					swr.set(key, { at: Date.now(), value });
+					return value;
+				})
+				.finally(() => inflight.delete(key));
+			inflight.set(key, p);
+		}
+		return p;
+	};
+	if (!hit) return reload();
+	if (Date.now() - hit.at >= ttlMs) reload().catch(() => {});
+	return hit.value;
+}
+
 export const cacheDrop = (key: string) => void store.delete(key);
 
 export const param = (req: NextApiRequest, name: string): string | undefined => {

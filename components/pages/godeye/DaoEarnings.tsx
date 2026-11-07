@@ -1,14 +1,11 @@
 import { useMemo, useRef } from 'react';
-import { useGodEyeJourneys } from '@/hooks/useGodEye';
-import { SWAP_BRIDGES, useSwapOutFees } from '@/hooks/useSwapOutFees';
-import { CONTRIBUTION, CONTRIBUTIONS } from '@/lib/dao-contributions';
 import { dateStr, shortAddr } from './godeye.format';
-import { GodEyeTokenInfo } from './godeye.types';
 import { Glass, Seg, StatCard } from './GodEyeUi';
 import {
 	Amount,
 	buildSeries,
 	DAO,
+	DaoSectionProps,
 	explorerAddress,
 	FlowMonth,
 	FlowRow,
@@ -22,10 +19,8 @@ import {
 // The table lists the biggest earners; modules under the threshold (and anything past the row limit) share one row
 const MIN_ROW_INCOME = 0.1;
 const MAX_ROWS = 8;
-// Only modules and minters count: pools and vaults that pay the DAO are pass-throughs for a strategy's own position
-const SOURCE_KIND = 'minter' as const;
 
-// Modules grouped by the strategy they run, matched on the indexer's label (e.g. "Curve Adapter V1.1 USDC #2 (deprecated)")
+// Modules grouped by the strategy they run, matched on the indexer's label (e.g. "Curve Adapter V1.1 USDC #2 (retired)")
 const FAMILIES = [
 	{ key: 'curve', name: 'Curve', color: '#0d9488', match: /curve/i },
 	{ key: 'morpho', name: 'Morpho', color: '#2563eb', match: /morpho/i },
@@ -34,12 +29,14 @@ const FAMILIES = [
 	{ key: 'other', name: 'Other', color: '#94a3b8', match: /./ },
 ];
 const familyOf = (label: string | null) => FAMILIES.find((f) => f.match.test(label ?? '')) ?? FAMILIES[FAMILIES.length - 1];
-// Contributions (the initial funding and any later transfer from an unknown wallet) are a category of their own
+// Contributions (the initial funding and any later transfer from a plain wallet) are a category of their own
+const CONTRIBUTION = { name: 'Contribution', caption: 'Funds sent in by other wallets', color: '#0ea5e9' };
 const CONTRIBUTION_FAMILY = { key: 'contribution', name: CONTRIBUTION.name, color: CONTRIBUTION.color };
 
 /**
- * What modules and minters paid the DAO, per quarter and per module, read from the same indexed transfer history as
- * GodEye plus the swap-out fees the bridges pay in their backing coin, and contributions from unknown wallets.
+ * What modules and minters paid the DAO, per quarter and per module, read from the DAO wallet's own transfers (the
+ * stablecoins and the coins backing them, so the swap-out fees the bridges pay in USDC, EURC... are in), plus
+ * contributions from plain wallets.
  */
 export default function DaoEarnings({
 	token,
@@ -53,37 +50,10 @@ export default function DaoEarnings({
 	symbol,
 	selected,
 	onSelect,
-}: {
-	/** the currency switch, shared by both sections so they always show the same currency */
-	token: string | null;
-	currencyOptions: { value: string; label: string }[];
-	onToken: (token: string) => void;
-	/** the stablecoins to add up: one, or all three for the combined view */
-	currencies: GodEyeTokenInfo[];
-	/** combined view: every amount is converted to USD at the rate of the day it was paid */
-	usd: boolean;
-	rateOf: (symbol: string, t: number) => number;
-	fxReady: boolean;
-	fxError: string | null;
-	/** what amounts are shown in: the currency's symbol, or USD for the combined view */
-	symbol: string;
-	/** the quarter the table is filtered to, as an index into the series; null shows all time */
-	selected: number | null;
-	onSelect: (q: number | null) => void;
-}) {
-	const {
-		data: journeys,
-		loading,
-		error,
-	} = useGodEyeJourneys(
-		currencies.map((c) => c.key),
-		DAO
-	);
-	// Swap-out fees reach the DAO in the bridge's backing coin (USDC, EURC, ZCHF, ...), so the stablecoin ledger never sees them
-	const { fees, loading: feesLoading, error: feesError } = useSwapOutFees();
-
+	transfers: { data, loading, error },
+}: DaoSectionProps) {
 	const model = useMemo(() => {
-		if (!currencies.length || !currencies.every((c) => journeys[c.key])) return null;
+		if (!data) return null;
 		const months = new Map<number, FlowMonth>();
 		type Stat = {
 			key: string;
@@ -108,7 +78,6 @@ export default function DaoEarnings({
 			coin: string | null,
 			t: number,
 			amount: number,
-			count: number,
 			family: Stat['family'] = familyOf(label)
 		) => {
 			const quarter = quarterOf(t);
@@ -117,79 +86,31 @@ export default function DaoEarnings({
 				stats.set(q, byKey);
 				const st = byKey.get(key) ?? { key, label, address, family, coin, in: 0, count: 0, last: 0 };
 				st.in += amount;
-				st.count += count;
+				st.count += 1;
 				st.last = Math.max(st.last, t);
 				byKey.set(key, st);
 			}
 			const m = months.get(quarter) ?? { total: 0, byGroup: new Map<string, number>(), txs: 0 };
 			m.total += amount;
 			m.byGroup.set(family.key, (m.byGroup.get(family.key) ?? 0) + amount);
-			m.txs += count;
+			m.txs += 1;
 			months.set(quarter, m);
 			total += amount;
 			lastIn = Math.max(lastIn, t);
 			earnedByQuarter.set(quarter, (earnedByQuarter.get(quarter) ?? 0) + amount);
 		};
 
-		for (const c of currencies) {
-			const journey = journeys[c.key];
+		for (const tr of data.transfers) {
+			// Only what came in from a module or minter, or from a plain wallet (a contribution). Pools, vaults and other
+			// contracts that pay the DAO are pass-throughs for a strategy's own position.
+			if (tr.dir !== 'in' || !currencies.includes(tr.currency) || tr.kind === 'other') continue;
 			// the combined view values every payment in dollars at the rate of the day it was paid
-			const conv = (t: number, amount: number) => (usd ? amount * rateOf(c.symbol, t) : amount);
-
-			for (const d of journey.days) {
-				for (const p of d.peers) {
-					const peer = journey.peers[p.i];
-					if (p.in <= 0) continue;
-					// an address the indexer knows nothing about (a plain wallet) sending funds in is a contribution
-					if (peer.kind === 'wallet') {
-						record(
-							usd ? `wallet|${peer.address}` : `wallet|${peer.address}|`,
-							shortAddr(peer.address),
-							peer.address,
-							null,
-							d.t,
-							conv(d.t, p.in),
-							p.count,
-							CONTRIBUTION_FAMILY
-						);
-						continue;
-					}
-					if (peer.kind !== SOURCE_KIND) continue;
-					// in one currency a module is a row per coin it was paid in; combined, a module is one row
-					record(
-						usd ? peer.address : `${peer.address}|`,
-						peer.label ?? shortAddr(peer.address),
-						peer.address,
-						null,
-						d.t,
-						conv(d.t, p.in),
-						p.count
-					);
-				}
-			}
-
-			// Each foreign coin counts one-to-one in its stablecoin's currency, but is listed on its own row in the coin it was paid in
-			const bridges = SWAP_BRIDGES.filter((b) => b.stable === c.symbol);
-			for (const f of fees) {
-				const b = bridges.find((x) => x.module === f.module);
-				if (!b || f.amount <= 0) continue;
-				record(usd ? b.module : `${b.module}|${b.coin}`, b.label, b.module, usd ? null : b.coin, f.t, conv(f.t, f.amount), 1);
-			}
-
-			// the initial contributions, one row for the lot (a row per coin in a single currency)
-			for (const k of CONTRIBUTIONS.filter((x) => x.currency === c.symbol)) {
-				const t = Math.floor(Date.parse(k.at) / 1000);
-				record(
-					usd ? 'contribution' : `contribution|${k.coin}`,
-					CONTRIBUTION.name,
-					'',
-					usd ? null : k.coin,
-					t,
-					conv(t, k.amount),
-					1,
-					CONTRIBUTION_FAMILY
-				);
-			}
+			const amount = usd ? tr.amount * rateOf(tr.currency, tr.t) : tr.amount;
+			// in one currency a source is a row per coin it paid in, with a foreign coin counted one-to-one in the currency; combined, a source is one row
+			const coinKey = usd ? '' : `|${tr.coin}`;
+			const coin = usd || tr.coin === symbol ? null : tr.coin;
+			if (tr.kind === 'wallet') record(`contribution${coinKey}`, CONTRIBUTION.name, '', coin, tr.t, amount, CONTRIBUTION_FAMILY);
+			else record(`${tr.peer}${coinKey}`, tr.label ?? shortAddr(tr.peer), tr.peer, coin, tr.t, amount);
 		}
 
 		/** the table's rows for one quarter (or all time): the biggest earners, with the small ones merged into "Other" */
@@ -243,13 +164,13 @@ export default function DaoEarnings({
 			thisQuarter: earnedByQuarter.get(built.now) ?? 0,
 			symbol,
 		};
-	}, [journeys, currencies, fees, usd, rateOf, symbol]);
+	}, [data, currencies, usd, rateOf, symbol]);
 
 	// Keep showing the previous numbers while a new currency loads, so toggling does not flash a loading state
 	const lastModel = useRef<typeof model>(null);
 	if (model) lastModel.current = model;
 	const shown = model ?? lastModel.current;
-	const stale = !model || loading || feesLoading || (usd && !fxReady);
+	const stale = !model || loading || (usd && !fxReady);
 
 	const selectedQuarter = selected !== null ? shown?.series.find((m) => m.q === selected) : undefined;
 
@@ -277,16 +198,13 @@ export default function DaoEarnings({
 				<Seg value={token ?? ''} options={currencyOptions} onChange={onToken} />
 			</div>
 
-			{error && <Glass className="p-4 text-sm text-rose-600">Could not load the earnings: {error}</Glass>}
+			{error && !shown && <Glass className="p-4 text-sm text-rose-600">Could not load the earnings: {error}</Glass>}
 			{usd && fxError && (
 				<Glass className="p-4 text-sm text-rose-600">Could not load exchange rates, so the combined view is unavailable.</Glass>
 			)}
-			{feesError && (
-				<p className="text-xs text-rose-600">Swap-out fees could not be loaded, so income paid in foreign coins is missing.</p>
-			)}
 			{!error && !(usd && fxError) && !shown && <Glass className="p-6 text-center text-sm text-text-muted">Loading transfers…</Glass>}
 
-			{!error && !(usd && fxError) && shown && (
+			{!(usd && fxError) && shown && (
 				<div className={`space-y-3 transition-opacity ${stale ? 'opacity-60' : ''}`}>
 					<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 						<StatCard label="Total income" value={<Amount value={shown.total} coin={shown.symbol} />} />

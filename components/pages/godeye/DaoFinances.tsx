@@ -1,59 +1,48 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useGodEyeBoot } from '@/hooks/useGodEye';
+import { useMemo, useState } from 'react';
 import { useDaoFx } from '@/hooks/useDaoFx';
+import { useDaoTransfers } from '@/hooks/useDaoTransfers';
+import type { DaoCurrency } from '@/lib/dao-transfers';
 import DaoEarnings from './DaoEarnings';
 import DaoExpenses from './DaoExpenses';
-import GodEyeLoading from './GodEyeLoading';
 
-const STABLES = ['USDU', 'EURU', 'CHFU'];
+const STABLES: DaoCurrency[] = ['USDU', 'EURU', 'CHFU'];
 // the combined view: all three currencies added up in dollars
 const ALL = 'all';
+const OPTIONS = [{ value: ALL, label: 'All' }, ...STABLES.map((s) => ({ value: s, label: s }))];
 
 /**
- * The DAO's earnings and expenses, one under the other. They share the currency (each card has the switch) and the
- * selected quarter, so picking a quarter in either chart filters both tables. "All" adds USDU, EURU and CHFU up in dollars, each payment at the
+ * The DAO's earnings and expenses, one under the other, both read from one feed of the DAO wallet's transfers (served and
+ * cached by /api/dao/transfers). They share the currency (each card has the switch) and the selected quarter, so picking a
+ * quarter in either chart filters both tables. "All" adds USDU, EURU and CHFU up in dollars, each payment at the
  * exchange rate of the day it was made.
  */
 export default function DaoFinances() {
-	const boot = useGodEyeBoot();
 	const fx = useDaoFx();
-	const [token, setToken] = useState<string | null>(null);
+	const transfers = useDaoTransfers();
+	const [token, setToken] = useState<string>(ALL);
 	const [selected, setSelected] = useState<number | null>(null);
 
-	// default to the combined view once the ledgers are ready
-	useEffect(() => {
-		if (!boot.ready) return;
-		setToken((cur) => cur ?? ALL);
-	}, [boot.ready, boot.tokens]);
-	// a quarter picked for one currency says nothing about another
-	useEffect(() => setSelected(null), [token]);
-
-	const stables = useMemo(() => STABLES.flatMap((s) => boot.tokens.filter((t) => t.chainId === 1 && t.symbol === s)), [boot.tokens]);
-	const options = useMemo(() => [{ value: ALL, label: 'All' }, ...stables.map((t) => ({ value: t.key, label: t.symbol }))], [stables]);
 	const usd = token === ALL;
-	const currencies = useMemo(() => (usd ? stables : stables.filter((t) => t.key === token)), [usd, stables, token]);
-	const symbol = usd ? 'USD' : (currencies[0]?.symbol ?? '');
+	const currencies = useMemo(() => (usd ? STABLES : STABLES.filter((s) => s === token)), [usd, token]);
 
-	if (!boot.ready)
-		return (
-			<div className="relative min-h-[420px] rounded-lg border border-usdu-surface bg-usdu-bg">
-				<GodEyeLoading sync={boot.sync} unreachable={boot.unreachable} />
-			</div>
-		);
-
+	// both sections carry the same switch, wired to the same state, so changing it in one changes the other
 	const shared = {
-		// both sections carry the same switch, wired to the same state, so changing it in one changes the other
 		token,
-		currencyOptions: options,
-		onToken: setToken,
+		currencyOptions: OPTIONS,
+		onToken: (t: string) => {
+			setToken(t);
+			// a quarter picked for one currency says nothing about another
+			setSelected(null);
+		},
 		currencies,
 		usd,
 		rateOf: fx.rateOf,
 		fxReady: fx.ready,
 		fxError: fx.error,
-		symbol,
+		symbol: usd ? 'USD' : token,
 		selected,
 		onSelect: setSelected,
+		transfers,
 	};
 
 	return (

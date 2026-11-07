@@ -6,6 +6,7 @@ import { TokenLogo } from '@/components/ui/logo';
 import { TOKENS } from '@/lib/tokens/config';
 import { fetchCowTokenList } from '@/lib/tokens/cow-service';
 import { EXPLORER } from './godeye.constants';
+import type { DaoCurrency, DaoTransfers } from '@/lib/dao-transfers';
 import { dateStr, fmt } from './godeye.format';
 import { Dot, Glass, SectionTitle } from './GodEyeUi';
 
@@ -16,6 +17,27 @@ export const DAO = ADDRESS[mainnet.id].curator.toLowerCase();
 
 /** The frame of one section of the page */
 export const SECTION = 'relative min-h-[420px] rounded-lg border border-usdu-surface bg-usdu-bg p-4 md:p-6 space-y-4 text-usdu-black';
+
+/** What DaoFinances hands to both sections, which share the currency switch, the selected quarter and one transfer feed */
+export type DaoSectionProps = {
+	/** the currency switch, shared by both sections so they always show the same currency */
+	token: string | null;
+	currencyOptions: { value: string; label: string }[];
+	onToken: (token: string) => void;
+	/** the currencies to add up: one, or all three for the combined view */
+	currencies: DaoCurrency[];
+	/** combined view: every amount is converted to USD at the rate of the day it was paid */
+	usd: boolean;
+	rateOf: (symbol: string, t: number) => number;
+	fxReady: boolean;
+	fxError: string | null;
+	/** what amounts are shown in: the currency's symbol, or USD for the combined view */
+	symbol: string;
+	/** the quarter the table is filtered to, as an index into the series; null shows all time */
+	selected: number | null;
+	onSelect: (q: number | null) => void;
+	transfers: { data: DaoTransfers | null; loading: boolean; error: string | null };
+};
 
 // The chart always spans at least two years of quarters, so it keeps its shape while there is little (or nothing) to show
 const MIN_QUARTERS = 8;
@@ -232,13 +254,16 @@ export function FlowTable({
 							const name = (
 								<>
 									<Dot color={r.color} size={8} />
-									<span className="font-medium">{r.label}</span>
-									<span className="text-xs text-text-muted">{r.caption}</span>
+									{/* on a narrow screen the caption sits under the name instead of squeezing beside it */}
+									<span className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-2">
+										<span className="font-medium">{r.label}</span>
+										<span className="text-xs text-text-muted">{r.caption}</span>
+									</span>
 								</>
 							);
 							return (
 								<tr key={r.key} className="border-t border-black/5">
-									<td className="py-1.5 pr-3">
+									<td className="min-w-[11rem] py-1.5 pr-3 sm:min-w-0">
 										{r.href ? (
 											<a
 												href={r.href}
