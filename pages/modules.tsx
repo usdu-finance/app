@@ -6,6 +6,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faRefresh, faFileSignature, faHourglassHalf, faPlugCircleCheck, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 import { mainnet } from 'viem/chains';
 import ModulesMap from '@/components/sections/modules/ModulesMap';
+import ProposeModule from '@/components/sections/modules/ProposeModule';
 import {
 	groupHistoryByModule,
 	createAllModules,
@@ -25,11 +26,15 @@ import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/componen
 import HeroSteps from '@/components/ui/HeroSteps';
 import AddressLink from '@/components/ui/AddressLink';
 import { useSort } from '@/hooks/ui/useSort';
+import { useQueryTab } from '@/hooks/ui/useQueryTab';
+import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
+import { PillTabs, CurrencyTabs } from '@/components/ui/input';
 import type { StablecoinModule, StablecoinModuleHistoryItem } from '@/hooks/useModulesData';
 import { formatTimestampLocale, formatDateOnly, formatTimeOnly } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
 
+const TABS = ['Map', 'List', 'Propose'] as const;
 const HEADERS = ['Module', 'Stablecoin', 'Type', 'Status', 'Expires', 'Created'];
 const STATUS_FILTERS: ('all' | ModuleStatusKey)[] = ['all', 'pending', 'active', 'revoked', 'expired'];
 const KIND_BADGE = {
@@ -84,6 +89,8 @@ function Header({ children }: { children: React.ReactNode }) {
 export default function ModulesPage() {
 	const { modules: allModulesRaw, history: allHistory, isLoading, error } = useModuleDataAll(mainnet.id);
 
+	const [tab, setTab] = useQueryTab(TABS);
+	const { currency, all, setCurrency, currencies } = useCurrencyFilter();
 	const [statusFilter, setStatusFilter] = useState<'all' | ModuleStatusKey>('active');
 	const [search, setSearch] = useState('');
 	const [selected, setSelected] = useState<string | null>(null);
@@ -96,7 +103,11 @@ export default function ModulesPage() {
 	const allModules = useMemo(() => createAllModules(allModulesRaw, historyByModule), [allModulesRaw, historyByModule]);
 	const getStatus = useMemo(() => (m: StablecoinModule) => getModuleStatus(m, historyByModule), [historyByModule]);
 
-	const inTab = allModules;
+	// the currency switcher narrows everything to the modules of one stablecoin
+	const inTab = useMemo(
+		() => (all ? allModules : allModules.filter((m) => getModuleCurrency(m.stablecoin) === currency)),
+		[allModules, all, currency]
+	);
 	const figures = useModuleFigures(useMemo(() => inTab.map((m) => m.module), [inTab]));
 
 	const rows = useMemo(() => {
@@ -144,11 +155,12 @@ export default function ModulesPage() {
 	const selectFromMap = (key: string | null) => {
 		setSelected(key);
 		if (!key) return;
+		setTab('List');
 		if (!rows.some((m) => moduleKey(m.stablecoin, m.module) === key)) {
 			setSearch('');
 			setStatusFilter('all');
 		}
-		setTimeout(() => rowRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+		setTimeout(() => rowRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 150);
 	};
 
 	if (isLoading) {
@@ -196,252 +208,281 @@ export default function ModulesPage() {
 
 				<HeroSteps steps={STEPS} />
 
-				<div className="space-y-4">
-					<ModulesMap modules={inTab} getStatus={getStatus} selected={selected} onSelect={selectFromMap} figures={figures} />
-					<p className="text-sm text-text-secondary">
-						{inTab.length} modules · {count('active')} active · {count('pending')} pending · {count('revoked')} revoked ·{' '}
-						{count('expired')} expired
-					</p>
+				<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+					<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
+					<CurrencyTabs
+						currencies={currencies}
+						// a proposal targets exactly one stablecoin, so there is no "All" while proposing
+						value={tab === 'Propose' && all ? currencies[0]! : currency}
+						onChange={setCurrency}
+						showAll={tab !== 'Propose'}
+					/>
 				</div>
 
-				<Card variant="panel" className="space-y-4">
-					<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-						<div className="relative md:w-96">
-							<FontAwesomeIcon
-								icon={faMagnifyingGlass}
-								className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary"
-							/>
-							<input
-								value={search}
-								onChange={(e) => setSearch(e.target.value)}
-								placeholder="Search by name, message or address"
-								className="w-full rounded-lg bg-white/80 border border-black/10 py-2 pl-9 pr-3 text-sm text-usdu-black outline-none focus:border-brand"
-							/>
-						</div>
-						<div className="flex flex-wrap gap-2">
-							{STATUS_FILTERS.map((s) => (
-								<button
-									key={s}
-									onClick={() => setStatusFilter(s)}
-									className={`px-3 py-1.5 rounded-lg text-sm capitalize transition-colors ${
-										statusFilter === s ? 'bg-usdu-black text-usdu-card' : `${GLASS} text-text-secondary hover:bg-white`
-									}`}
-								>
-									{s}
-								</button>
-							))}
-						</div>
+				{tab === 'Map' && (
+					<div className="space-y-4">
+						<ModulesMap modules={inTab} getStatus={getStatus} selected={selected} onSelect={selectFromMap} figures={figures} />
+						<p className="text-sm text-text-secondary">
+							{inTab.length} modules · {count('active')} active · {count('pending')} pending · {count('revoked')} revoked ·{' '}
+							{count('expired')} expired
+						</p>
 					</div>
+				)}
 
-					<Table>
-						<TableHead headers={HEADERS} colSpan={6} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-						<TableBody>
-							{rows.length === 0 ? (
-								<TableRowEmpty>No modules found.</TableRowEmpty>
-							) : (
-								rows.map((m) => {
-									const key = moduleKey(m.stablecoin, m.module);
-									const status = getStatus(m);
-									const type = MODULE_TYPES[getModuleType(m.message)];
-									const history: StablecoinModuleHistoryItem[] = historyByModule[key] ?? [];
-									const open = selected === key;
-									return (
-										<Fragment key={key}>
-											<div
-												ref={(el) => {
-													rowRefs.current[key] = el;
-												}}
-												className={`scroll-mt-24 ${open ? 'ring-1 ring-brand rounded-lg' : ''}`}
-											>
-												<TableRow
-													headers={HEADERS}
-													colSpan={6}
-													tab={sortTab}
-													onClick={() => setSelected(open ? null : key)}
+				{tab === 'Propose' && <ProposeModule currency={all ? currencies[0]! : currency} />}
+
+				{tab === 'List' && (
+					<Card variant="panel" className="space-y-4">
+						<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+							<div className="relative md:w-96">
+								<FontAwesomeIcon
+									icon={faMagnifyingGlass}
+									className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-text-secondary"
+								/>
+								<input
+									value={search}
+									onChange={(e) => setSearch(e.target.value)}
+									placeholder="Search by name, message or address"
+									className="w-full rounded-lg bg-white/80 border border-black/10 py-2 pl-9 pr-3 text-sm text-usdu-black outline-none focus:border-brand"
+								/>
+							</div>
+							<div className="flex flex-wrap gap-2">
+								{STATUS_FILTERS.map((s) => (
+									<button
+										key={s}
+										onClick={() => setStatusFilter(s)}
+										className={`px-3 py-1.5 rounded-lg text-sm capitalize transition-colors ${
+											statusFilter === s
+												? 'bg-usdu-black text-usdu-card'
+												: `${GLASS} text-text-secondary hover:bg-white`
+										}`}
+									>
+										{s}
+									</button>
+								))}
+							</div>
+						</div>
+
+						<Table>
+							<TableHead headers={HEADERS} colSpan={6} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+							<TableBody>
+								{rows.length === 0 ? (
+									<TableRowEmpty>No modules found.</TableRowEmpty>
+								) : (
+									rows.map((m) => {
+										const key = moduleKey(m.stablecoin, m.module);
+										const status = getStatus(m);
+										const type = MODULE_TYPES[getModuleType(m.message)];
+										const history: StablecoinModuleHistoryItem[] = historyByModule[key] ?? [];
+										const open = selected === key;
+										return (
+											<Fragment key={key}>
+												<div
+													ref={(el) => {
+														rowRefs.current[key] = el;
+													}}
+													className={`scroll-mt-24 ${open ? 'ring-1 ring-brand rounded-lg' : ''}`}
 												>
-													<div>
-														<div className="font-semibold text-text-primary">
-															{m.message || 'Unnamed Module'}
+													<TableRow
+														headers={HEADERS}
+														colSpan={6}
+														tab={sortTab}
+														onClick={() => setSelected(open ? null : key)}
+													>
+														<div>
+															<div className="font-semibold text-text-primary">
+																{m.message || 'Unnamed Module'}
+															</div>
+															<div className="text-xs">
+																{m.module.slice(0, 10)}...{m.module.slice(-6)}
+															</div>
 														</div>
-														<div className="text-xs">
-															{m.module.slice(0, 10)}...{m.module.slice(-6)}
-														</div>
-													</div>
-													<span>{getModuleCurrency(m.stablecoin) ?? '—'}</span>
-													<span className="inline-flex items-center gap-1.5">
-														<span
-															className="inline-block w-2.5 h-2.5 rounded-full"
-															style={{ background: type.color }}
-														/>
-														{type.name}
-													</span>
-													<span className="inline-flex flex-wrap items-center justify-end gap-1">
-														<span
-															className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}
-														>
-															{status.label}
-														</span>
-														{status.pending && status.status !== 'pending' && (
+														<span>{getModuleCurrency(m.stablecoin) ?? '—'}</span>
+														<span className="inline-flex items-center gap-1.5">
 															<span
-																className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-600"
-																title={proposalTiming(status.pending)}
+																className="inline-block w-2.5 h-2.5 rounded-full"
+																style={{ background: type.color }}
+															/>
+															{type.name}
+														</span>
+														<span className="inline-flex flex-wrap items-center justify-end gap-1">
+															<span
+																className={`px-2 py-0.5 rounded-full text-xs font-medium ${status.bgColor} ${status.color}`}
 															>
-																{status.pending.ready ? 'Proposal ready' : 'Proposal pending'}
+																{status.label}
 															</span>
-														)}
-													</span>
-													<span>{fmtExpiry(m.expiredAt)}</span>
-													<span>{formatDateOnly(m.createdAt)}</span>
-												</TableRow>
-											</div>
-
-											{open && (
-												<div className="bg-usdu-bg rounded-lg mt-3 mb-2 px-4 pt-5 pb-5 space-y-5 text-sm">
-													<div className="flex flex-wrap gap-x-8 gap-y-2">
-														<div>
-															<p className="text-text-secondary">Module</p>
-															<AddressLink address={m.module} type="address" />
-														</div>
-														<div>
-															<p className="text-text-secondary">Stablecoin</p>
-															<AddressLink address={m.stablecoin} type="address" />
-														</div>
-														<div>
-															<p className="text-text-secondary">Last updated</p>
-															<p className="text-usdu-black">{formatTimestampLocale(m.updatedAt)}</p>
-														</div>
-													</div>
-													{status.pending && (
-														<div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2">
-															<p className="font-medium text-usdu-black">
-																Pending proposal · {proposalTiming(status.pending)}
-															</p>
-															<div className="mt-1 flex flex-wrap gap-x-8 gap-y-1 text-xs">
-																<span>
-																	<span className="text-text-secondary">Message </span>
-																	{status.pending.message || '—'}
+															{status.pending && status.status !== 'pending' && (
+																<span
+																	className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-600"
+																	title={proposalTiming(status.pending)}
+																>
+																	{status.pending.ready ? 'Proposal ready' : 'Proposal pending'}
 																</span>
-																<span>
-																	<span className="text-text-secondary">New expiry </span>
-																	{status.pending.expiredAt !== null
-																		? fmtExpiry(status.pending.expiredAt)
-																		: '—'}
-																</span>
-																<span>
-																	<span className="text-text-secondary">Timelock ends </span>
-																	{status.pending.readyAt
-																		? formatTimestampLocale(BigInt(status.pending.readyAt))
-																		: '—'}
-																</span>
-															</div>
-														</div>
-													)}
-													{(() => {
-														const f = figures.get(m.module.toLowerCase());
-														const sym = getModuleCurrency(m.stablecoin);
-														const shared =
-															inTab.filter((x) => x.module.toLowerCase() === m.module.toLowerCase()).length >
-															1;
-														const items = moduleFigureRows(f, shared ? undefined : sym);
-														return (
-															<div className="flex flex-col">
-																{[...new Set(items.map((r) => r.currency))].map((cur) => (
-																	<div
-																		key={cur ?? 'all'}
-																		className="grid grid-cols-2 gap-x-8 gap-y-2 border-t border-usdu-surface py-2 first:border-t-0 first:pt-0 sm:w-fit"
-																	>
-																		{cur && <p className="col-span-2 font-medium text-usdu-black">{cur}</p>}
-																		{items
-																			.filter((r) => r.currency === cur)
-																			.map((r) => (
-																				<div key={r.label} title={r.title}>
-																					<p className="text-text-secondary">{r.label}</p>
-																					<p className={r.negative ? 'text-red-600' : 'text-usdu-black'}>
-																						{r.value}
-																					</p>
-																				</div>
-																			))}
-																	</div>
-																))}
-																{shared && !f?.byCurrency && (
-																	<p className="self-end text-xs text-text-secondary">
-																		Module totals, shared by all its stablecoins
-																	</p>
-																)}
-															</div>
-														);
-													})()}
-													{m.messageUpdated && (
-														<p className="text-usdu-black">
-															<span className="font-medium">Update:</span> {m.messageUpdated}
-														</p>
-													)}
-													<div className="font-medium text-usdu-black">History ({history.length} events)</div>
-													{history.map((h, idx) => {
-														const tl = timelockStatus(h.createdAt, h.timelock);
-														return (
-															<div
-																key={`${h.txHash}-${h.logIndex}`}
-																className={`pb-4 ${idx !== history.length - 1 ? 'border-b border-usdu-surface' : ''}`}
-															>
-																<div className="flex items-start justify-between mb-3">
-																	<div className="flex items-center gap-3">
-																		<span
-																			className={`px-2 py-1 rounded text-xs font-medium ${KIND_BADGE[h.kind]}`}
-																		>
-																			{h.kind}
-																		</span>
-																		<span className="text-usdu-black font-medium">{h.message}</span>
-																	</div>
-																	<div className="text-xs text-text-secondary text-right">
-																		<div>{formatDateOnly(h.createdAt)}</div>
-																		<div>{formatTimeOnly(h.createdAt)}</div>
-																	</div>
-																</div>
-																<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-																	<div>
-																		<p className="text-text-secondary mb-1">Transaction</p>
-																		<AddressLink address={h.txHash} type="tx" />
-																	</div>
-																	<div>
-																		<p className="text-text-secondary mb-1">Caller</p>
-																		<AddressLink address={h.caller} type="address" />
-																	</div>
-																	{h.expiredAt && (
-																		<div>
-																			<p className="text-text-secondary mb-1">Expires At</p>
-																			<p className="text-usdu-black">{fmtExpiry(h.expiredAt)}</p>
-																		</div>
-																	)}
-																	{tl && (
-																		<div>
-																			<p className="text-text-secondary mb-1">
-																				{tl.isPast ? 'Timelock Ended' : 'Timelock'}
-																			</p>
-																			<p
-																				className={
-																					tl.isPast
-																						? 'text-usdu-black'
-																						: 'text-yellow-600 font-medium'
-																				}
-																			>
-																				{tl.display}
-																			</p>
-																		</div>
-																	)}
-																</div>
-															</div>
-														);
-													})}
+															)}
+														</span>
+														<span>{fmtExpiry(m.expiredAt)}</span>
+														<span>{formatDateOnly(m.createdAt)}</span>
+													</TableRow>
 												</div>
-											)}
-										</Fragment>
-									);
-								})
-							)}
-						</TableBody>
-					</Table>
-				</Card>
+
+												{open && (
+													<div className="bg-usdu-bg rounded-lg mt-3 mb-2 px-4 pt-5 pb-5 space-y-5 text-sm">
+														<div className="flex flex-wrap gap-x-8 gap-y-2">
+															<div>
+																<p className="text-text-secondary">Module</p>
+																<AddressLink address={m.module} type="address" />
+															</div>
+															<div>
+																<p className="text-text-secondary">Stablecoin</p>
+																<AddressLink address={m.stablecoin} type="address" />
+															</div>
+															<div>
+																<p className="text-text-secondary">Last updated</p>
+																<p className="text-usdu-black">{formatTimestampLocale(m.updatedAt)}</p>
+															</div>
+														</div>
+														{status.pending && (
+															<div className="rounded-lg border border-yellow-200 bg-yellow-50 px-3 py-2">
+																<p className="font-medium text-usdu-black">
+																	Pending proposal · {proposalTiming(status.pending)}
+																</p>
+																<div className="mt-1 flex flex-wrap gap-x-8 gap-y-1 text-xs">
+																	<span>
+																		<span className="text-text-secondary">Message </span>
+																		{status.pending.message || '—'}
+																	</span>
+																	<span>
+																		<span className="text-text-secondary">New expiry </span>
+																		{status.pending.expiredAt !== null
+																			? fmtExpiry(status.pending.expiredAt)
+																			: '—'}
+																	</span>
+																	<span>
+																		<span className="text-text-secondary">Timelock ends </span>
+																		{status.pending.readyAt
+																			? formatTimestampLocale(BigInt(status.pending.readyAt))
+																			: '—'}
+																	</span>
+																</div>
+															</div>
+														)}
+														{(() => {
+															const f = figures.get(m.module.toLowerCase());
+															const sym = getModuleCurrency(m.stablecoin);
+															const shared =
+																inTab.filter((x) => x.module.toLowerCase() === m.module.toLowerCase())
+																	.length > 1;
+															const items = moduleFigureRows(f, shared ? undefined : sym);
+															return (
+																<div className="flex flex-col">
+																	{[...new Set(items.map((r) => r.currency))].map((cur) => (
+																		<div
+																			key={cur ?? 'all'}
+																			className="grid grid-cols-2 gap-x-8 gap-y-2 border-t border-usdu-surface py-2 first:border-t-0 first:pt-0 sm:w-fit"
+																		>
+																			{cur && (
+																				<p className="col-span-2 font-medium text-usdu-black">
+																					{cur}
+																				</p>
+																			)}
+																			{items
+																				.filter((r) => r.currency === cur)
+																				.map((r) => (
+																					<div key={r.label} title={r.title}>
+																						<p className="text-text-secondary">{r.label}</p>
+																						<p
+																							className={
+																								r.negative
+																									? 'text-red-600'
+																									: 'text-usdu-black'
+																							}
+																						>
+																							{r.value}
+																						</p>
+																					</div>
+																				))}
+																		</div>
+																	))}
+																	{shared && !f?.byCurrency && (
+																		<p className="self-end text-xs text-text-secondary">
+																			Module totals, shared by all its stablecoins
+																		</p>
+																	)}
+																</div>
+															);
+														})()}
+														{m.messageUpdated && (
+															<p className="text-usdu-black">
+																<span className="font-medium">Update:</span> {m.messageUpdated}
+															</p>
+														)}
+														<div className="font-medium text-usdu-black">History ({history.length} events)</div>
+														{history.map((h, idx) => {
+															const tl = timelockStatus(h.createdAt, h.timelock);
+															return (
+																<div
+																	key={`${h.txHash}-${h.logIndex}`}
+																	className={`pb-4 ${idx !== history.length - 1 ? 'border-b border-usdu-surface' : ''}`}
+																>
+																	<div className="flex items-start justify-between mb-3">
+																		<div className="flex items-center gap-3">
+																			<span
+																				className={`px-2 py-1 rounded text-xs font-medium ${KIND_BADGE[h.kind]}`}
+																			>
+																				{h.kind}
+																			</span>
+																			<span className="text-usdu-black font-medium">{h.message}</span>
+																		</div>
+																		<div className="text-xs text-text-secondary text-right">
+																			<div>{formatDateOnly(h.createdAt)}</div>
+																			<div>{formatTimeOnly(h.createdAt)}</div>
+																		</div>
+																	</div>
+																	<div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+																		<div>
+																			<p className="text-text-secondary mb-1">Transaction</p>
+																			<AddressLink address={h.txHash} type="tx" />
+																		</div>
+																		<div>
+																			<p className="text-text-secondary mb-1">Caller</p>
+																			<AddressLink address={h.caller} type="address" />
+																		</div>
+																		{h.expiredAt && (
+																			<div>
+																				<p className="text-text-secondary mb-1">Expires At</p>
+																				<p className="text-usdu-black">{fmtExpiry(h.expiredAt)}</p>
+																			</div>
+																		)}
+																		{tl && (
+																			<div>
+																				<p className="text-text-secondary mb-1">
+																					{tl.isPast ? 'Timelock Ended' : 'Timelock'}
+																				</p>
+																				<p
+																					className={
+																						tl.isPast
+																							? 'text-usdu-black'
+																							: 'text-yellow-600 font-medium'
+																					}
+																				>
+																					{tl.display}
+																				</p>
+																			</div>
+																		)}
+																	</div>
+																</div>
+															);
+														})}
+													</div>
+												)}
+											</Fragment>
+										);
+									})
+								)}
+							</TableBody>
+						</Table>
+					</Card>
+				)}
 			</div>
 		</>
 	);
