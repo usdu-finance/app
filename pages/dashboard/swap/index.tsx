@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { formatUnits } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -9,7 +9,9 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
-import { PillTabs, CurrencyTabs, ALL_CURRENCIES } from '@/components/ui/input';
+import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
+import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import ZapInCard from '@/components/pages/zap/ZapInCard';
@@ -140,19 +142,12 @@ function CurvePoolSection({ title, description, pools, isLoading, error, emptyTe
 }
 
 const TABS = ['Zap', 'Stable', 'FX Swap', 'Redeem'] as const;
-type SwapTab = (typeof TABS)[number];
-
-// the stablecoins that run their own swap modules, matching `CURRENCIES` of useSwapModules
-const CURRENCY_FILTERS = ['USDU', 'EURU', 'CHFU'];
 
 function SwapListPageContent() {
 	const router = useRouter();
-	const [tab, setTab] = useState<SwapTab>('Zap');
+	const [tab, setTab] = useQueryTab(TABS);
 
-	// the stablecoin lives in the url, so a view can be shared
-	const queryCurrency = typeof router.query.currency === 'string' ? router.query.currency.toUpperCase() : '';
-	const currency = CURRENCY_FILTERS.includes(queryCurrency) ? queryCurrency : ALL_CURRENCIES;
-	const all = currency === ALL_CURRENCIES;
+	const { currency, all, setCurrency, currencies } = useCurrencyFilter();
 
 	const { modules, isLoading, error } = useSwapModules();
 	const { sortTab, sortReverse, handleSort } = useSort('Available In');
@@ -181,12 +176,7 @@ function SwapListPageContent() {
 			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
 				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
 				{/* a zap swaps any token, so there is no stablecoin to filter by */}
-				<CurrencyTabs
-					currencies={CURRENCY_FILTERS}
-					value={currency}
-					disabled={tab === 'Zap'}
-					onChange={(c) => router.replace({ query: { currency: c } }, undefined, { shallow: true })}
-				/>
+				<CurrencyTabs currencies={currencies} value={currency} disabled={tab === 'Zap'} onChange={setCurrency} />
 			</div>
 
 			{tab === 'Zap' && <ZapInCard />}

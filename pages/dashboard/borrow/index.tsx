@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCoins, faArrowTrendUp, faGavel } from '@fortawesome/free-solid-svg-icons';
 import { useSort } from '@/hooks/ui/useSort';
+import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import { useNow } from '@/hooks/ui/useNow';
 import { useBorrowMarkets } from '@/hooks/useBorrowMarkets';
 import { useBorrowPositions, type BorrowPositionView } from '@/hooks/useBorrowPositions';
@@ -414,7 +415,7 @@ const TABS = ['Markets', 'My Positions', 'All Positions', 'Auctions'] as const;
 
 function BorrowListPageContent() {
 	const router = useRouter();
-	const [tab, setTab] = useState<(typeof TABS)[number]>('Markets');
+	const [tab, setTab] = useQueryTab(TABS);
 
 	// the stablecoin lives in the url, so a view can be shared
 	const queryCurrency = typeof router.query.currency === 'string' ? router.query.currency.toUpperCase() : '';
