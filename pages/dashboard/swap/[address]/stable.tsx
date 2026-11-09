@@ -33,7 +33,7 @@ const fmtStable = (currency: string, value: bigint, round: boolean = true) =>
 
 type SwapDirection = 'in' | 'out';
 
-const CHART_TABS = ['TVL', 'Revenue', 'Volume'];
+const CHART_TABS = ['TVL', 'Volume', 'Revenue'];
 const HISTORY_HEADERS = ['Date', 'Type', 'Coin', 'Stablecoin', 'Fee'];
 
 function compareBigint(a: bigint, b: bigint): number {
@@ -260,13 +260,17 @@ function SwapDetailPageContent() {
 		totalMinted: Number(formatUnits(selectedModule.totalMinted, 18)),
 		totalRevenue: Number(formatUnits(selectedModule.totalRevenue, 18)),
 	});
+	// TVL as a share of the mint limit per day. The indexer keeps no history of the limit, so today's limit is used for every day.
+	const mintCap = Number(formatUnits(selectedModule.mintCap, 18));
+	const allocationPoints = tvlSeries(dailyPoints).map((p) => ({ t: p.t, v: mintCap > 0 ? Math.min((p.v / mintCap) * 100, 100) : 0 }));
+	const fmtPercent = (v: number) => `${v.toFixed(1)}%`;
 	const lifetimeVolume = swapDays.reduce((sum, d) => sum + d.volume, 0);
 	const chart = {
 		TVL: {
-			points: tvlSeries(dailyPoints),
-			variant: 'area' as const,
+			points: allocationPoints,
+			variant: 'bars' as const,
 			headline: fmtAmount(Number(formatUnits(selectedModule.totalMinted, 18))),
-			subtitle: 'Stablecoin minted against this module',
+			subtitle: `Minted against the ${fmtAmount(mintCap)} mint limit of this module, per day`,
 		},
 		Revenue: {
 			points: revenueSeries(dailyPoints),
@@ -307,8 +311,8 @@ function SwapDetailPageContent() {
 						<TimeSeriesChart
 							points={chart.points}
 							variant={chart.variant}
-							formatValue={fmtAmount}
-							formatTick={(v) => formatCompactNumber(v, 1, '')}
+							formatValue={chartTab === 'TVL' ? fmtPercent : fmtAmount}
+							formatTick={chartTab === 'TVL' ? (v) => `${Math.round(v)}%` : (v) => formatCompactNumber(v, 1, '')}
 						/>
 					) : (
 						<p className="py-12 text-center text-text-secondary">Not enough data yet.</p>
