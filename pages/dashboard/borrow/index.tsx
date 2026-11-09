@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCoins, faArrowTrendUp, faGavel, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
+import { faCoins, faArrowTrendUp, faGavel } from '@fortawesome/free-solid-svg-icons';
 import { useSort } from '@/hooks/ui/useSort';
 import { useNow } from '@/hooks/ui/useNow';
 import { useBorrowMarkets } from '@/hooks/useBorrowMarkets';
@@ -11,6 +11,7 @@ import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/componen
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import { Badge } from '@/components/ui/Badge';
+import { PillTabs, CurrencyTabs } from '@/components/ui/input';
 import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { auctionPrice, debtDue } from '@/lib/borrow/math';
@@ -27,7 +28,6 @@ import {
 	utilization,
 } from '@/lib/borrow/format';
 import { ALL, CURRENCIES } from '@/lib/borrow/mock';
-import { cn } from '@/lib/utils';
 import type { BorrowMarket } from '@/lib/borrow/types';
 import { formatTimestampLocale } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
@@ -435,54 +435,16 @@ function BorrowListPageContent() {
 			<HeroSteps steps={STEPS} />
 
 			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
-				{/* View */}
-				<div className="flex w-full max-w-full gap-1 overflow-x-auto rounded-xl border border-usdu-surface bg-usdu-bg p-1 md:w-auto">
-					{TABS.map((t) => (
-						<button
-							key={t}
-							onClick={() => setTab(t)}
-							className={cn(
-								'flex flex-1 items-center justify-center gap-2 whitespace-nowrap rounded-lg px-4 py-2 text-sm font-semibold transition-all md:flex-none',
-								t === tab ? 'bg-usdu-card text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
-							)}
-						>
-							{t}
-							{!!badges[t] && (
-								<span
-									className={cn(
-										'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold leading-none',
-										t === 'Auctions' ? 'bg-brand text-white' : 'bg-usdu-surface text-text-primary'
-									)}
-								>
-									{badges[t]}
-								</span>
-							)}
-						</button>
-					))}
-				</div>
-
-				{/* Stablecoin, one borrow contract each */}
-				<div className="flex w-full gap-1 rounded-xl border border-usdu-surface bg-usdu-bg p-1 md:w-auto">
-					{[ALL, ...CURRENCIES].map((c) => (
-						<button
-							key={c}
-							onClick={() => router.replace({ query: { currency: c } }, undefined, { shallow: true })}
-							className={cn(
-								'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold transition-all md:flex-none',
-								c === currency ? 'bg-usdu-card text-text-primary shadow-sm' : 'text-text-secondary hover:text-text-primary'
-							)}
-						>
-							{c === ALL ? (
-								<span className="flex h-5 w-5 items-center justify-center rounded-full bg-usdu-black">
-									<FontAwesomeIcon icon={faLayerGroup} className="h-2.5 w-2.5 text-usdu-card" />
-								</span>
-							) : (
-								<TokenLogo currency={c} size={5} />
-							)}
-							{c === ALL ? 'All' : c}
-						</button>
-					))}
-				</div>
+				<PillTabs
+					value={tab}
+					onChange={setTab}
+					options={TABS.map((t) => ({ value: t, label: t, badge: badges[t], highlight: t === 'Auctions' }))}
+				/>
+				<CurrencyTabs
+					currencies={CURRENCIES}
+					value={currency}
+					onChange={(c) => router.replace({ query: { currency: c } }, undefined, { shallow: true })}
+				/>
 			</div>
 
 			{tab === 'Markets' && <MarketsTab currency={currency} />}
