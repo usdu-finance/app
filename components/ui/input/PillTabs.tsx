@@ -25,7 +25,7 @@ export default function PillTabs<T extends string>({ options, value, onChange, c
 		<div
 			aria-disabled={disabled}
 			className={cn(
-				'flex w-full max-w-full gap-1 overflow-x-auto rounded-xl border border-usdu-surface bg-usdu-bg p-1 transition-all duration-300 md:w-auto',
+				'flex w-full max-w-full gap-1 overflow-x-auto rounded-xl border border-usdu-surface bg-usdu-bg p-1 transition-all duration-300 md:w-fit',
 				disabled && 'pointer-events-none select-none opacity-50 blur-[2px]',
 				className
 			)}
