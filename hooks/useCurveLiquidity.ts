@@ -3,7 +3,7 @@ import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import toast from 'react-hot-toast';
 import { ICurveStableSwapNG_ABI, ITwocrypto_ABI } from '@usdu-finance/usdu-core';
-import type { CurvePoolKind } from '@/redux/api/onChainApi';
+import type { CurvePoolKind } from '@/lib/onchain/curve';
 
 export interface CurveLiquidityData {
 	approve: (token: `0x${string}`, spender: `0x${string}`, amount: bigint) => Promise<`0x${string}`>;

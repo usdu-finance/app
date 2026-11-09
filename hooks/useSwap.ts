@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { useWaitForTransactionReceipt, useWriteContract } from 'wagmi';
 import { erc20Abi } from 'viem';
 import toast from 'react-hot-toast';
-import type { CurvePoolKind } from '@/redux/api/onChainApi';
+import type { CurvePoolKind } from '@/lib/onchain/curve';
 import { ICurveStableSwapNG_ABI, ISwapRouterV1_ABI, ITwocrypto_ABI } from '@usdu-finance/usdu-core';
 
 export interface SwapData {

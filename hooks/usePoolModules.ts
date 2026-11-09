@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
-import { useGetPoolsDataQuery, type PoolConfig, type PoolData } from '@/redux/api/onChainApi';
+import { useQuery } from '@tanstack/react-query';
+import { fetchPoolsData, type PoolConfig, type PoolData } from '@/lib/onchain/curve';
+import { PERSISTED_KEY } from '@/lib/query/persist';
 import { USDU_CURVE_ADAPTER_V1_1_USDC_2 } from '@/lib/whitelisted-tokens';
 import { APP_REFETCH } from '@/lib/constants';
 
@@ -43,15 +45,17 @@ export function usePoolModules(chainId: number = mainnet.id): PoolModulesData {
 		data: poolsData,
 		isLoading,
 		error,
-	} = useGetPoolsDataQuery(poolConfigs, {
-		skip: poolConfigs.length === 0,
-		pollingInterval: APP_REFETCH,
-		refetchOnMountOrArgChange: 30,
+	} = useQuery({
+		queryKey: [PERSISTED_KEY, 'pools', poolConfigs],
+		queryFn: () => fetchPoolsData(poolConfigs),
+		enabled: poolConfigs.length > 0,
+		refetchInterval: APP_REFETCH,
+		staleTime: 30_000,
 	});
 
 	return useMemo(() => {
 		if (error) {
-			return { modules: [], isLoading: false, error: typeof error === 'string' ? error : 'Failed to fetch pool data' };
+			return { modules: [], isLoading: false, error: error.message || 'Failed to fetch pool data' };
 		}
 
 		if (!poolsData) {

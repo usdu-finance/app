@@ -2,7 +2,9 @@ import { useMemo } from 'react';
 import { formatUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
-import { useGetCurvePoolsDataQuery, type CurvePoolConfig, type CurvePoolData } from '@/redux/api/onChainApi';
+import { useQuery } from '@tanstack/react-query';
+import { fetchCurvePoolsData, type CurvePoolConfig, type CurvePoolData } from '@/lib/onchain/curve';
+import { PERSISTED_KEY } from '@/lib/query/persist';
 import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
 import { normalizeAddress } from '@/lib/utils';
 import { APP_REFETCH } from '@/lib/constants';
@@ -70,23 +72,22 @@ export function useCurvePools(chainId: number = mainnet.id): CurvePoolsData {
 	const {
 		data: poolsData,
 		isLoading,
-		isUninitialized,
 		error,
-	} = useGetCurvePoolsDataQuery(configs, {
-		skip: configs.length === 0,
-		pollingInterval: APP_REFETCH,
-		refetchOnMountOrArgChange: 30,
+	} = useQuery({
+		queryKey: [PERSISTED_KEY, 'curve-pools', configs],
+		queryFn: () => fetchCurvePoolsData(configs),
+		enabled: configs.length > 0,
+		refetchInterval: APP_REFETCH,
+		staleTime: 30_000,
 	});
 
 	return useMemo(() => {
 		if (error) {
-			return { pools: [], isLoading: false, error: typeof error === 'string' ? error : 'Failed to fetch pool data' };
+			return { pools: [], isLoading: false, error: error.message || 'Failed to fetch pool data' };
 		}
 
-		// RTK reports isLoading=false for the first render before the query subscribes (isUninitialized), which
-		// would flash "not found" on a hard reload; treat that as loading too.
 		if (!poolsData) {
-			return { pools: [], isLoading: isLoading || (isUninitialized && configs.length > 0), error: null };
+			return { pools: [], isLoading, error: null };
 		}
 
 		const pools: CurvePool[] = registry
@@ -98,5 +99,5 @@ export function useCurvePools(chainId: number = mainnet.id): CurvePoolsData {
 			});
 
 		return { pools, isLoading: false, error: null };
-	}, [poolsData, isLoading, isUninitialized, error, registry, configs.length]);
+	}, [poolsData, isLoading, error, registry]);
 }
