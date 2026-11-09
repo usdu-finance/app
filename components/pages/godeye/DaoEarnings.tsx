@@ -126,7 +126,13 @@ export default function DaoEarnings({
 				label: s.label,
 				caption: s.family.key === CONTRIBUTION_FAMILY.key ? CONTRIBUTION.caption : s.family.name,
 				color: s.family.color,
-				href: s.address ? explorerAddress(s.address) : null,
+				// a swap bridge opens its page in the swap dashboard; anything else goes to the explorer
+				href: !s.address
+					? null
+					: s.family.key === 'bridge'
+						? `/dashboard/swap/${s.address}/stable`
+						: explorerAddress(s.address),
+				internal: s.family.key === 'bridge',
 				in: s.in,
 				count: s.count,
 				last: s.last,

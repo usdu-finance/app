@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { mainnet } from 'viem/chains';
 import { ADDRESS } from '@usdu-finance/usdu-core';
@@ -58,6 +59,8 @@ export type FlowRow = {
 	color: string;
 	/** where the label links to, if anywhere */
 	href: string | null;
+	/** the href is a page of this app (opened in place) rather than an external link */
+	internal?: boolean;
 	in: number;
 	count: number;
 	last: number;
@@ -264,7 +267,11 @@ export function FlowTable({
 							return (
 								<tr key={r.key} className="border-t border-black/5">
 									<td className="min-w-[11rem] py-1.5 pr-3 sm:min-w-0">
-										{r.href ? (
+										{r.href && r.internal ? (
+											<Link href={r.href} className="inline-flex items-center gap-2 hover:underline">
+												{name}
+											</Link>
+										) : r.href ? (
 											<a
 												href={r.href}
 												target="_blank"
