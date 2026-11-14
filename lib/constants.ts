@@ -39,6 +39,10 @@ export const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL;
 // ZapperSwapEnsoV1 on Ethereum, from usdu-core
 export const ZAPPER_SWAP_ADDRESS = ADDRESS[mainnet.id].zapperSwapEnsoV1;
 
+/** ForeignSwapperV1, not in the published ADDRESS registry yet: set once it is deployed, the DAO page stays empty until then. */
+// TODO: temporary zero-address placeholder to preview the UI, remove once deployed (then undefined shows the empty state)
+export const FOREIGN_SWAPPER_ADDRESS = (process.env.NEXT_PUBLIC_FOREIGN_SWAPPER || '0x0000000000000000000000000000000000000000') as `0x${string}` | undefined;
+
 // Local storage keys
 export const STORAGE_KEYS = {
 	WALLET_CONNECT: 'walletconnect',
@@ -64,6 +68,11 @@ export const SEO = {
 		'Swap',
 		'Mint or redeem USDU, EURU and CHFU through the swap router, or swap directly against Curve pools backing USDU.',
 		'/dashboard/swap'
+	),
+	dao: pageSeo(
+		'DAO',
+		'Convert foreign tokens held by the DAO into ecosystem tokens through curator-configured routes, callable by anyone.',
+		'/dashboard/dao'
 	),
 	zapSwap: pageSeo(
 		'Zap In',
