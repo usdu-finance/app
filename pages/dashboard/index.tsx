@@ -13,7 +13,7 @@ import { StatCard } from '@/components/ui/stats';
 import { DonutChart, type DonutSlice } from '@/components/ui/charts';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
-import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { PillTabs, TabsBar, CurrencyTabs } from '@/components/ui/input';
 import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
 import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import Card from '@/components/ui/Card';
@@ -139,11 +139,11 @@ function DashboardPageContent() {
 				<StatCard icon={faHandHoldingDollar} label="Borrow Assets" value={formatCompactNumber(0, 2, '', ' USDU')} />
 			</div>
 
-			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+			<TabsBar>
 				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
 				{/* crypto assets are not tied to a stablecoin */}
 				<CurrencyTabs currencies={currencies} value={currency} onChange={setCurrency} disabled={tab === 'Crypto'} />
-			</div>
+			</TabsBar>
 
 			{tab === 'Stablecoins' && (
 				<Card variant="panel" className="space-y-8">

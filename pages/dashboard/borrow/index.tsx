@@ -12,7 +12,7 @@ import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/componen
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import { Badge } from '@/components/ui/Badge';
-import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { PillTabs, TabsBar, CurrencyTabs } from '@/components/ui/input';
 import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { auctionPrice, debtDue } from '@/lib/borrow/math';
@@ -436,7 +436,7 @@ function BorrowListPageContent() {
 
 			<HeroSteps steps={STEPS} />
 
-			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+			<TabsBar>
 				<PillTabs
 					value={tab}
 					onChange={setTab}
@@ -447,7 +447,7 @@ function BorrowListPageContent() {
 					value={currency}
 					onChange={(c) => router.replace({ query: { currency: c } }, undefined, { shallow: true })}
 				/>
-			</div>
+			</TabsBar>
 
 			{tab === 'Markets' && <MarketsTab currency={currency} />}
 			{tab === 'My Positions' && (

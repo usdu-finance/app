@@ -10,7 +10,7 @@ import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/componen
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import { Badge } from '@/components/ui/Badge';
-import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { PillTabs, TabsBar, CurrencyTabs } from '@/components/ui/input';
 import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { RISK_LABEL, fmtCollateral, stableFormat } from '@/lib/borrow/format';
@@ -92,7 +92,7 @@ function ObligationListPageContent() {
 
 			<HeroSteps steps={STEPS} />
 
-			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+			<TabsBar>
 				<PillTabs
 					value={tab}
 					onChange={setTab}
@@ -102,7 +102,7 @@ function ObligationListPageContent() {
 					]}
 				/>
 				<CurrencyTabs currencies={currencies} value={currency} onChange={setCurrency} />
-			</div>
+			</TabsBar>
 
 			<Card variant="panel" className="space-y-8">
 				<PageHeader

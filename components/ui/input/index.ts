@@ -10,6 +10,7 @@ export type { TabInputProps } from './TabInput';
 export { default as PageTabInput } from './PageTabInput';
 export { default as PillTabs } from './PillTabs';
 export type { PillTabOption } from './PillTabs';
+export { default as TabsBar } from './TabsBar';
 export { default as CurrencyTabs, ALL_CURRENCIES } from './CurrencyTabs';
 export { default as LiquidationSlider } from './LiquidationSlider';
 export { default as TextInput } from './TextInput';

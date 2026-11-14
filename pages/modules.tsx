@@ -28,7 +28,7 @@ import AddressLink from '@/components/ui/AddressLink';
 import { useSort } from '@/hooks/ui/useSort';
 import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
-import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { PillTabs, TabsBar, CurrencyTabs } from '@/components/ui/input';
 import type { StablecoinModule, StablecoinModuleHistoryItem } from '@/hooks/useModulesData';
 import { formatTimestampLocale, formatDateOnly, formatTimeOnly } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
@@ -208,7 +208,7 @@ export default function ModulesPage() {
 
 				<HeroSteps steps={STEPS} />
 
-				<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+				<TabsBar>
 					<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
 					<CurrencyTabs
 						currencies={currencies}
@@ -217,7 +217,7 @@ export default function ModulesPage() {
 						onChange={setCurrency}
 						showAll={tab !== 'Propose'}
 					/>
-				</div>
+				</TabsBar>
 
 				{tab === 'Map' && (
 					<div className="space-y-4">
