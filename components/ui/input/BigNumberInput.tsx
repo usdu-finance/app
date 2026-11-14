@@ -11,6 +11,7 @@ export type BigNumberInputProps = {
 	max?: string;
 	min?: string;
 	className?: string;
+	style?: React.CSSProperties;
 	disabled?: boolean;
 };
 
@@ -24,6 +25,7 @@ export function BigNumberInput({
 	max,
 	min,
 	className,
+	style,
 	disabled,
 }: BigNumberInputProps) {
 	const inputRefFallback = React.useRef<HTMLInputElement>(null);
@@ -83,7 +85,7 @@ export function BigNumberInput({
 	};
 
 	return (
-		<div>
+		<div className="min-w-0">
 			<input
 				ref={inputRef}
 				placeholder={placeholder}
@@ -92,6 +94,7 @@ export function BigNumberInput({
 				value={inputValue}
 				className={'truncate bg-transparent outline-none ' + (className ?? '')}
 				autoFocus={autoFocus}
+				style={style}
 				disabled={disabled}
 			/>
 		</div>
