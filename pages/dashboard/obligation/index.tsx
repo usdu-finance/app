@@ -87,7 +87,7 @@ function ObligationListPageContent() {
 			<PageHeader
 				title="Obligation"
 				description="Track your open borrow obligations, their risk, and upcoming maturities."
-				badge={{ text: 'Preview', variant: 'info' }}
+				badge={{ text: 'In development', variant: 'info' }}
 			/>
 
 			<HeroSteps steps={STEPS} />

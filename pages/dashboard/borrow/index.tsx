@@ -430,7 +430,7 @@ function BorrowListPageContent() {
 		<div className="space-y-8">
 			<PageHeader
 				title="Borrow"
-				badge={{ text: 'Preview', variant: 'info' }}
+				badge={{ text: 'In development', variant: 'info' }}
 				description="Each native stablecoin runs its own borrow market, with the other native stablecoins as primary collateral. Borrow at a fixed rate and maturity. There is no price oracle: every position sets its own price, and anyone can challenge it through a Dutch auction."
 			/>
 
