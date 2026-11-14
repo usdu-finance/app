@@ -9,6 +9,7 @@ import { useAppKit } from '@reown/appkit/react';
 import Image from 'next/image';
 import { LayoutProps } from './Layout.types';
 import { dashboardNavigation } from '@/lib/layout/navigation';
+import HeaderActions from './HeaderActions';
 
 export default function DashboardLayout({ children }: LayoutProps) {
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -64,6 +65,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 
 						{/* Desktop CTA Button */}
 						<div className="hidden md:flex items-center gap-3">
+							{isConnected && <HeaderActions />}
 							{!isConnected ? (
 								<button
 									type="button"
@@ -93,6 +95,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 
 						{/* Mobile Actions */}
 						<div className="md:hidden flex items-center gap-2">
+							{isConnected && <HeaderActions />}
 							<button
 								onClick={toggleMobileMenu}
 								className="p-2 flex items-center justify-center text-text-secondary hover:text-usdu-orange transition-colors"
@@ -193,7 +196,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 				</aside>
 
 				{/* Main Content */}
-				<main className="flex-1 min-h-[calc(100vh-4rem)] max-md:px-4 md:px-8 py-8 md:ml-64 md:my-4 bg-usdu-card md:rounded-l-3xl">
+				<main className="flex-1 min-h-[calc(100vh-4rem)] max-md:px-4 md:px-8 py-8 md:ml-64 bg-usdu-card md:rounded-l-3xl">
 					<div>{children}</div>
 				</main>
 			</div>

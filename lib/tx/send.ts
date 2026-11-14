@@ -11,6 +11,7 @@ import {
 } from '@wagmi/core';
 import toast from 'react-hot-toast';
 import { txStore } from './store';
+import { notificationStore } from '@/lib/notifications/store';
 import type { TxBatch, TxCall, TxItem, TxMode } from './types';
 
 /** Gas for a call that cannot be estimated yet, because it depends on a call in front of it (e.g. a swap after its approval). */
@@ -79,6 +80,7 @@ export async function runBatch({ config, account, chainId, calls, title, onConfi
 			items.map((it) => (it.status === 'confirmed' ? it : { ...it, status: it.status === 'waiting' ? 'skipped' : 'failed' }))
 		);
 		toast.error(`${title}: ${error}`, { id: toastId });
+		notificationStore.push({ kind: 'tx', title: `${title} failed`, text: error });
 	};
 	const progress = () => {
 		const done = batch.items.filter((it) => it.status === 'confirmed').length;
@@ -87,6 +89,7 @@ export async function runBatch({ config, account, chainId, calls, title, onConfi
 	const settle = () => {
 		update({ status: 'confirmed' });
 		toast.success(`${title}: confirmed`, { id: toastId });
+		notificationStore.push({ kind: 'tx', title: `${title} confirmed` });
 		onConfirmed?.();
 	};
 
