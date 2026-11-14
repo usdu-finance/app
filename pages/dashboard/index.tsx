@@ -112,13 +112,15 @@ function DashboardPageContent() {
 
 	return (
 		<div className="space-y-8">
-			<PageHeader title="Dashboard" description="Your wallet at a glance: every asset the protocol recognizes, valued in USDU." />
-
-			{isDemo && (
-				<p className="rounded-lg border border-usdu-surface bg-usdu-bg px-4 py-3 text-sm text-text-secondary">
-					Preview with demo balances at live prices. Connect your wallet to see your own assets.
-				</p>
-			)}
+			<PageHeader
+				title="Dashboard"
+				description={
+					isDemo
+						? 'Demo balances at live prices. Connect your wallet to see your own assets.'
+						: 'Your wallet at a glance: every asset the protocol recognizes, valued in USDU.'
+				}
+				badge={isDemo ? { text: 'No wallet connected', variant: 'warning' } : undefined}
+			/>
 
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 				<StatCard
