@@ -8,6 +8,7 @@ export interface TimeSeriesPoint {
 interface Props {
 	points: TimeSeriesPoint[];
 	variant?: 'area' | 'bars' | 'line'; // line is an area with the y-axis zoomed to the data instead of growing from zero
+	zeroBased?: boolean; // keep the y-axis starting at 0 for a line
 	formatValue: (v: number) => string;
 	formatTick?: (v: number) => string; // compact y-axis labels, defaults to formatValue
 	height?: number;
@@ -35,7 +36,7 @@ function niceMax(max: number): number {
  * Both grow from a zero baseline; the line is 2px, columns are at most 24px wide with a 4px rounded top,
  * and the grid is a recessive hairline.
  */
-export default function TimeSeriesChart({ points, variant = 'area', formatValue, formatTick, height = 220, className = '' }: Props) {
+export default function TimeSeriesChart({ points, variant = 'area', zeroBased = false, formatValue, formatTick, height = 220, className = '' }: Props) {
 	const ref = useRef<HTMLDivElement>(null);
 	const [width, setWidth] = useState(0);
 	const [hover, setHover] = useState<number | null>(null);
@@ -55,11 +56,12 @@ export default function TimeSeriesChart({ points, variant = 'area', formatValue,
 	const tMin = points[0]?.t ?? 0;
 	const tMax = points[points.length - 1]?.t ?? 1;
 	const isLine = variant === 'line';
+	const zoomed = isLine && !zeroBased;
 	const dataMax = Math.max(...points.map((p) => p.v), 0);
 	const dataMin = points.length > 0 ? Math.min(...points.map((p) => p.v)) : 0;
 	const pad = (dataMax - dataMin) * 0.15 || dataMax * 0.005 || 1;
-	const yMin = isLine ? dataMin - pad : 0;
-	const yMax = isLine ? dataMax + pad : niceMax(dataMax);
+	const yMin = zoomed ? dataMin - pad : 0;
+	const yMax = zoomed ? dataMax + pad : niceMax(dataMax);
 
 	// columns sit in equal slots by index, the area is placed by time
 	const slot = points.length > 0 ? innerW / points.length : 0;
