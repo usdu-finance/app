@@ -117,20 +117,29 @@ export default function DashboardLayout({ children }: LayoutProps) {
 					{isMobileMenuOpen && (
 						<div className="md:hidden border-t border-usdu-surface py-4">
 							<nav className="space-y-4">
-								{dashboardNavigation.map((item) => (
-									<Link
-										key={item.name}
-										href={item.href}
-										className={`flex items-center gap-3 transition-colors text-sm rounded-lg px-3 py-2 ${
-											isNavActive(item.href)
-												? 'bg-usdu-surface'
-												: 'text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface'
-										}`}
-										onClick={closeMobileMenu}
-									>
-										<FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
-										{item.name}
-									</Link>
+								{dashboardNavigation.map((group, gi) => (
+									<div key={group.label ?? gi} className="space-y-1">
+										{group.label && (
+											<p className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-text-muted">
+												{group.label}
+											</p>
+										)}
+										{group.items.map((item) => (
+											<Link
+												key={item.name}
+												href={item.href}
+												className={`flex items-center gap-3 transition-colors text-sm rounded-lg px-3 py-2 ${
+													isNavActive(item.href)
+														? 'bg-usdu-surface'
+														: 'text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface'
+												}`}
+												onClick={closeMobileMenu}
+											>
+												<FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
+												{item.name}
+											</Link>
+										))}
+									</div>
 								))}
 							</nav>
 							{!isConnected ? (
@@ -184,27 +193,37 @@ export default function DashboardLayout({ children }: LayoutProps) {
 						isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
 					} md:translate-x-0`}
 				>
-					<nav className="p-4 space-y-2">
-						{dashboardNavigation.map((item) => (
-							<Link
-								key={item.name}
-								href={item.href}
-								className={`flex items-center gap-3 transition-colors rounded-lg px-3 py-2 ${
-									isNavActive(item.href)
-										? 'bg-usdu-surface border'
-										: 'text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface'
-								}`}
-								onClick={closeSidebar}
-							>
-								<FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
-								{item.name}
-							</Link>
+					<nav className="p-4 space-y-6">
+						{dashboardNavigation.map((group, gi) => (
+							<div key={group.label ?? gi} className="space-y-1">
+								{group.label && (
+									<p className="px-3 pb-1 text-xs font-medium uppercase tracking-wider text-text-muted">{group.label}</p>
+								)}
+								{group.items.map((item) => (
+									<Link
+										key={item.name}
+										href={item.href}
+										className={`flex items-center gap-3 transition-colors rounded-lg px-3 py-2 ${
+											isNavActive(item.href)
+												? 'bg-usdu-surface border'
+												: 'text-text-secondary hover:text-usdu-orange hover:bg-usdu-surface'
+										}`}
+										onClick={closeSidebar}
+									>
+										<FontAwesomeIcon icon={item.icon} className="w-4 h-4" />
+										{item.name}
+									</Link>
+								))}
+							</div>
 						))}
 					</nav>
 				</aside>
 
 				{/* Main Content */}
-				<main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto max-md:px-4 md:px-8 py-8 md:ml-64 bg-usdu-card md:rounded-l-3xl">
+				<main
+					ref={mainRef}
+					className="flex-1 min-w-0 overflow-y-auto max-md:px-4 md:px-8 py-8 md:ml-64 bg-usdu-card md:rounded-l-3xl"
+				>
 					<div>{children}</div>
 				</main>
 			</div>
