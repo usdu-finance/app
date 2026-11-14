@@ -137,7 +137,7 @@ function DashboardPageContent() {
 				<StatCard icon={faHandHoldingDollar} label="Borrow Assets" value={formatCompactNumber(0, 2, '', ' USDU')} />
 			</div>
 
-			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
 				{/* crypto assets are not tied to a stablecoin */}
 				<CurrencyTabs currencies={currencies} value={currency} onChange={setCurrency} disabled={tab === 'Crypto'} />
