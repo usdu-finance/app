@@ -5,8 +5,8 @@ import { mainnet } from 'viem/chains';
 import { ADDRESS, ISwapBridgeMorphoV1_ABI, Stablecoin_ABI, type ChainAddressMainnet } from '@usdu-finance/usdu-core';
 import { APP_REFETCH } from '@/lib/constants';
 
-// coin, swapInFeePPM, swapOutFeePPM, mintCap, totalMinted, totalRevenue, vault, expiresAt
-const CALLS_PER_MODULE = 8;
+// coin, swapInFeePPM, swapOutFeePPM, mintCap, totalMinted, totalRevenue, vault, expiresAt, totalAssets, lastReconciledAt
+const CALLS_PER_MODULE = 10;
 
 interface CurrencyModuleConfig {
 	key: string;
@@ -71,6 +71,12 @@ export interface SwapModule {
 	totalMinted: bigint;
 	/** Lifetime protocol revenue accrued by this module, in the target stablecoin (18 decimals). */
 	totalRevenue: bigint;
+	/** The module's assets, i.e. the coin held in its vault, in stablecoin units (18 decimals). */
+	totalAssets: bigint;
+	/** Yield that is not yet recognized as revenue, i.e. max(totalAssets - totalMinted, 0), paid out on the next reconcile. */
+	unclaimed: bigint;
+	/** Unix timestamp (seconds) of the last reconcile, 0 if it never ran. */
+	lastReconciledAt: bigint;
 	/** Remaining swap-in capacity, i.e. max(mintCap - totalMinted, 0). */
 	mintable: bigint;
 	/** The ERC4626 vault this module deposits the coin into (the underlying yield strategy). */
@@ -144,6 +150,8 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 					functionName: 'modules' as const,
 					args: [m.moduleAddress],
 				},
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'totalAssets' as const },
+				{ address: m.moduleAddress, abi: ISwapBridgeMorphoV1_ABI, functionName: 'lastReconciledAt' as const },
 			]),
 		[moduleConfigs]
 	);
@@ -242,6 +250,8 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 				const mintable = mintCap > totalMinted ? mintCap - totalMinted : 0n;
 				const vaultAddress = moduleData[base + 6]?.result as `0x${string}`;
 				const expiresAt = (moduleData[base + 7]?.result as bigint) ?? 0n;
+				const totalAssets = (moduleData[base + 8]?.result as bigint) ?? 0n;
+				const lastReconciledAt = (moduleData[base + 9]?.result as bigint) ?? 0n;
 
 				const coinIndex = coinAddresses.findIndex((addr) => addr === coinAddress);
 				const coinDecimals = coinIndex >= 0 ? Number(coinData?.[coinIndex * 2]?.result ?? 6) : 6;
@@ -265,6 +275,9 @@ export function useSwapModules(chainId: number = mainnet.id): SwapModulesData {
 					mintCap,
 					totalMinted,
 					totalRevenue,
+					totalAssets,
+					unclaimed: totalAssets > totalMinted ? totalAssets - totalMinted : 0n,
+					lastReconciledAt,
 					mintable,
 					vaultAddress,
 					vaultName,

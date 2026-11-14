@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useSwapModules } from '@/hooks/useSwapModules';
 import { useSwapBalances } from '@/hooks/useSwapBalances';
 import { useSwap } from '@/hooks/useSwap';
+import { useReconcileModule } from '@/hooks/useReconcileModule';
 import { useModuleDaily } from '@/hooks/useModuleDaily';
 import { useModuleSwapHistory, type ModuleSwapEntry } from '@/hooks/useModuleSwapHistory';
 import { useSort } from '@/hooks/ui/useSort';
@@ -34,6 +35,8 @@ const fmtStable = (currency: string, value: bigint, round: boolean = true) =>
 type SwapDirection = 'in' | 'out';
 
 const CHART_TABS = ['TVL', 'Volume', 'Revenue'];
+// the last reconcile is stale after a week, from then on it can be claimed
+const RECONCILE_STALE = 7 * 24 * 60 * 60;
 const HISTORY_HEADERS = ['Date', 'Type', 'Coin', 'Stablecoin', 'Fee'];
 
 function compareBigint(a: bigint, b: bigint): number {
@@ -120,6 +123,7 @@ function SwapDetailPageContent() {
 	}, [entries, sortTab, sortReverse]);
 
 	const { approve, swapIn, swapOut, isPending, isConfirming, isConfirmed, reset } = useSwap();
+	const reconcileModule = useReconcileModule();
 	const [pendingStep, setPendingStep] = useState<'approve' | 'swap' | null>(null);
 
 	// Refetch balances and reset input once a submitted transaction confirms
@@ -253,6 +257,11 @@ function SwapDetailPageContent() {
 	const moduleLabel = `${selectedModule.coinSymbol} · ${selectedModule.vaultName || formatAddress(selectedModule.moduleAddress)}`;
 
 	const currency = selectedModule.currency;
+
+	// reconcile is permissionless, so once the last one is a week old anyone can claim
+	const lastReconcileLabel = selectedModule.lastReconciledAt === 0n ? 'Never' : formatTimestampLocale(selectedModule.lastReconciledAt);
+	const claimable = Math.floor(Date.now() / 1000) - Number(selectedModule.lastReconciledAt) > RECONCILE_STALE;
+	const claim = () => reconcileModule.reconcile(selectedModule.moduleAddress).catch(() => {});
 	const fmtAmount = (v: number) => `${formatCompactNumber(v, 1, '')} ${currency}`;
 
 	// indexer snapshots plus the live on-chain value as the latest point
@@ -268,7 +277,7 @@ function SwapDetailPageContent() {
 	const chart = {
 		TVL: {
 			points: allocationPoints,
-			variant: 'bars' as const,
+			variant: 'line' as const,
 			headline: fmtAmount(Number(formatUnits(selectedModule.totalMinted, 18))),
 			subtitle: `Minted against the ${fmtAmount(mintCap)} mint limit of this module, per day`,
 		},
@@ -311,6 +320,7 @@ function SwapDetailPageContent() {
 						<TimeSeriesChart
 							points={chart.points}
 							variant={chart.variant}
+							zeroBased={chartTab === 'TVL'}
 							formatValue={chartTab === 'TVL' ? fmtPercent : fmtAmount}
 							formatTick={chartTab === 'TVL' ? (v) => `${Math.round(v)}%` : (v) => formatCompactNumber(v, 1, '')}
 						/>
@@ -342,14 +352,28 @@ function SwapDetailPageContent() {
 						value={`${(selectedModule.swapInFeePPM / 10_000).toFixed(2)}% / ${(selectedModule.swapOutFeePPM / 10_000).toFixed(2)}%`}
 					/>
 					<DetailRow label="Total Revenue" value={fmtStable(currency, selectedModule.totalRevenue)} />
+					<DetailRow label="Unclaimed Revenue" value={fmtStable(currency, selectedModule.unclaimed)} />
+					<DetailRow label="Last Reconcile">
+						{claimable ? (
+							<button
+								type="button"
+								disabled={reconcileModule.isPending || reconcileModule.isConfirming}
+								onClick={() => (isConnected ? claim() : open())}
+								title="Recognize the accrued yield as revenue"
+								className="text-brand font-medium hover:underline disabled:opacity-50 disabled:no-underline"
+							>
+								{reconcileModule.isPending || reconcileModule.isConfirming
+									? 'Claiming...'
+									: `${lastReconcileLabel} · Claim`}
+							</button>
+						) : (
+							<span>{lastReconcileLabel}</span>
+						)}
+					</DetailRow>
 					<DetailRow
 						label="Expiration"
 						value={selectedModule.expiresAt === 0n ? 'Pending DAO approval' : formatTimestampLocale(selectedModule.expiresAt)}
 					/>
-
-					<p className="mt-6 lg:mt-auto pt-4 text-sm text-text-secondary">
-						The input token is deposited into the strategy vault. Its yield is protocol revenue and is not paid to swappers.
-					</p>
 				</div>
 			</div>
 
@@ -445,6 +469,10 @@ function SwapDetailPageContent() {
 					<DetailRow label="Strategy Vault">
 						<AddressLink address={selectedModule.vaultAddress} />
 					</DetailRow>
+
+					<p className="mt-6 lg:mt-auto pt-4 text-sm text-text-secondary">
+						The input token is deposited into the strategy vault. Its yield is protocol revenue and is not paid to swappers.
+					</p>
 				</div>
 			</div>
 
