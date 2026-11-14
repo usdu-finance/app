@@ -5,7 +5,6 @@ export const homeNavigation: NavigationItem[] = [
 	{ name: 'Modules', href: '/modules' },
 	{ name: 'Governance', href: '/governance' },
 	{ name: 'Transparency', href: '/transparency' },
-	{ name: 'Docs', href: '/docs' },
 ];
 
 export const dashboardNavigation = [

@@ -124,10 +124,10 @@ export default function Hero({ stats }: { stats: LandingStats }) {
 								className="shadow-none"
 							/>
 							<ButtonInput
-								label="Explore transparency"
+								label="Read the docs"
 								variant="outline"
 								size="lg"
-								href="/transparency"
+								href="/docs"
 								className="border-white/30 text-white hover:border-usdu-orange"
 							/>
 						</motion.div>
