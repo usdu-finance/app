@@ -9,7 +9,8 @@ import { ICurveStableSwapNG_ABI, ITwocrypto_ABI } from '@usdu-finance/usdu-core'
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurvePools } from '@/hooks/useCurvePools';
 import { useSwapBalances } from '@/hooks/useSwapBalances';
-import { useCurveLiquidity } from '@/hooks/useCurveLiquidity';
+import { useTx } from '@/hooks/useTx';
+import { addLiquidityCall, approveCall, removeLiquidityCall } from '@/lib/tx/calls';
 import { PageHeader } from '@/components/ui/layout';
 import { TokenInput, ApproveActionInput, TabInput } from '@/components/ui/input';
 import { StatGrid } from '@/components/ui/stats';
@@ -103,25 +104,7 @@ function LiquidityCurveDetailPageContent() {
 		(withdrawRaw[1] * (10_000n - SLIPPAGE_BPS)) / 10_000n,
 	];
 
-	const { approve, addLiquidity, removeLiquidity, isPending, isConfirming, isConfirmed, reset } = useCurveLiquidity();
-	const [pendingStep, setPendingStep] = useState<'approve' | 'submit' | null>(null);
-	const isBusy = isPending || isConfirming;
-
-	// Refetch balances and reset inputs once a submitted transaction confirms
-	useEffect(() => {
-		if (isConfirmed) {
-			balances.refetch();
-			refetchLp();
-			if (pendingStep === 'submit') {
-				setAmount0Input('');
-				setAmount1Input('');
-				setLpInput('');
-			}
-			setPendingStep(null);
-			reset();
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isConfirmed]);
+	const tx = useTx();
 
 	const insufficient0 = isAdd && amount0 > balances.coinBalanceRaw;
 	const insufficient1 = isAdd && amount1 > balances.targetBalanceRaw;
@@ -131,28 +114,33 @@ function LiquidityCurveDetailPageContent() {
 	const noInput = isAdd ? amount0 === 0n && amount1 === 0n : lpAmount === 0n;
 	const noLiquidity = !!selectedPool && selectedPool.totalSupply === 0n;
 
-	const handleApprove = async (index: 0 | 1) => {
-		if (!selectedPool) return;
-		try {
-			setPendingStep('approve');
-			await approve(selectedPool.tokens[index].address, selectedPool.poolAddress, index === 0 ? amount0 : amount1);
-		} catch {
-			setPendingStep(null);
-		}
-	};
-
+	// missing approvals and the deposit/withdrawal go out as one batch, the form is free again once the wallet signed
 	const handleAction = async () => {
 		if (!selectedPool || noInput) return;
+		const { kind, poolAddress, tokens } = selectedPool;
 
 		try {
-			setPendingStep('submit');
-			if (isAdd) {
-				await addLiquidity(selectedPool.kind, selectedPool.poolAddress, [amount0, amount1], minMintRaw);
-			} else {
-				await removeLiquidity(selectedPool.kind, selectedPool.poolAddress, lpAmount, minWithdrawRaw);
-			}
+			await tx.submit(
+				isAdd
+					? [
+							needsApproval0 && approveCall(tokens[0].address, poolAddress, amount0, tokens[0].symbol),
+							needsApproval1 && approveCall(tokens[1].address, poolAddress, amount1, tokens[1].symbol),
+							addLiquidityCall(kind, poolAddress, [amount0, amount1], minMintRaw),
+						]
+					: [removeLiquidityCall(kind, poolAddress, lpAmount, minWithdrawRaw)],
+				{
+					title: isAdd ? 'Add liquidity' : 'Remove liquidity',
+					onConfirmed: () => {
+						balances.refetch();
+						refetchLp();
+					},
+				}
+			);
+			setAmount0Input('');
+			setAmount1Input('');
+			setLpInput('');
 		} catch {
-			setPendingStep(null);
+			// the user declined, the toast shows it
 		}
 	};
 
@@ -164,8 +152,6 @@ function LiquidityCurveDetailPageContent() {
 					.map((idx) => ({
 						tokenSymbol: selectedPool.tokens[idx].symbol,
 						needsApproval: noInput || (idx === 0 ? needsApproval0 : needsApproval1),
-						isApproving: isBusy && pendingStep === 'approve',
-						onApprove: () => handleApprove(idx),
 					}))
 			: [];
 
@@ -341,13 +327,13 @@ function LiquidityCurveDetailPageContent() {
 					<ApproveActionInput
 						actionLabel={isAdd ? 'Add Liquidity' : 'Remove Liquidity'}
 						approvals={approvals}
-						isActing={isBusy && pendingStep === 'submit'}
+						isActing={tx.isSigning}
 						disabled={
 							noInput ||
 							insufficient0 ||
 							insufficient1 ||
 							insufficientLp ||
-							isBusy ||
+							tx.isSigning ||
 							(isAdd && !noLiquidity && mintRaw === 0n)
 						}
 						onAction={handleAction}

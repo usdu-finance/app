@@ -101,7 +101,9 @@ function BorrowMarketPageContent() {
 		setApproved(true);
 	};
 
+	// the approval goes out together with the action, like in the real flows
 	const handleAction = async () => {
+		if (needsApproval) await handleApprove();
 		if (isLeverage) await actions.openLeveraged(market.marketId, amount, maturity, levValue);
 		else await actions.open(market.marketId, amount, maturity, debt);
 		setCollateralInput('');
@@ -227,11 +229,9 @@ function BorrowMarketPageContent() {
 							{
 								tokenSymbol: symbol,
 								needsApproval,
-								isApproving: actions.isPending && needsApproval,
-								onApprove: handleApprove,
 							},
 						]}
-						isActing={actions.isPending && !needsApproval}
+						isActing={actions.isPending}
 						disabled={disabled}
 						onAction={handleAction}
 						isConnected={isConnected}

@@ -85,7 +85,9 @@ function BorrowAuctionPageContent() {
 		setApproved(true);
 	};
 
+	// the approval goes out together with the bid, like in the real flows
 	const handleBid = async () => {
+		if (needsApproval) await handleApprove();
 		await actions.bid(c.challengeId, bidSize);
 		setInput('');
 	};
@@ -160,11 +162,9 @@ function BorrowAuctionPageContent() {
 							{
 								tokenSymbol: currency,
 								needsApproval,
-								isApproving: actions.isPending && needsApproval,
-								onApprove: handleApprove,
 							},
 						]}
-						isActing={actions.isPending && !needsApproval}
+						isActing={actions.isPending}
 						disabled={size === 0n || insufficient || now >= endsAt || actions.isPending}
 						onAction={handleBid}
 						isConnected={isConnected}

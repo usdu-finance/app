@@ -329,15 +329,16 @@ function BorrowPositionPageContent() {
 												{
 													tokenSymbol: action.approval.symbol,
 													needsApproval,
-													isApproving: actions.isPending && needsApproval,
-													onApprove: () => approve(action.approval!.token, action.approval!.token),
 												},
 											]
 										: []
 								}
-								isActing={actions.isPending && !needsApproval}
+								isActing={actions.isPending}
 								disabled={action.disabled || actions.isPending}
-								onAction={() => finish(action.run)}
+								onAction={() => finish(async () => {
+									if (needsApproval) await approve(action.approval!.token, action.approval!.token);
+									await action.run();
+								})}
 								isConnected={isConnected}
 								onConnect={() => open()}
 							/>
@@ -395,13 +396,16 @@ function BorrowPositionPageContent() {
 									{
 										tokenSymbol: currency,
 										needsApproval: sellNeedsApproval,
-										isApproving: actions.isPending && sellNeedsApproval,
-										onApprove: () => approve('force', 'stable'),
 									},
 								]}
-								isActing={actions.isPending && !sellNeedsApproval}
+								isActing={actions.isPending}
 								disabled={forceSize === 0n || sellBlocked || actions.isPending}
-								onAction={() => done(() => setForceInput(''))(() => actions.buyExpired(p.positionId, forceSize))}
+								onAction={() =>
+									done(() => setForceInput(''))(async () => {
+										if (sellNeedsApproval) await approve('force', 'stable');
+										await actions.buyExpired(p.positionId, forceSize);
+									})
+								}
 								isConnected={isConnected}
 								onConnect={() => open()}
 							/>
@@ -453,16 +457,17 @@ function BorrowPositionPageContent() {
 									{
 										tokenSymbol: symbol,
 										needsApproval: challengeNeedsApproval,
-										isApproving: actions.isPending && challengeNeedsApproval,
-										onApprove: () => approve('challenge', m.collateral),
 									},
 								]}
-								isActing={actions.isPending && !challengeNeedsApproval}
+								isActing={actions.isPending}
 								disabled={
 									challengeSize === 0n || tooSmall || tooLarge || challengeSize > balance.collateral || actions.isPending
 								}
 								onAction={() =>
-									done(() => setChallengeInput(''))(() => actions.challenge(p.positionId, challengeSize, p.price))
+									done(() => setChallengeInput(''))(async () => {
+										if (challengeNeedsApproval) await approve('challenge', m.collateral);
+										await actions.challenge(p.positionId, challengeSize, p.price);
+									})
 								}
 								isConnected={isConnected}
 								onConnect={() => open()}

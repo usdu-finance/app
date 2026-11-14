@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { formatUnits, isAddress, erc20Abi } from 'viem';
 import { useReadContract } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { Stablecoin_ABI } from '@usdu-finance/usdu-core';
 import { useAuth } from '@/contexts/AuthContext';
-import { PUBLIC_PROPOSAL_FEE, useProposeModule } from '@/hooks/useProposeModule';
+import { useTx } from '@/hooks/useTx';
+import { PUBLIC_PROPOSAL_FEE, proposeModuleCall } from '@/lib/tx/calls';
 import { PageHeader } from '@/components/ui/layout';
 import { AddressInput, TextInput, TabInput, ApproveActionInput } from '@/components/ui/input';
 import { DetailRow } from '@/components/ui/modal';
@@ -19,7 +20,7 @@ const EXPIRIES: Record<string, number> = { '6 months': 182 * DAY, '1 year': 365 
 export default function ProposeModule({ currency }: { currency: string }) {
 	const { isConnected, address } = useAuth();
 	const { open } = useAppKit();
-	const { propose, isPending, isConfirming, isConfirmed, reset } = useProposeModule();
+	const tx = useTx();
 
 	const [module, setModule] = useState('');
 	const [name, setName] = useState('');
@@ -38,26 +39,21 @@ export default function ProposeModule({ currency }: { currency: string }) {
 	const trimmed = module.trim();
 	const invalidAddress = trimmed.length > 0 && !isAddress(trimmed);
 	const insufficient = isConnected && balance < PUBLIC_PROPOSAL_FEE;
-	const busy = isPending || isConfirming;
+	const busy = tx.isSigning;
 	const expiredAt = Math.floor(Date.now() / 1000) + EXPIRIES[expiry]!;
 	// public proposals wait twice the timelock
 	const delayDays = timelock !== undefined ? Math.ceil((Number(timelock) * 2) / DAY) : undefined;
 
-	// a confirmed proposal costs the fee, so refresh the balance and clear the finished transaction
-	useEffect(() => {
-		if (isConfirmed) {
-			refetch();
-			reset();
-		}
-	}, [isConfirmed, refetch, reset]);
-
 	const handlePropose = async () => {
 		try {
-			await propose(stablecoin, trimmed as `0x${string}`, BigInt(expiredAt), name.trim());
+			await tx.submit([proposeModuleCall(stablecoin, trimmed as `0x${string}`, BigInt(expiredAt), name.trim())], {
+				title: 'Propose module',
+				onConfirmed: refetch,
+			});
 			setModule('');
 			setName('');
 		} catch {
-			// the hook already shows the error
+			// the user declined, the toast shows it
 		}
 	};
 

@@ -7,8 +7,8 @@ import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSwapModules } from '@/hooks/useSwapModules';
 import { useSwapBalances } from '@/hooks/useSwapBalances';
-import { useSwap } from '@/hooks/useSwap';
-import { useReconcileModule } from '@/hooks/useReconcileModule';
+import { useTx } from '@/hooks/useTx';
+import { approveCall, reconcileCall, swapInCall, swapOutCall } from '@/lib/tx/calls';
 import { useModuleDaily } from '@/hooks/useModuleDaily';
 import { useModuleSwapHistory, type ModuleSwapEntry } from '@/hooks/useModuleSwapHistory';
 import { useSort } from '@/hooks/ui/useSort';
@@ -122,22 +122,7 @@ function SwapDetailPageContent() {
 		return [...entries].sort((a, b) => dir * compareSwaps(sortTab, a, b));
 	}, [entries, sortTab, sortReverse]);
 
-	const { approve, swapIn, swapOut, isPending, isConfirming, isConfirmed, reset } = useSwap();
-	const reconcileModule = useReconcileModule();
-	const [pendingStep, setPendingStep] = useState<'approve' | 'swap' | null>(null);
-
-	// Refetch balances and reset input once a submitted transaction confirms
-	useEffect(() => {
-		if (isConfirmed) {
-			balances.refetch();
-			if (pendingStep === 'swap') {
-				setAmountRawInput('');
-			}
-			setPendingStep(null);
-			reset();
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isConfirmed]);
+	const tx = useTx();
 
 	const inputDecimals = direction === 'in' ? (selectedModule?.coinDecimals ?? 6) : 18;
 	const outputDecimals = direction === 'in' ? 18 : (selectedModule?.coinDecimals ?? 6);
@@ -190,31 +175,26 @@ function SwapDetailPageContent() {
 	const allowanceRaw = direction === 'in' ? balances.coinAllowanceRaw : balances.targetAllowanceRaw;
 	const insufficientBalance = amountRaw > 0n && amountRaw > inputBalanceRaw;
 	const exceedsCapacity = amountRaw > 0n && amountRaw > moduleCapacityRaw;
-	const isBusy = isPending || isConfirming;
+	const claiming = tx.batches.some((b) => b.title === 'Claim revenue');
 
-	const handleApprove = async () => {
-		if (!selectedModule || amountRaw === 0n) return;
-		try {
-			setPendingStep('approve');
-			const token = direction === 'in' ? selectedModule.coinAddress : selectedModule.targetAddress;
-			await approve(token, selectedModule.routerAddress, amountRaw);
-		} catch {
-			setPendingStep(null);
-		}
-	};
-
+	// the approval (if missing) and the swap go out as one batch, the form is free again once the wallet signed
 	const handleAction = async () => {
 		if (!selectedModule || amountRaw === 0n) return;
+		const token = direction === 'in' ? selectedModule.coinAddress : selectedModule.targetAddress;
+		const symbol = direction === 'in' ? selectedModule.coinSymbol : selectedModule.currency;
+		const { routerAddress, moduleAddress } = selectedModule;
 
 		try {
-			setPendingStep('swap');
-			if (direction === 'in') {
-				await swapIn(selectedModule.routerAddress, selectedModule.moduleAddress, amountRaw);
-			} else {
-				await swapOut(selectedModule.routerAddress, selectedModule.moduleAddress, amountRaw);
-			}
+			await tx.submit(
+				[
+					allowanceRaw < amountRaw && approveCall(token, routerAddress, amountRaw, symbol),
+					direction === 'in' ? swapInCall(routerAddress, moduleAddress, amountRaw) : swapOutCall(routerAddress, moduleAddress, amountRaw),
+				],
+				{ title: `Swap ${inputSymbol} to ${outputSymbol}`, onConfirmed: balances.refetch }
+			);
+			setAmountRawInput('');
 		} catch {
-			setPendingStep(null);
+			// the user declined, the toast shows it
 		}
 	};
 
@@ -261,7 +241,7 @@ function SwapDetailPageContent() {
 	// reconcile is permissionless, so once the last one is a week old anyone can claim
 	const lastReconcileLabel = selectedModule.lastReconciledAt === 0n ? 'Never' : formatTimestampLocale(selectedModule.lastReconciledAt);
 	const claimable = Math.floor(Date.now() / 1000) - Number(selectedModule.lastReconciledAt) > RECONCILE_STALE;
-	const claim = () => reconcileModule.reconcile(selectedModule.moduleAddress).catch(() => {});
+	const claim = () => tx.submit([reconcileCall(selectedModule.moduleAddress)], { title: 'Claim revenue' }).catch(() => {});
 	const fmtAmount = (v: number) => `${formatCompactNumber(v, 1, '')} ${currency}`;
 
 	// indexer snapshots plus the live on-chain value as the latest point
@@ -357,14 +337,12 @@ function SwapDetailPageContent() {
 						{claimable ? (
 							<button
 								type="button"
-								disabled={reconcileModule.isPending || reconcileModule.isConfirming}
+								disabled={tx.isSigning || claiming}
 								onClick={() => (isConnected ? claim() : open())}
 								title="Recognize the accrued yield as revenue"
 								className="text-brand font-medium hover:underline disabled:opacity-50 disabled:no-underline"
 							>
-								{reconcileModule.isPending || reconcileModule.isConfirming
-									? 'Claiming...'
-									: `${lastReconcileLabel} · Claim`}
+								{claiming ? 'Claiming...' : `${lastReconcileLabel} · Claim`}
 							</button>
 						) : (
 							<span>{lastReconcileLabel}</span>
@@ -429,12 +407,10 @@ function SwapDetailPageContent() {
 							{
 								tokenSymbol: inputSymbol,
 								needsApproval: amountRaw === 0n || allowanceRaw < amountRaw,
-								isApproving: isBusy && pendingStep === 'approve',
-								onApprove: handleApprove,
 							},
 						]}
-						isActing={isBusy && pendingStep === 'swap'}
-						disabled={amountRaw === 0n || insufficientBalance || exceedsCapacity || isBusy}
+						isActing={tx.isSigning}
+						disabled={amountRaw === 0n || insufficientBalance || exceedsCapacity || tx.isSigning}
 						onAction={handleAction}
 						isConnected={isConnected}
 						onConnect={() => open()}

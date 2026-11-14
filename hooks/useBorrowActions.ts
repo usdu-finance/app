@@ -25,6 +25,7 @@ export interface BorrowActionsData {
 
 /**
  * Hook to send borrow market transactions with toast feedback.
+ * Once real, build the calls like lib/tx/calls.ts and send them through useTx().submit([approve?, action]).
  * MOCK: every action only simulates a confirmed transaction. Swap each body for a `writeContractAsync` call
  * against IBorrowMarketV1 (same names and argument order) once the contract is deployed.
  */
