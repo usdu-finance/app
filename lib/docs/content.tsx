@@ -1,7 +1,7 @@
 import React from 'react';
 import { ADDRESS } from '@usdu-finance/usdu-core';
 import { mainnet } from 'viem/chains';
-import { A, Callout, Code, H2, OL, P, UL } from '@/components/docs/Prose';
+import { A, Callout, Code, CodeBlock, H2, OL, P, UL } from '@/components/docs/Prose';
 import { SOCIAL } from '@/lib/constants';
 
 const addr = ADDRESS[mainnet.id];
@@ -80,9 +80,38 @@ export const docsContent: Record<string, React.ReactNode> = {
 			</P>
 			<H2>Backing</H2>
 			<P>
-				Each stablecoin is swapped against a backing asset through swap modules, for example USDC- and USDT-denominated vault shares for
-				USDU, EURC and dEURO for EURU, and ZCHF for CHFU. The <A href="/docs/swap-modules">Swap modules</A> page explains how this works.
+				Each stablecoin is backed by equivalent assets of the same currency. The backing is deployed into a yield-bearing strategy vault,
+				and the yield becomes protocol revenue. Today that means:
 			</P>
+			<UL>
+				<li>
+					<strong>USDU:</strong> USDC and USDT.
+				</li>
+				<li>
+					<strong>EURU:</strong> EURC and dEURO.
+				</li>
+				<li>
+					<strong>CHFU:</strong> ZCHF.
+				</li>
+			</UL>
+			<P>
+				The list is not fixed. The DAO can link a new, similar asset (for example DAI for USDU) by approving a module for it, and every
+				module has its own mint limit. See <A href="/docs/swap-modules">Swap modules</A> for how this works.
+			</P>
+			<H2>Try it</H2>
+			<P>Read a balance straight from the contract, for example with viem. Addresses come from the protocol&apos;s core package.</P>
+			<CodeBlock>{`import { createPublicClient, http, erc20Abi } from 'viem';
+import { mainnet } from 'viem/chains';
+import { ADDRESS } from '@usdu-finance/usdu-core';
+
+const client = createPublicClient({ chain: mainnet, transport: http() });
+
+const balance = await client.readContract({
+  address: ADDRESS[mainnet.id].usduStable,
+  abi: erc20Abi,
+  functionName: 'balanceOf',
+  args: ['0xYourAddress'],
+});`}</CodeBlock>
 		</>
 	),
 
@@ -94,8 +123,9 @@ export const docsContent: Record<string, React.ReactNode> = {
 					can mint and burn. See <A href="/docs/module-lifecycle">Module lifecycle</A>.
 				</li>
 				<li>
-					<strong>Swap in and out.</strong> A swap router connects a stablecoin to its backing assets through bridge modules. You mint by
-					depositing a backing asset and redeem by returning the stablecoin.
+					<strong>Swap in and out.</strong> A swap router connects a stablecoin to its backing assets through bridge modules, and each
+					bridge deploys the backing into a yield-bearing strategy vault. Anyone can mint by depositing a backing asset and redeem by
+					returning the stablecoin, without permission.
 				</li>
 				<li>
 					<strong>Liquidity.</strong> Curve pools connect USDU to USDC and to EURU and CHFU, so the coins can also be traded without
@@ -119,6 +149,10 @@ export const docsContent: Record<string, React.ReactNode> = {
 				A swap module lets you mint or redeem a stablecoin against a backing asset at a known rate, with live fees and capacity. Swaps run
 				through a per-stablecoin <strong>swap router</strong> that routes to one or more <strong>bridge modules</strong>.
 			</P>
+			<P>
+				Issuance is restricted, access is open: only modules approved by the DAO can mint and burn, but anyone can use an active module.
+				Each module has its own fees and mint limit, which caps how much a single backing asset can issue.
+			</P>
 			<H2>Bridges</H2>
 			<UL>
 				<li>
@@ -132,7 +166,8 @@ export const docsContent: Record<string, React.ReactNode> = {
 				</li>
 			</UL>
 			<P>
-				Funds deposited through a bridge are deployed into the underlying yield-bearing vault, and the yield becomes protocol revenue. Open
+				Funds deposited through a bridge are deployed into the underlying yield-bearing strategy vault, and the yield becomes protocol
+				revenue. New backing assets are added by approving another bridge module. Open
 				the <A href="/dashboard/swap">Swap</A> page to see each module&apos;s current fees and remaining capacity.
 			</P>
 			<H2>Router addresses</H2>
@@ -205,7 +240,7 @@ export const docsContent: Record<string, React.ReactNode> = {
 	governance: (
 		<>
 			<P>
-				The Aragon DAO is the <strong>curator</strong> of the stablecoins: it alone can submit modules, change the time lock or appoint a
+				The USDU DAO, governed on Aragon, is the <strong>curator</strong> of the stablecoins: it alone can submit modules, change the time lock or appoint a
 				guardian.
 			</P>
 			<UL>

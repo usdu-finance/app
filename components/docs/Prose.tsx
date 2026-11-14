@@ -31,3 +31,8 @@ export const A = ({ href, children }: { href: string; children: React.ReactNode 
 export const Code = ({ children }: { children: React.ReactNode }) => (
 	<code className="font-mono text-[0.85em] bg-usdu-surface rounded px-1.5 py-0.5 text-usdu-black break-all">{children}</code>
 );
+export const CodeBlock = ({ children }: { children: string }) => (
+	<pre className="overflow-x-auto rounded-xl border border-usdu-surface bg-usdu-bg px-4 py-3 mb-6 text-xs leading-relaxed font-mono text-usdu-black">
+		<code>{children}</code>
+	</pre>
+);
