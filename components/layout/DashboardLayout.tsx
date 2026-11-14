@@ -196,7 +196,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 				</aside>
 
 				{/* Main Content */}
-				<main className="flex-1 min-h-[calc(100vh-4rem)] max-md:px-4 md:px-8 py-8 md:ml-64 bg-usdu-card md:rounded-l-3xl">
+				<main className="flex-1 min-h-[calc(100vh-4rem)] max-md:px-4 md:px-8 py-8 md:ml-64 md:my-2 bg-usdu-card md:rounded-l-3xl">
 					<div>{children}</div>
 				</main>
 			</div>
