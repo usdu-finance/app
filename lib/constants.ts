@@ -105,6 +105,11 @@ export const SEO = {
 		'/dashboard/borrow'
 	),
 	borrowAuction: pageSeo('Borrow Auction', 'Bid on a challenge auction of the borrow market as its price falls.', '/dashboard/borrow'),
+	messages: pageSeo(
+		'Messages',
+		'Send end-to-end encrypted messages to other wallets, readable only by you and the recipient.',
+		'/dashboard/messages'
+	),
 	obligation: pageSeo(
 		'Obligations',
 		'Track your open borrow obligations, their health and upcoming maturities.',
