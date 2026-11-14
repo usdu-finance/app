@@ -44,6 +44,7 @@ function ObligationDetailPageContent() {
 	return (
 		<div className="space-y-8">
 			<PageHeader
+				badge={{ text: 'Preview', variant: 'info' }}
 				title={selectedObligation.collateralSymbol}
 				description="Details on this obligation, including outstanding debt, health, and maturity."
 				breadcrumbs={[{ label: 'Obligation', href: '/dashboard/obligation' }, { label: selectedObligation.collateralSymbol }]}

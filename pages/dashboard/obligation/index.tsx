@@ -84,7 +84,11 @@ function ObligationListPageContent() {
 
 	return (
 		<div className="space-y-8">
-			<PageHeader title="Obligation" description="Track your open borrow obligations, their risk, and upcoming maturities." />
+			<PageHeader
+				title="Obligation"
+				description="Track your open borrow obligations, their risk, and upcoming maturities."
+				badge={{ text: 'Preview', variant: 'info' }}
+			/>
 
 			<HeroSteps steps={STEPS} />
 
