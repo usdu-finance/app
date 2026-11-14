@@ -73,10 +73,25 @@ export const docsContent: Record<string, React.ReactNode> = {
 					['CHFU (Swiss franc)', addr.chfuStable],
 				]}
 			/>
-			<H2>Issuance</H2>
+			<H2>Modular architecture</H2>
 			<P>
-				Nobody mints a stablecoin directly. Only modules approved by the DAO can mint and burn, and each module is proposed per
-				stablecoin: the same contract on USDU, EURU and CHFU is three separate modules, each with its own proposal, status and expiry.
+				The stablecoins have no built-in minting logic. Everything that mints or burns is a <strong>module</strong> approved by the DAO,
+				and a module is proposed per stablecoin: the same contract on USDU, EURU and CHFU is three separate modules, each with its own
+				proposal, status, mint limit and expiry.
+			</P>
+			<UL>
+				<li>
+					<strong>Swap modules (live):</strong> a swap router with bridge modules that exchange a backing asset for the stablecoin and
+					deploy it into a yield-bearing strategy vault. USDU and EURU each use two bridges, CHFU uses one.
+				</li>
+				<li>
+					<strong>Future modules:</strong> the DAO can approve other module types, for example a borrow market, without changing the
+					stablecoin itself.
+				</li>
+			</UL>
+			<P>
+				This keeps the core small and puts the trust in which modules are approved, which is visible and time-locked. See{' '}
+				<A href="/docs/module-lifecycle">Module lifecycle</A>.
 			</P>
 			<H2>Backing</H2>
 			<P>
@@ -119,8 +134,8 @@ const balance = await client.readContract({
 		<>
 			<OL>
 				<li>
-					<strong>Governed issuance.</strong> The Aragon DAO, the curator of every stablecoin, approves modules. Only approved modules
-					can mint and burn. See <A href="/docs/module-lifecycle">Module lifecycle</A>.
+					<strong>Governed, modular issuance.</strong> The DAO, the curator of every stablecoin, approves modules. A stablecoin has no
+					minting logic of its own: only approved modules can mint and burn, and swaps are just one module type. See <A href="/docs/module-lifecycle">Module lifecycle</A>.
 				</li>
 				<li>
 					<strong>Swap in and out.</strong> A swap router connects a stablecoin to its backing assets through bridge modules, and each
@@ -145,6 +160,10 @@ const balance = await client.readContract({
 
 	'swap-modules': (
 		<>
+			<Callout title="One module type of many">
+				Swap modules are the first module type. The stablecoins are modular, so the DAO can approve other kinds of modules later, such as
+				a borrow market.
+			</Callout>
 			<P>
 				A swap module lets you mint or redeem a stablecoin against a backing asset at a known rate, with live fees and capacity. Swaps run
 				through a per-stablecoin <strong>swap router</strong> that routes to one or more <strong>bridge modules</strong>.
