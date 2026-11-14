@@ -9,7 +9,7 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
-import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { PillTabs, TabsBar, CurrencyTabs } from '@/components/ui/input';
 import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
 import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import Card from '@/components/ui/Card';
@@ -173,11 +173,11 @@ function SwapListPageContent() {
 
 			<HeroSteps steps={STEPS} />
 
-			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+			<TabsBar>
 				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
 				{/* a zap swaps any token, so there is no stablecoin to filter by */}
 				<CurrencyTabs currencies={currencies} value={currency} disabled={tab === 'Zap'} onChange={setCurrency} />
-			</div>
+			</TabsBar>
 
 			{tab === 'Zap' && <ZapInCard />}
 

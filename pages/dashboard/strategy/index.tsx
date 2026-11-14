@@ -6,7 +6,7 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
-import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { PillTabs, TabsBar, CurrencyTabs } from '@/components/ui/input';
 import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
 import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import Card from '@/components/ui/Card';
@@ -106,11 +106,11 @@ function StrategyListPageContent() {
 
 			<HeroSteps steps={STEPS} />
 
-			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+			<TabsBar>
 				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
 				{/* strategy vaults are shared by the swap modules, so there is no stablecoin to filter by */}
 				<CurrencyTabs currencies={currencies} value={currency} onChange={setCurrency} disabled={tab === 'Strategy Vaults'} />
-			</div>
+			</TabsBar>
 
 			{tab === 'Strategy Vaults' && (
 				<Card variant="panel" className="space-y-8">

@@ -124,9 +124,11 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 				let debt = 0n,
 					funds = 0n,
 					revenue = 0n,
+					claim = 0n,
 					nBoth = 0,
+					nClaim = 0,
 					nRev = 0;
-				// shared modules count only if they report per stablecoin (CurveSeedAdapterV1), then just their leg in this one
+				// shared modules count only if they report per stablecoin (CurveSeedAdapterV1), then just their leg in this one (debt/funds only: seed pools shift, so no claimable)
 				let sharedLeft = h.shared;
 				let bothFromShared = 0;
 				h.sharedIds.forEach((id) => {
@@ -143,7 +145,9 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 					if (f.debt !== undefined && f.funds !== undefined) {
 						debt += f.debt;
 						funds += f.funds;
+						claim += f.funds - f.debt;
 						nBoth++;
+						nClaim++;
 					}
 					if (f.revenue !== undefined) {
 						revenue += f.revenue;
@@ -156,7 +160,11 @@ export default function ModulesMap({ modules, getStatus, selected, onSelect, fig
 					sharedLeft,
 					rows:
 						nBoth + nRev
-							? figureRows(nBoth ? { debt, funds, revenue: nRev ? revenue : undefined } : { revenue }, h.currency)
+							? figureRows(
+									nBoth ? { debt, funds, revenue: nRev ? revenue : undefined } : { revenue },
+									h.currency,
+									nClaim ? claim : null
+							  )
 							: [],
 				};
 			}),

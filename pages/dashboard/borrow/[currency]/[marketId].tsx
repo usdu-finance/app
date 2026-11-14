@@ -115,7 +115,7 @@ function BorrowMarketPageContent() {
 	return (
 		<div className="space-y-8">
 			<PageHeader
-				badge={{ text: 'Preview', variant: 'info' }}
+				badge={{ text: 'In development', variant: 'info' }}
 				title={cross ? `${symbol} → ${currency} Cross Market` : `${symbol} / ${currency} Market`}
 				description={`Borrow ${currency} against ${symbol} at ${fmtShare(market.rate)} APR, paid upfront until your chosen maturity. Your position price is yours to set, up to ${fmtPrice(market, market.price)}.`}
 				breadcrumbs={[{ label: 'Borrow', href: `/dashboard/borrow?currency=${currency}` }, { label: `${symbol} Market` }]}

@@ -120,7 +120,7 @@ export default function MessagesPage() {
 				<PageHeader
 					title="Messages"
 					description="Send private messages to other wallets. Every message is encrypted on your device to the recipient's key, so only the two of you can read it."
-					badge={{ text: 'Preview', variant: 'info' }}
+					badge={{ text: 'In development', variant: 'info' }}
 				/>
 
 				<div className="grid lg:grid-cols-[320px_1fr] bg-usdu-bg border border-usdu-surface rounded-xl overflow-hidden min-h-[560px]">
@@ -161,9 +161,6 @@ export default function MessagesPage() {
 													<p className="text-xs text-text-secondary truncate flex-1">
 														{last ? `${last.from === 'me' ? 'You: ' : ''}${last.text}` : 'No messages yet'}
 													</p>
-													{c.unread > 0 && (
-														<span className="w-2 h-2 rounded-full bg-usdu-orange shrink-0" aria-label="Unread" />
-													)}
 												</div>
 											</div>
 										</button>

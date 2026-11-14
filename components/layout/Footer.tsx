@@ -103,7 +103,7 @@ export default function Footer() {
 								<FooterItem link={SOCIAL.Github_user} text="GitHub" icon={faGithub} />
 							</li>
 							<li>
-								<FooterItem link={SOCIAL.Twitter} text="X" icon={faXTwitter} />
+								<FooterItem link={SOCIAL.Twitter} text="X/Twitter" icon={faXTwitter} />
 							</li>
 							<li>
 								<FooterItem link={SOCIAL.Telegram} text="Telegram" icon={faTelegram} />

@@ -13,7 +13,7 @@ import { StatCard } from '@/components/ui/stats';
 import { DonutChart, type DonutSlice } from '@/components/ui/charts';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
-import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { PillTabs, TabsBar, CurrencyTabs } from '@/components/ui/input';
 import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
 import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import Card from '@/components/ui/Card';
@@ -112,13 +112,15 @@ function DashboardPageContent() {
 
 	return (
 		<div className="space-y-8">
-			<PageHeader title="Dashboard" description="Your wallet at a glance: every asset the protocol recognizes, valued in USDU." />
-
-			{isDemo && (
-				<p className="rounded-lg border border-usdu-surface bg-usdu-bg px-4 py-3 text-sm text-text-secondary">
-					Preview with demo balances at live prices. Connect your wallet to see your own assets.
-				</p>
-			)}
+			<PageHeader
+				title="Dashboard"
+				description={
+					isDemo
+						? 'Demo balances at live prices. Connect your wallet to see your own assets.'
+						: 'Your wallet at a glance: every asset the protocol recognizes, valued in USDU.'
+				}
+				badge={isDemo ? { text: 'No wallet connected', variant: 'warning' } : undefined}
+			/>
 
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 				<StatCard
@@ -137,11 +139,11 @@ function DashboardPageContent() {
 				<StatCard icon={faHandHoldingDollar} label="Borrow Assets" value={formatCompactNumber(0, 2, '', ' USDU')} />
 			</div>
 
-			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+			<TabsBar>
 				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
 				{/* crypto assets are not tied to a stablecoin */}
 				<CurrencyTabs currencies={currencies} value={currency} onChange={setCurrency} disabled={tab === 'Crypto'} />
-			</div>
+			</TabsBar>
 
 			{tab === 'Stablecoins' && (
 				<Card variant="panel" className="space-y-8">

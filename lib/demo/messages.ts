@@ -30,7 +30,7 @@ export const DEMO_CONVERSATIONS: DemoConversation[] = [
 		address: '0x7a3f1c9d2b84e5a60f1d93c7b2e48a5d6c01f9e2',
 		fingerprint: '4F2A 91CE 07B3 D8A6',
 		verified: true,
-		unread: 1,
+		unread: 0,
 		messages: [
 			{ id: 'm1', from: 'them', text: 'Hey, did the CHFU module proposal go through on your side?', at: ago(190) },
 			{ id: 'm2', from: 'me', text: 'Submitted it this morning. The timelock runs for another two days.', at: ago(176) },

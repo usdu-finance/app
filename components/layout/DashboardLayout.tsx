@@ -55,7 +55,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 	return (
 		<div className="h-dvh overflow-hidden bg-usdu-bg text-text-primary">
 			{/* Dashboard Header */}
-			<header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-usdu-bg from-50% to-usdu-bg/80">
+			<header className="fixed top-0 left-0 right-0 z-50 bg-usdu-bg">
 				<div className="mx-auto max-md:px-4 px-16">
 					<div className="flex h-16 items-center justify-between">
 						{/* Logo */}

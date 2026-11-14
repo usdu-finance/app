@@ -70,9 +70,9 @@ export function PageHeader({
 				</nav>
 			)}
 
-			<div className="flex items-start justify-between gap-4">
+			<div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
 				<div className="flex-1 min-w-0">
-					<div className="flex items-center gap-3 mb-2">
+					<div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-2">
 						{icon && <FontAwesomeIcon icon={icon} className="text-brand text-3xl flex-shrink-0" />}
 						<h1 className="text-3xl font-bold text-text-primary min-w-0 break-words">{title}</h1>
 						{badge && (
@@ -89,7 +89,7 @@ export function PageHeader({
 					</div>
 					{description && <p className="text-text-secondary leading-relaxed">{description}</p>}
 				</div>
-				{actions && <div className="flex items-center gap-3 flex-shrink-0">{actions}</div>}
+				{actions && <div className="flex items-center justify-end gap-3 sm:flex-shrink-0">{actions}</div>}
 			</div>
 		</div>
 	);
