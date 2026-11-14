@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react';
 import { dateStr, shortAddr } from './godeye.format';
-import { Glass, Seg, StatCard } from './GodEyeUi';
+import { Glass, StatCard } from './GodEyeUi';
 import {
 	Amount,
 	buildSeries,
@@ -10,9 +10,9 @@ import {
 	FlowMonth,
 	FlowRow,
 	FlowTable,
-	quarterLabel,
-	quarterOf,
-	QuarterChart,
+	monthLabel,
+	monthOf,
+	MonthChart,
 	SECTION,
 } from './daoFlow';
 
@@ -34,14 +34,11 @@ const CONTRIBUTION = { name: 'Contribution', caption: 'Funds sent in by other wa
 const CONTRIBUTION_FAMILY = { key: 'contribution', name: CONTRIBUTION.name, color: CONTRIBUTION.color };
 
 /**
- * What modules and minters paid the DAO, per quarter and per module, read from the DAO wallet's own transfers (the
+ * What modules and minters paid the DAO, per month and per module, read from the DAO wallet's own transfers (the
  * stablecoins and the coins backing them, so the swap-out fees the bridges pay in USDC, EURC... are in), plus
  * contributions from plain wallets.
  */
 export default function DaoEarnings({
-	token,
-	currencyOptions,
-	onToken,
 	currencies,
 	usd,
 	rateOf,
@@ -65,12 +62,12 @@ export default function DaoEarnings({
 			count: number;
 			last: number;
 		};
-		// what each module paid, overall (key -1) and per quarter, so the table can be filtered to one quarter
+		// what each module paid, overall (key -1) and per month, so the table can be filtered to one month
 		const stats = new Map<number, Map<string, Stat>>();
 		// everything that came in, contributions included
 		let total = 0;
 		let lastIn = 0;
-		const earnedByQuarter = new Map<number, number>();
+		const earnedByMonth = new Map<number, number>();
 		const record = (
 			key: string,
 			label: string,
@@ -80,8 +77,8 @@ export default function DaoEarnings({
 			amount: number,
 			family: Stat['family'] = familyOf(label)
 		) => {
-			const quarter = quarterOf(t);
-			for (const q of [-1, quarter]) {
+			const month = monthOf(t);
+			for (const q of [-1, month]) {
 				const byKey = stats.get(q) ?? new Map<string, Stat>();
 				stats.set(q, byKey);
 				const st = byKey.get(key) ?? { key, label, address, family, coin, in: 0, count: 0, last: 0 };
@@ -90,14 +87,14 @@ export default function DaoEarnings({
 				st.last = Math.max(st.last, t);
 				byKey.set(key, st);
 			}
-			const m = months.get(quarter) ?? { total: 0, byGroup: new Map<string, number>(), txs: 0 };
+			const m = months.get(month) ?? { total: 0, byGroup: new Map<string, number>(), txs: 0 };
 			m.total += amount;
 			m.byGroup.set(family.key, (m.byGroup.get(family.key) ?? 0) + amount);
 			m.txs += 1;
-			months.set(quarter, m);
+			months.set(month, m);
 			total += amount;
 			lastIn = Math.max(lastIn, t);
-			earnedByQuarter.set(quarter, (earnedByQuarter.get(quarter) ?? 0) + amount);
+			earnedByMonth.set(month, (earnedByMonth.get(month) ?? 0) + amount);
 		};
 
 		for (const tr of data.transfers) {
@@ -113,9 +110,9 @@ export default function DaoEarnings({
 			else record(`${tr.peer}${coinKey}`, tr.label ?? shortAddr(tr.peer), tr.peer, coin, tr.t, amount);
 		}
 
-		/** the table's rows for one quarter (or all time): the biggest earners, with the small ones merged into "Other" */
-		const rowsFor = (quarter: number | null): FlowRow[] => {
-			const sources = [...(stats.get(quarter ?? -1)?.values() ?? [])].sort((a, b) => b.in - a.in);
+		/** the table's rows for one month (or all time): the biggest earners, with the small ones merged into "Other" */
+		const rowsFor = (month: number | null): FlowRow[] => {
+			const sources = [...(stats.get(month ?? -1)?.values() ?? [])].sort((a, b) => b.in - a.in);
 			const big = sources.filter((s) => s.in >= MIN_ROW_INCOME);
 			const small = sources.filter((s) => s.in < MIN_ROW_INCOME);
 			// the "other" row takes a slot of its own, so it only exists when something is left over
@@ -167,7 +164,7 @@ export default function DaoEarnings({
 				...FAMILIES.filter((f) => all.some((s) => s.family.key === f.key)),
 			],
 			...built,
-			thisQuarter: earnedByQuarter.get(built.now) ?? 0,
+			thisMonth: earnedByMonth.get(built.now) ?? 0,
 			symbol,
 		};
 	}, [data, currencies, usd, rateOf, symbol]);
@@ -178,7 +175,7 @@ export default function DaoEarnings({
 	const shown = model ?? lastModel.current;
 	const stale = !model || loading || (usd && !fxReady);
 
-	const selectedQuarter = selected !== null ? shown?.series.find((m) => m.q === selected) : undefined;
+	const selectedMonth = selected !== null ? shown?.series.find((m) => m.month === selected) : undefined;
 
 	return (
 		<div className={SECTION}>
@@ -201,7 +198,6 @@ export default function DaoEarnings({
 						Contributions (funds sent in by other wallets) count as income too.
 					</p>
 				</div>
-				<Seg value={token ?? ''} options={currencyOptions} onChange={onToken} />
 			</div>
 
 			{error && !shown && <Glass className="p-4 text-sm text-rose-600">Could not load the earnings: {error}</Glass>}
@@ -215,15 +211,15 @@ export default function DaoEarnings({
 					<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 						<StatCard label="Total income" value={<Amount value={shown.total} coin={shown.symbol} />} />
 						<StatCard
-							label={`This quarter (${quarterLabel(shown.now)})`}
-							value={<Amount value={shown.thisQuarter} coin={shown.symbol} />}
+							label={selectedMonth ? `Selected month (${selectedMonth.key})` : `This month (${monthLabel(shown.now)})`}
+							value={<Amount value={selectedMonth ? selectedMonth.total : shown.thisMonth} coin={shown.symbol} />}
 						/>
 						<StatCard label="Modules" value={shown.modules} />
 						<StatCard label="Last transfer" value={shown.lastIn ? dateStr(shown.lastIn) : '–'} />
 					</div>
 
-					<QuarterChart
-						title="Received per quarter"
+					<MonthChart
+						title="Received per month"
 						series={shown.series}
 						groups={shown.groups}
 						symbol={shown.symbol}
@@ -238,7 +234,7 @@ export default function DaoEarnings({
 						empty={`No module or minter has paid the DAO any ${shown.symbol} yet.`}
 						total={shown.total}
 						symbol={shown.symbol}
-						selected={selectedQuarter}
+						selected={selectedMonth}
 						onClear={() => onSelect(null)}
 					/>
 				</div>

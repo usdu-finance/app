@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { categoryOf, EXPENSE_CATEGORIES, type ExpenseCategory } from '@/lib/dao-expenses';
 import { dateStr, shortAddr } from './godeye.format';
-import { Glass, Seg, StatCard } from './GodEyeUi';
+import { Glass, StatCard } from './GodEyeUi';
 import {
 	Amount,
 	buildSeries,
@@ -11,20 +11,17 @@ import {
 	FlowMonth,
 	FlowRow,
 	FlowTable,
-	quarterLabel,
-	quarterOf,
-	QuarterChart,
+	monthLabel,
+	monthOf,
+	MonthChart,
 	SECTION,
 } from './daoFlow';
 
 /**
- * What the DAO curator paid out, per quarter and per category. The chain only shows transfers, so the category of each
+ * What the DAO curator paid out, per month and per category. The chain only shows transfers, so the category of each
  * payout comes from the ledger in lib/dao-expenses.ts; payouts that are not listed there show as uncategorised.
  */
 export default function DaoExpenses({
-	token,
-	currencyOptions,
-	onToken,
 	currencies,
 	usd,
 	rateOf,
@@ -39,7 +36,7 @@ export default function DaoExpenses({
 		type Stat = { category: ExpenseCategory; in: number; txs: Set<string>; last: number };
 		const months = new Map<number, FlowMonth>();
 		const monthTxs = new Map<number, Set<string>>();
-		// what each category paid, overall (key -1) and per quarter
+		// what each category paid, overall (key -1) and per month
 		const stats = new Map<number, Map<ExpenseCategory, Stat>>();
 		const allTxs = new Set<string>();
 		let total = 0;
@@ -51,8 +48,8 @@ export default function DaoExpenses({
 			// the combined view values every payout in dollars at the rate of the day it was paid
 			const amount = usd ? r.amount * rateOf(r.currency, r.t) : r.amount;
 			const category = categoryOf(r.txHash, r.coin);
-			const quarter = quarterOf(r.t);
-			for (const q of [-1, quarter]) {
+			const month = monthOf(r.t);
+			for (const q of [-1, month]) {
 				const byCategory = stats.get(q) ?? new Map<ExpenseCategory, Stat>();
 				stats.set(q, byCategory);
 				const st = byCategory.get(category) ?? { category, in: 0, txs: new Set<string>(), last: 0 };
@@ -61,21 +58,21 @@ export default function DaoExpenses({
 				st.last = Math.max(st.last, r.t);
 				byCategory.set(category, st);
 			}
-			const txs = monthTxs.get(quarter) ?? new Set<string>();
+			const txs = monthTxs.get(month) ?? new Set<string>();
 			txs.add(r.txHash);
-			monthTxs.set(quarter, txs);
-			const m = months.get(quarter) ?? { total: 0, byGroup: new Map<string, number>(), txs: 0 };
+			monthTxs.set(month, txs);
+			const m = months.get(month) ?? { total: 0, byGroup: new Map<string, number>(), txs: 0 };
 			m.total += amount;
 			m.byGroup.set(category, (m.byGroup.get(category) ?? 0) + amount);
 			m.txs = txs.size;
-			months.set(quarter, m);
+			months.set(month, m);
 			allTxs.add(r.txHash);
 			total += amount;
 			lastOut = Math.max(lastOut, r.t);
 		}
 
-		const rowsFor = (quarter: number | null): FlowRow[] =>
-			[...(stats.get(quarter ?? -1)?.values() ?? [])]
+		const rowsFor = (month: number | null): FlowRow[] =>
+			[...(stats.get(month ?? -1)?.values() ?? [])]
 				.sort((a, b) => b.in - a.in)
 				.map((s) => ({
 					key: s.category,
@@ -110,7 +107,7 @@ export default function DaoExpenses({
 	if (ready) lastModel.current = model;
 	const shown = lastModel.current;
 	const stale = !ready;
-	const selectedQuarter = selected !== null ? shown?.series.find((m) => m.q === selected) : undefined;
+	const selectedMonth = selected !== null ? shown?.series.find((m) => m.month === selected) : undefined;
 
 	return (
 		<div className={SECTION}>
@@ -131,7 +128,6 @@ export default function DaoExpenses({
 						running the protocol, by category. Payouts without a category yet show as uncategorised.
 					</p>
 				</div>
-				<Seg value={token ?? ''} options={currencyOptions} onChange={onToken} />
 			</div>
 
 			{error && !shown && <Glass className="p-4 text-sm text-rose-600">Could not load the expenses: {error}</Glass>}
@@ -144,15 +140,15 @@ export default function DaoExpenses({
 					<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
 						<StatCard label="Total spent" value={<Amount value={shown.total} coin={shown.symbol} />} />
 						<StatCard
-							label={`This quarter (${quarterLabel(shown.now)})`}
-							value={<Amount value={shown.thisQuarter} coin={shown.symbol} />}
+							label={selectedMonth ? `Selected month (${selectedMonth.key})` : `This month (${monthLabel(shown.now)})`}
+							value={<Amount value={selectedMonth ? selectedMonth.total : shown.thisMonth} coin={shown.symbol} />}
 						/>
 						<StatCard label="Payouts" value={shown.payouts} />
 						<StatCard label="Last payout" value={shown.lastOut ? dateStr(shown.lastOut) : '–'} />
 					</div>
 
-					<QuarterChart
-						title="Spent per quarter"
+					<MonthChart
+						title="Spent per month"
 						series={shown.series}
 						groups={shown.groups}
 						symbol={shown.symbol}
@@ -167,7 +163,7 @@ export default function DaoExpenses({
 						empty={`The DAO has not paid out any ${shown.symbol} yet.`}
 						total={shown.total}
 						symbol={shown.symbol}
-						selected={selectedQuarter}
+						selected={selectedMonth}
 						onClear={() => onSelect(null)}
 					/>
 				</div>

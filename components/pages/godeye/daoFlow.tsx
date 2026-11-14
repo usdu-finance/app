@@ -11,7 +11,7 @@ import type { DaoCurrency, DaoTransfers } from '@/lib/dao-transfers';
 import { dateStr, fmt } from './godeye.format';
 import { Dot, Glass, SectionTitle } from './GodEyeUi';
 
-/** Shared by DaoEarnings and DaoExpenses: the same quarter axis, chart, table and amounts, with different data behind them. */
+/** Shared by DaoEarnings and DaoExpenses: the same month axis, chart, table and amounts, with different data behind them. */
 
 /** The DAO's curator address: what the earnings are paid to and the expenses are paid from */
 export const DAO = ADDRESS[mainnet.id].curator.toLowerCase();
@@ -19,12 +19,8 @@ export const DAO = ADDRESS[mainnet.id].curator.toLowerCase();
 /** The frame of one section of the page */
 export const SECTION = 'relative min-h-[420px] rounded-lg border border-usdu-surface bg-usdu-bg p-4 md:p-6 space-y-4 text-usdu-black';
 
-/** What DaoFinances hands to both sections, which share the currency switch, the selected quarter and one transfer feed */
+/** What DaoFinances hands to both sections, which share the currency switch, the selected month and one transfer feed */
 export type DaoSectionProps = {
-	/** the currency switch, shared by both sections so they always show the same currency */
-	token: string | null;
-	currencyOptions: { value: string; label: string }[];
-	onToken: (token: string) => void;
 	/** the currencies to add up: one, or all three for the combined view */
 	currencies: DaoCurrency[];
 	/** combined view: every amount is converted to USD at the rate of the day it was paid */
@@ -34,23 +30,26 @@ export type DaoSectionProps = {
 	fxError: string | null;
 	/** what amounts are shown in: the currency's symbol, or USD for the combined view */
 	symbol: string;
-	/** the quarter the table is filtered to, as an index into the series; null shows all time */
+	/** the month the table is filtered to, as an index into the series; null shows all time */
 	selected: number | null;
 	onSelect: (q: number | null) => void;
 	transfers: { data: DaoTransfers | null; loading: boolean; error: string | null };
 };
 
-// The chart always spans at least two years of quarters, so it keeps its shape while there is little (or nothing) to show
-const MIN_QUARTERS = 8;
+// The chart always spans at least two years of months, so it keeps its shape while there is little (or nothing) to show
+const MIN_MONTHS = 24;
 
-export const quarterOf = (t: number) => {
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** Month index of a unix timestamp: year * 12 + month (UTC), so consecutive months are consecutive numbers */
+export const monthOf = (t: number) => {
 	const d = new Date(t * 1000);
-	return d.getUTCFullYear() * 4 + Math.floor(d.getUTCMonth() / 3);
+	return d.getUTCFullYear() * 12 + d.getUTCMonth();
 };
-export const quarterLabel = (q: number) => `${String(Math.floor(q / 4)).slice(2)}Q${(q % 4) + 1}`;
+export const monthLabel = (m: number) => `${MONTH_NAMES[m % 12]} '${String(Math.floor(m / 12)).slice(2)}`;
 
 export type FlowMonth = { total: number; byGroup: Map<string, number>; txs: number };
-export type FlowSeries = FlowMonth & { q: number; key: string };
+export type FlowSeries = FlowMonth & { month: number; key: string };
 export type FlowGroup = { key: string; name: string; color: string };
 export type FlowRow = {
 	key: string;
@@ -68,16 +67,16 @@ export type FlowRow = {
 	coin: string | null;
 };
 
-/** Every quarter up to the current one, back to whichever is earlier: the first entry or the minimum span */
+/** Every month up to the current one, back to whichever is earlier: the first entry or the minimum span */
 export function buildSeries(months: Map<number, FlowMonth>) {
-	const now = quarterOf(Date.now() / 1000);
-	const first = Math.min(now - (MIN_QUARTERS - 1), ...months.keys());
+	const now = monthOf(Date.now() / 1000);
+	const first = Math.min(now - (MIN_MONTHS - 1), ...months.keys());
 	const last = Math.max(now, ...months.keys());
 	const series: FlowSeries[] = [];
 	for (let q = first; q <= last; q++) {
-		series.push({ q, key: quarterLabel(q), ...(months.get(q) ?? { total: 0, byGroup: new Map(), txs: 0 }) });
+		series.push({ month: q, key: monthLabel(q), ...(months.get(q) ?? { total: 0, byGroup: new Map(), txs: 0 }) });
 	}
-	return { series, now, thisQuarter: months.get(now)?.total ?? 0 };
+	return { series, now, thisMonth: months.get(now)?.total ?? 0 };
 }
 
 // Last resort for coins neither the protocol's registry nor the CoW list has a logo for
@@ -103,10 +102,10 @@ export function Amount({ value, coin }: { value: number; coin: string }) {
 }
 
 /**
- * One bar per quarter, stacked by group. A quarter with entries can be clicked to select it (clicking it again clears
+ * One bar per month, stacked by group. A month with entries can be clicked to select it (clicking it again clears
  * the selection), which the parent uses to filter the tables.
  */
-export function QuarterChart({
+export function MonthChart({
 	title,
 	series,
 	groups,
@@ -140,7 +139,7 @@ export function QuarterChart({
 			</SectionTitle>
 			<div className="flex h-48 items-end gap-1" onMouseLeave={() => setHover(null)}>
 				{series.map((m) => {
-					const isSelected = selected === m.q;
+					const isSelected = selected === m.month;
 					const dimmed = (hover !== null && hover !== m.key) || (selected !== null && !isSelected);
 					return (
 						<button
@@ -149,7 +148,7 @@ export function QuarterChart({
 							disabled={m.total <= 0}
 							aria-pressed={isSelected}
 							aria-label={`${m.key}: ${fmt(m.total, 2)} ${symbol}`}
-							onClick={() => onSelect(isSelected ? null : m.q)}
+							onClick={() => onSelect(isSelected ? null : m.month)}
 							onMouseEnter={() => setHover(m.key)}
 							className={`group flex h-full min-w-0 flex-1 flex-col justify-end rounded-t bg-black/[0.04] transition-shadow enabled:cursor-pointer enabled:hover:bg-black/[0.07] focus-visible:outline-none ${isSelected ? 'bg-black/[0.07]' : ''}`}
 							style={
@@ -171,11 +170,15 @@ export function QuarterChart({
 					);
 				})}
 			</div>
-			<div className="mt-1 flex gap-1 text-[10px] text-text-muted">
-				{series.map((m, i) => (
-					// past a year of bars the labels get tight, so every other one is dropped
-					<span key={m.key} className="min-w-0 flex-1 text-center">
-						{series.length > 12 && (series.length - 1 - i) % 2 ? '' : m.key}
+			<div className="mt-1 flex gap-1 text-[10px] text-text-muted max-md:h-11">
+				{series.map((m) => (
+					// every bar gets month and year: stacked on two lines on desktop (a single line would collide with 24+ bars),
+					// one vertical line on narrow screens
+					<span
+						key={m.key}
+						className="min-w-0 flex-1 whitespace-nowrap text-center max-md:rotate-180 max-md:[writing-mode:vertical-rl]"
+					>
+						<span>{m.key.split(' ')[0]}</span> <span className="md:block">{m.key.split(' ')[1]}</span>
 					</span>
 				))}
 			</div>
@@ -191,7 +194,7 @@ export function QuarterChart({
 	);
 }
 
-/** The rows behind the chart, for the selected quarter or all time */
+/** The rows behind the chart, for the selected month or all time */
 export function FlowTable({
 	title,
 	headers,
@@ -207,7 +210,7 @@ export function FlowTable({
 	rows: FlowRow[];
 	/** shown in place of the rows when there are none yet */
 	empty: string;
-	/** all-time total, the share base when no quarter is selected */
+	/** all-time total, the share base when no month is selected */
 	total: number;
 	symbol: string;
 	selected?: FlowSeries;
