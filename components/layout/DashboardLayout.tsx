@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -17,6 +17,14 @@ export default function DashboardLayout({ children }: LayoutProps) {
 	const { isConnected, address } = useAuth();
 	const { open } = useAppKit();
 	const router = useRouter();
+
+	// Only <main> scrolls, so Next.js can't reset the scroll position on navigation: do it here.
+	// Query/hash changes (filters, tabs) keep the position.
+	const mainRef = useRef<HTMLElement>(null);
+	const pagePath = router.asPath.split(/[?#]/)[0];
+	useEffect(() => {
+		mainRef.current?.scrollTo({ top: 0 });
+	}, [pagePath]);
 
 	const toggleSidebar = () => {
 		setIsSidebarOpen(!isSidebarOpen);
@@ -45,11 +53,11 @@ export default function DashboardLayout({ children }: LayoutProps) {
 	};
 
 	return (
-		<div className="min-h-screen bg-usdu-bg text-text-primary">
+		<div className="h-dvh overflow-hidden bg-usdu-bg text-text-primary">
 			{/* Dashboard Header */}
 			<header className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-usdu-bg from-50% to-usdu-bg/80">
-				<div className="mx-auto max-md:px-4 px-16 py-3">
-					<div className="flex items-center justify-between">
+				<div className="mx-auto max-md:px-4 px-16">
+					<div className="flex h-16 items-center justify-between">
 						{/* Logo */}
 						<div className="flex items-center gap-4">
 							<Link href="/">
@@ -58,7 +66,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 									alt={PROJECT.name.split(' ')[0]}
 									width={80}
 									height={80}
-									className="w-full h-auto object-contain"
+									className="h-10 w-auto object-contain"
 								/>
 							</Link>
 						</div>
@@ -107,7 +115,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 
 					{/* Mobile Navigation */}
 					{isMobileMenuOpen && (
-						<div className="md:hidden mt-4 border-t border-usdu-surface pt-4">
+						<div className="md:hidden border-t border-usdu-surface py-4">
 							<nav className="space-y-4">
 								{dashboardNavigation.map((item) => (
 									<Link
@@ -164,7 +172,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 			</header>
 
 			{/* Dashboard Content */}
-			<div className="flex pt-16">
+			<div className="flex h-full pt-16">
 				{/* Sidebar Overlay */}
 				{(isSidebarOpen || isMobileMenuOpen) && (
 					<div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={handleOverlayClick} />
@@ -172,7 +180,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 
 				{/* Sidebar Navigation */}
 				<aside
-					className={`fixed left-0 top-16 w-64 h-screen bg-usdu-bg transform transition-transform duration-300 ease-in-out z-50 ${
+					className={`fixed left-0 top-16 bottom-0 w-64 overflow-y-auto bg-usdu-bg transform transition-transform duration-300 ease-in-out z-50 ${
 						isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
 					} md:translate-x-0`}
 				>
@@ -196,7 +204,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 				</aside>
 
 				{/* Main Content */}
-				<main className="flex-1 min-h-[calc(100vh-4rem)] max-md:px-4 md:px-8 py-8 md:ml-64 md:my-2 bg-usdu-card md:rounded-l-3xl">
+				<main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto max-md:px-4 md:px-8 py-8 md:ml-64 bg-usdu-card md:rounded-l-3xl">
 					<div>{children}</div>
 				</main>
 			</div>

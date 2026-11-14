@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/router';
@@ -6,7 +6,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowUpRightFromSquare, faBars, faTimes } from '@fortawesome/free-solid-svg-icons';
 import { PROJECT } from '@/lib/constants';
 import { LayoutProps } from './Layout.types';
-import { homeNavigation } from '@/lib/layout/navigation';
 import { docsNavigation, docsHref } from '@/lib/docs/navigation';
 
 export default function DocsLayout({ children }: LayoutProps) {
@@ -16,11 +15,18 @@ export default function DocsLayout({ children }: LayoutProps) {
 	// asPath without query/hash and trailing slash: '/docs/swap-modules' or '/docs'
 	const current = router.asPath.split(/[?#]/)[0].replace(/\/$/, '') || '/';
 
+	// Only <main> scrolls, so Next.js can't reset the scroll position on navigation: do it here.
+	const mainRef = useRef<HTMLElement>(null);
+	useEffect(() => {
+		mainRef.current?.scrollTo({ top: 0 });
+	}, [current]);
+
 	return (
-		<div className="min-h-screen bg-usdu-bg text-text-primary">
+		<div className="h-dvh overflow-hidden bg-usdu-bg text-text-primary">
 			{/* Navbar */}
 			<header className="fixed top-0 left-0 right-0 z-50 bg-usdu-bg">
-				<div className="mx-auto max-md:px-4 px-16 py-3 flex items-center justify-between">
+				{/* h-16 matches the pt-16 / top-16 offsets below, so nothing hides under the header */}
+				<div className="mx-auto max-md:px-4 px-16 h-16 flex items-center justify-between">
 					<div className="flex items-center gap-3">
 						<Link href="/">
 							<Image
@@ -28,27 +34,13 @@ export default function DocsLayout({ children }: LayoutProps) {
 								alt={PROJECT.name.split(' ')[0]}
 								width={80}
 								height={80}
-								className="w-full h-auto object-contain"
+								className="h-10 w-auto object-contain"
 							/>
 						</Link>
 						<Link href="/docs" className="text-sm font-semibold text-usdu-orange border-l border-usdu-surface pl-3">
 							Docs
 						</Link>
 					</div>
-
-					<nav className="hidden md:flex items-center space-x-8">
-						{homeNavigation
-							.filter((item) => item.href !== '/docs')
-							.map((item) => (
-								<Link
-									key={item.name}
-									href={item.href}
-									className="text-sm font-medium text-text-secondary hover:text-usdu-orange transition-colors"
-								>
-									{item.name}
-								</Link>
-							))}
-					</nav>
 
 					<div className="flex items-center gap-2">
 						<Link
@@ -69,7 +61,7 @@ export default function DocsLayout({ children }: LayoutProps) {
 				</div>
 			</header>
 
-			<div className="flex pt-16">
+			<div className="flex h-full pt-16">
 				{isMenuOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsMenuOpen(false)} />}
 
 				{/* Subpage menu */}
@@ -106,7 +98,7 @@ export default function DocsLayout({ children }: LayoutProps) {
 					</nav>
 				</aside>
 
-				<main className="flex-1 min-h-[calc(100vh-4rem)] max-md:px-4 md:px-12 py-8 md:ml-64 md:my-4 bg-usdu-card md:rounded-l-3xl">
+				<main ref={mainRef} className="flex-1 min-w-0 overflow-y-auto max-md:px-4 md:px-12 py-8 md:ml-64 bg-usdu-card md:rounded-l-3xl">
 					<div className="max-w-3xl">{children}</div>
 				</main>
 			</div>
