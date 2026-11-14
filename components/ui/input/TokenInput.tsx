@@ -1,10 +1,43 @@
 import { formatUnits } from 'viem';
-import { useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronDown } from '@fortawesome/free-solid-svg-icons';
 import { BigNumberInput } from './BigNumberInput';
 import { TokenLogo } from '@/components/ui/logo';
 import { formatCurrency } from '@/lib/utils';
+
+const MAX_FONT = 30; // text-3xl
+const MIN_FONT = 12;
+
+/**
+ * Largest font size (up to text-3xl) at which `text` still fits the width of `ref`, so a full 18-decimal
+ * amount stays readable in the box instead of being cut off or pushing the token out.
+ */
+function useFitFontSize(ref: React.RefObject<HTMLDivElement | null>, text: string): number {
+	const [size, setSize] = useState(MAX_FONT);
+
+	useLayoutEffect(() => {
+		const el = ref.current;
+		if (!el) return;
+		const canvas = document.createElement('canvas').getContext('2d');
+		if (!canvas) return;
+
+		const fit = () => {
+			const width = el.clientWidth;
+			if (!width) return;
+			canvas.font = `${MAX_FONT}px ${getComputedStyle(el).fontFamily}`;
+			const textWidth = canvas.measureText(text).width;
+			setSize(textWidth <= width ? MAX_FONT : Math.max(MIN_FONT, Math.floor((MAX_FONT * width) / textWidth) - 1));
+		};
+
+		fit();
+		const observer = new ResizeObserver(fit);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, [ref, text]);
+
+	return size;
+}
 
 interface Props {
 	label?: string;
@@ -66,6 +99,11 @@ export default function TokenInput({
 
 	const safeValue = value ? BigInt(value) : 0n;
 
+	// the typed digits are the source of truth, so the fit follows what is shown, even the placeholder
+	const shown = output ?? (safeValue > 0n ? formatUnits(safeValue, Number(digit)) : placeholder);
+	const fitRef = useRef<HTMLDivElement>(null);
+	const fontSize = useFitFontSize(fitRef, shown);
+
 	const handleClick = () => {
 		if (inputRef.current && !disabled) {
 			inputRef.current.focus();
@@ -75,9 +113,7 @@ export default function TokenInput({
 	return (
 		<div>
 			<div
-				className={`group border-input-border ${
-					disabled ? 'bg-surface' : 'hover:border-brand'
-				} focus-within:!border-brand ${
+				className={`group border-input-border ${disabled ? 'bg-surface' : 'hover:border-brand'} focus-within:!border-brand ${
 					error ? '!border-error' : ''
 				} text-text-secondary border-2 rounded-lg px-3 py-1`}
 				onClick={handleClick}
@@ -86,24 +122,29 @@ export default function TokenInput({
 
 				<div className="flex items-center">
 					<div
-						className={`flex-1 py-2 ${
+						className={`flex-1 min-w-0 py-2 pr-3 ${
 							error ? 'text-error' : value ? 'text-text-primary' : 'placeholder:text-input-empty'
 						}`}
 					>
-						{output ? (
-							<div className="text-3xl py-0">{output}</div>
-						) : (
-							<BigNumberInput
-								inputRefChild={inputRef}
-								className={`w-full px-0 py-0 text-3xl ${disabled ? 'bg-surface' : ''}`}
-								decimals={Number(digit)}
-								placeholder={placeholder}
-								value={value}
-								onChange={onChange}
-								autoFocus={autoFocus}
-								disabled={disabled}
-							/>
-						)}
+						<div ref={fitRef} className="h-9 flex items-center">
+							{output ? (
+								<div className="truncate leading-none" style={{ fontSize }} title={output}>
+									{output}
+								</div>
+							) : (
+								<BigNumberInput
+									inputRefChild={inputRef}
+									className={`w-full px-0 py-0 leading-none ${disabled ? 'bg-surface' : ''}`}
+									style={{ fontSize }}
+									decimals={Number(digit)}
+									placeholder={placeholder}
+									value={value}
+									onChange={onChange}
+									autoFocus={autoFocus}
+									disabled={disabled}
+								/>
+							)}
+						</div>
 					</div>
 
 					{onTokenClick ? (
@@ -121,11 +162,11 @@ export default function TokenInput({
 						</button>
 					) : (
 						<>
-							<div className="mr-2">
+							<div className="mr-2 flex-shrink-0">
 								<TokenLogo currency={symbol} logoURI={logoURI} size={6} />
 							</div>
 
-							<div className="text-input-label text-left">{symbol}</div>
+							<div className="text-input-label text-left flex-shrink-0">{symbol}</div>
 						</>
 					)}
 				</div>
@@ -165,21 +206,17 @@ export default function TokenInput({
 								Min
 							</div>
 						)}
-						{canShowButtons &&
-							reset != undefined &&
-							reset !== safeValue &&
-							reset !== min &&
-							reset !== max && (
-								<div
-									className="text-input-border cursor-pointer hover:text-text-secondary font-extrabold"
-									onClick={() => {
-										onChange(reset.toString());
-										onReset();
-									}}
-								>
-									Reset
-								</div>
-							)}
+						{canShowButtons && reset != undefined && reset !== safeValue && reset !== min && reset !== max && (
+							<div
+								className="text-input-border cursor-pointer hover:text-text-secondary font-extrabold"
+								onClick={() => {
+									onChange(reset.toString());
+									onReset();
+								}}
+							>
+								Reset
+							</div>
+						)}
 					</div>
 				) : null}
 			</div>

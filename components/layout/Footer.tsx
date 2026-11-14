@@ -116,6 +116,11 @@ export default function Footer() {
 						<h3 className="text-usdu-black font-semibold mb-6">Resources</h3>
 						<ul className="space-y-4">
 							<li>
+								<Link href="/docs" className="text-text-secondary hover:text-usdu-orange transition-colors text-sm">
+									Docs
+								</Link>
+							</li>
+							<li>
 								<Link
 									href="/legal/disclaimer"
 									className="text-text-secondary hover:text-usdu-orange transition-colors text-sm"

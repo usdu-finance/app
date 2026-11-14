@@ -4,7 +4,8 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useBalance, useReadContracts } from 'wagmi';
 import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useZapperSwap, type ZapperSwapStepJson } from '@/hooks/useZapperSwap';
+import { useTx } from '@/hooks/useTx';
+import { approveCall, zapCall, type ZapperSwapStepJson } from '@/lib/tx/calls';
 import { ZAPPER_SWAP_ADDRESS } from '@/lib/constants';
 import { TOKENS } from '@/lib/tokens/config';
 import { TokenInput, ApproveActionInput, TokenSelectModal, type TokenOption } from '@/components/ui/input';
@@ -265,21 +266,7 @@ export default function ZapInCard({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [prefillState.tokens, prefillState.amount, balanceRaw, payToken.address]);
 
-	const { approve, zap, isPending, isConfirming, isConfirmed, reset } = useZapperSwap();
-	const [pendingStep, setPendingStep] = useState<'approve' | 'zap' | null>(null);
-	const isBusy = isPending || isConfirming;
-
-	useEffect(() => {
-		if (isConfirmed) {
-			refetchReads();
-			refetchEth();
-			refetchReceive();
-			if (pendingStep === 'zap') setAmountRawInput('');
-			setPendingStep(null);
-			reset();
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isConfirmed]);
+	const tx = useTx();
 
 	const selectPay = (t: TokenOption) => {
 		setPayToken(t);
@@ -293,30 +280,35 @@ export default function ZapInCard({
 	const insufficientBalance = amountRaw > 0n && amountRaw > balanceRaw;
 	const needsApproval = !isNativeEth && amountRaw > 0n && allowanceRaw < amountRaw;
 
-	const handleApprove = async () => {
-		try {
-			setPendingStep('approve');
-			await approve(payToken.address as Address, amountRaw);
-		} catch {
-			setPendingStep(null);
-		}
-	};
-
+	// the approval (if missing) and the zap go out as one batch, the form is free again once the wallet signed
 	const handleAction = async () => {
 		if (!route || !address || amountRaw === 0n) return;
 		try {
-			setPendingStep('zap');
-			await zap({
-				tokenIn: payToken.address as Address,
-				amountIn: amountRaw,
-				steps: route.zapSteps,
-				tokenOut: receiveToken.address as Address,
-				minAmountOut: BigInt(route.minAmountOut),
-				recipient: address as Address,
-				value: isNativeEth ? amountRaw : undefined,
-			});
+			await tx.submit(
+				[
+					needsApproval && approveCall(payToken.address as Address, ZAPPER_SWAP_ADDRESS, amountRaw, payToken.symbol),
+					zapCall({
+						tokenIn: payToken.address as Address,
+						amountIn: amountRaw,
+						steps: route.zapSteps,
+						tokenOut: receiveToken.address as Address,
+						minAmountOut: BigInt(route.minAmountOut),
+						recipient: address as Address,
+						value: isNativeEth ? amountRaw : undefined,
+					}),
+				],
+				{
+					title: `Zap ${payToken.symbol} to ${receiveToken.symbol}`,
+					onConfirmed: () => {
+						refetchReads();
+						refetchEth();
+						refetchReceive();
+					},
+				}
+			);
+			setAmountRawInput('');
 		} catch {
-			setPendingStep(null);
+			// the user declined, the toast shows it
 		}
 	};
 
@@ -418,13 +410,11 @@ export default function ZapInCard({
 										{
 											tokenSymbol: payToken.symbol,
 											needsApproval: amountRaw === 0n || needsApproval,
-											isApproving: isBusy && pendingStep === 'approve',
-											onApprove: handleApprove,
 										},
 									]
 						}
-						isActing={isBusy && pendingStep === 'zap'}
-						disabled={!hasQuote || amountRaw === 0n || insufficientBalance || isBusy}
+						isActing={tx.isSigning}
+						disabled={!hasQuote || amountRaw === 0n || insufficientBalance || tx.isSigning}
 						onAction={handleAction}
 						isConnected={isConnected}
 						onConnect={() => open()}

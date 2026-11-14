@@ -6,6 +6,9 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
+import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
+import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { NextSeo } from 'next-seo';
@@ -73,8 +76,12 @@ const STEPS = [
 	},
 ];
 
+const TABS = ['Strategy Vaults', 'Reward Streams'] as const;
+
 function StrategyListPageContent() {
 	const router = useRouter();
+	const [tab, setTab] = useQueryTab(TABS);
+	const { currency, all, setCurrency, currencies } = useCurrencyFilter();
 	const { sortTab, sortReverse, handleSort } = useSort('Strategy');
 
 	const sortedStrategies = useMemo(() => {
@@ -86,8 +93,9 @@ function StrategyListPageContent() {
 	const { streams } = useRewardStreams();
 	const sortedStreams = useMemo(() => {
 		const dir = streamReverse ? -1 : 1;
-		return [...streams].sort((a, b) => dir * compareStreams(streamTab, a, b));
-	}, [streams, streamTab, streamReverse]);
+		// reward vault shares are named r + the stablecoin they stake
+		return streams.filter((s) => all || s.symbol === `r${currency}`).sort((a, b) => dir * compareStreams(streamTab, a, b));
+	}, [streams, streamTab, streamReverse, all, currency]);
 
 	return (
 		<div className="space-y-8">
@@ -98,72 +106,82 @@ function StrategyListPageContent() {
 
 			<HeroSteps steps={STEPS} />
 
-			<Card variant="panel" className="space-y-8">
-				<PageHeader title="Strategy Vaults" description="Total value locked and yield of each strategy vault." />
-				<Table>
-					<TableHead headers={HEADERS} colSpan={3} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-					<TableBody>
-						{sortedStrategies.length === 0 ? (
-							<TableRowEmpty>Strategy vaults are coming soon.</TableRowEmpty>
-						) : (
-							sortedStrategies.map((s) => (
-								<TableRow
-									key={s.key}
-									headers={HEADERS}
-									colSpan={3}
-									tab={sortTab}
-									onClick={() => router.push(`/dashboard/strategy/${s.key}`)}
-								>
-									<span>{s.name}</span>
-									<span>{s.tvl.toString()}</span>
-									<span>{(s.apyPPM / 10_000).toFixed(2)}%</span>
-								</TableRow>
-							))
-						)}
-					</TableBody>
-				</Table>
-			</Card>
+			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
+				{/* strategy vaults are shared by the swap modules, so there is no stablecoin to filter by */}
+				<CurrencyTabs currencies={currencies} value={currency} onChange={setCurrency} disabled={tab === 'Strategy Vaults'} />
+			</div>
 
-			<Card variant="panel" className="space-y-8">
-				<PageHeader
-					title="Reward Streams"
-					description="Protocol rewards are streamed linearly to everyone who stakes their assets, so the share price rises over time. Stake and unstake at any time."
-				/>
-				<Table>
-					<TableHead
-						headers={STREAM_HEADERS}
-						colSpan={6}
-						tab={streamTab}
-						reverse={streamReverse}
-						tabOnChange={handleStreamSort}
+			{tab === 'Strategy Vaults' && (
+				<Card variant="panel" className="space-y-8">
+					<PageHeader title="Strategy Vaults" description="Total value locked and yield of each strategy vault." />
+					<Table>
+						<TableHead headers={HEADERS} colSpan={3} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+						<TableBody>
+							{sortedStrategies.length === 0 ? (
+								<TableRowEmpty>Strategy vaults are coming soon.</TableRowEmpty>
+							) : (
+								sortedStrategies.map((s) => (
+									<TableRow
+										key={s.key}
+										headers={HEADERS}
+										colSpan={3}
+										tab={sortTab}
+										onClick={() => router.push(`/dashboard/strategy/${s.key}`)}
+									>
+										<span>{s.name}</span>
+										<span>{s.tvl.toString()}</span>
+										<span>{(s.apyPPM / 10_000).toFixed(2)}%</span>
+									</TableRow>
+								))
+							)}
+						</TableBody>
+					</Table>
+				</Card>
+			)}
+
+			{tab === 'Reward Streams' && (
+				<Card variant="panel" className="space-y-8">
+					<PageHeader
+						title="Reward Streams"
+						description="Protocol rewards are streamed linearly to everyone who stakes their assets, so the share price rises over time. Stake and unstake at any time."
 					/>
-					<TableBody>
-						{sortedStreams.length === 0 ? (
-							<TableRowEmpty>No reward streams available.</TableRowEmpty>
-						) : (
-							sortedStreams.map((r) => (
-								<TableRow
-									key={r.key}
-									headers={STREAM_HEADERS}
-									colSpan={6}
-									tab={streamTab}
-									onClick={() => router.push(`/dashboard/strategy/${r.vault}/rewards`)}
-								>
-									<div className="flex items-center gap-2">
-										<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
-										<span>{r.name}</span>
-									</div>
-									<span>{formatCompactNumber(r.staked, 1, '', ` ${r.symbol.slice(1)}`)}</span>
-									<span>{formatCompactNumber(r.locked, 1, '', ` ${r.symbol.slice(1)}`)}</span>
-									<span>{formatCompactNumber(r.ratePerDay, 1, '', ` ${r.symbol.slice(1)}`)}</span>
-									<span>{r.apr.toFixed(2)}%</span>
-									<span>{r.daysLeft} days</span>
-								</TableRow>
-							))
-						)}
-					</TableBody>
-				</Table>
-			</Card>
+					<Table>
+						<TableHead
+							headers={STREAM_HEADERS}
+							colSpan={6}
+							tab={streamTab}
+							reverse={streamReverse}
+							tabOnChange={handleStreamSort}
+						/>
+						<TableBody>
+							{sortedStreams.length === 0 ? (
+								<TableRowEmpty>No reward streams available.</TableRowEmpty>
+							) : (
+								sortedStreams.map((r) => (
+									<TableRow
+										key={r.key}
+										headers={STREAM_HEADERS}
+										colSpan={6}
+										tab={streamTab}
+										onClick={() => router.push(`/dashboard/strategy/${r.vault}/rewards`)}
+									>
+										<div className="flex items-center gap-2">
+											<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
+											<span>{r.name}</span>
+										</div>
+										<span>{formatCompactNumber(r.staked, 1, '', ` ${r.symbol.slice(1)}`)}</span>
+										<span>{formatCompactNumber(r.locked, 1, '', ` ${r.symbol.slice(1)}`)}</span>
+										<span>{formatCompactNumber(r.ratePerDay, 1, '', ` ${r.symbol.slice(1)}`)}</span>
+										<span>{r.apr.toFixed(2)}%</span>
+										<span>{r.daysLeft} days</span>
+									</TableRow>
+								))
+							)}
+						</TableBody>
+					</Table>
+				</Card>
+			)}
 		</div>
 	);
 }

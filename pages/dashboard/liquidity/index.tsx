@@ -8,6 +8,9 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
+import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
+import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { formatCompactNumber } from '@/lib/utils';
@@ -120,16 +123,17 @@ function LiquidityPoolSection({ title, description, pools, isLoading, error, emp
 	);
 }
 
+const TABS = ['FX Liquidity', 'Redeem Liquidity'] as const;
+
 function LiquidityListPageContent() {
+	const [tab, setTab] = useQueryTab(TABS);
+	const { currency, all, setCurrency, currencies } = useCurrencyFilter();
 	const { pools, isLoading, error } = useCurvePools();
 
-	const { fxPools, redeemPools } = useMemo(
-		() => ({
-			fxPools: pools.filter((p) => !isRedeemPool(p)),
-			redeemPools: pools.filter(isRedeemPool),
-		}),
-		[pools]
-	);
+	const { fxPools, redeemPools } = useMemo(() => {
+		const visible = pools.filter((p) => all || p.tokens.some((t) => t.symbol === currency));
+		return { fxPools: visible.filter((p) => !isRedeemPool(p)), redeemPools: visible.filter(isRedeemPool) };
+	}, [pools, all, currency]);
 
 	return (
 		<div className="space-y-8">
@@ -140,23 +144,32 @@ function LiquidityListPageContent() {
 
 			<HeroSteps steps={STEPS} />
 
-			<LiquidityPoolSection
-				title="FX Liquidity"
-				description="Provide liquidity to the pools between the USDU stablecoins (USDU, EURU and CHFU). These pools stay inside the ecosystem."
-				pools={fxPools}
-				isLoading={isLoading}
-				error={error}
-				emptyText="No FX liquidity pools available."
-			/>
+			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
+				<CurrencyTabs currencies={currencies} value={currency} onChange={setCurrency} />
+			</div>
 
-			<LiquidityPoolSection
-				title="Redeem Liquidity"
-				description="Provide liquidity to the USDC pool that lets users redeem out of the ecosystem. The USDU / USDC pool is the primary exit liquidity for USDU."
-				pools={redeemPools}
-				isLoading={isLoading}
-				error={error}
-				emptyText="No redeem liquidity pools available."
-			/>
+			{tab === 'FX Liquidity' && (
+				<LiquidityPoolSection
+					title="FX Liquidity"
+					description="Provide liquidity to the pools between the USDU stablecoins (USDU, EURU and CHFU). These pools stay inside the ecosystem."
+					pools={fxPools}
+					isLoading={isLoading}
+					error={error}
+					emptyText="No FX liquidity pools available."
+				/>
+			)}
+
+			{tab === 'Redeem Liquidity' && (
+				<LiquidityPoolSection
+					title="Redeem Liquidity"
+					description="Provide liquidity to the USDC pool that lets users redeem out of the ecosystem. The USDU / USDC pool is the primary exit liquidity for USDU."
+					pools={redeemPools}
+					isLoading={isLoading}
+					error={error}
+					emptyText="No redeem liquidity pools available."
+				/>
+			)}
 		</div>
 	);
 }

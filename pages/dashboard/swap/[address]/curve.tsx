@@ -9,7 +9,8 @@ import { ICurveStableSwapNG_ABI, ITwocrypto_ABI } from '@usdu-finance/usdu-core'
 import { useAuth } from '@/contexts/AuthContext';
 import { useCurvePools } from '@/hooks/useCurvePools';
 import { useSwapBalances } from '@/hooks/useSwapBalances';
-import { useSwap } from '@/hooks/useSwap';
+import { useTx } from '@/hooks/useTx';
+import { approveCall, curveExchangeCall } from '@/lib/tx/calls';
 import { PageHeader } from '@/components/ui/layout';
 import { TokenInput, ApproveActionInput, TabInput } from '@/components/ui/input';
 import { StatGrid } from '@/components/ui/stats';
@@ -113,44 +114,27 @@ function SwapCurveDetailPageContent() {
 
 	const minOutRaw = (outputRaw * (10_000n - SLIPPAGE_BPS)) / 10_000n;
 
-	const { approve, curveExchange, isPending, isConfirming, isConfirmed, reset } = useSwap();
-	const [pendingStep, setPendingStep] = useState<'approve' | 'swap' | null>(null);
-	const isBusy = isPending || isConfirming;
-
-	// Refetch balances and reset input once a submitted transaction confirms
-	useEffect(() => {
-		if (isConfirmed) {
-			balances.refetch();
-			if (pendingStep === 'swap') {
-				setAmountRawInput('');
-			}
-			setPendingStep(null);
-			reset();
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isConfirmed]);
+	const tx = useTx();
 
 	const insufficientBalance = amountRaw > 0n && amountRaw > inputBalanceRaw;
 	const noLiquidity = !!selectedPool && selectedPool.totalSupply === 0n;
 
-	const handleApprove = async () => {
-		if (!selectedPool || amountRaw === 0n) return;
-		try {
-			setPendingStep('approve');
-			await approve(selectedPool.tokens[zeroForOne ? 0 : 1].address, selectedPool.poolAddress, amountRaw);
-		} catch {
-			setPendingStep(null);
-		}
-	};
-
+	// the approval (if missing) and the swap go out as one batch, the form is free again once the wallet signed
 	const handleAction = async () => {
 		if (!selectedPool || amountRaw === 0n || minOutRaw === 0n) return;
+		const tokenIn = selectedPool.tokens[zeroForOne ? 0 : 1];
 
 		try {
-			setPendingStep('swap');
-			await curveExchange(selectedPool.kind, selectedPool.poolAddress, i, j, amountRaw, minOutRaw);
+			await tx.submit(
+				[
+					allowanceRaw < amountRaw && approveCall(tokenIn.address, selectedPool.poolAddress, amountRaw, tokenIn.symbol),
+					curveExchangeCall(selectedPool.kind, selectedPool.poolAddress, i, j, amountRaw, minOutRaw),
+				],
+				{ title: `Swap ${inTok?.symbol ?? ''}`, onConfirmed: balances.refetch }
+			);
+			setAmountRawInput('');
 		} catch {
-			setPendingStep(null);
+			// the user declined, the toast shows it
 		}
 	};
 
@@ -280,12 +264,10 @@ function SwapCurveDetailPageContent() {
 							{
 								tokenSymbol: inTok?.symbol ?? '',
 								needsApproval: amountRaw === 0n || allowanceRaw < amountRaw,
-								isApproving: isBusy && pendingStep === 'approve',
-								onApprove: handleApprove,
 							},
 						]}
-						isActing={isBusy && pendingStep === 'swap'}
-						disabled={noLiquidity || amountRaw === 0n || outputRaw === 0n || insufficientBalance || isBusy}
+						isActing={tx.isSigning}
+						disabled={noLiquidity || amountRaw === 0n || outputRaw === 0n || insufficientBalance || tx.isSigning}
 						onAction={handleAction}
 						isConnected={isConnected}
 						onConnect={() => open()}

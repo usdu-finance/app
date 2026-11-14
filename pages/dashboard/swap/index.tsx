@@ -9,6 +9,9 @@ import { useSort } from '@/hooks/ui/useSort';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
+import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
+import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import Card from '@/components/ui/Card';
 import HeroSteps from '@/components/ui/HeroSteps';
 import ZapInCard from '@/components/pages/zap/ZapInCard';
@@ -138,25 +141,28 @@ function CurvePoolSection({ title, description, pools, isLoading, error, emptyTe
 	);
 }
 
+const TABS = ['Zap', 'Stable', 'FX Swap', 'Redeem'] as const;
+
 function SwapListPageContent() {
 	const router = useRouter();
+	const [tab, setTab] = useQueryTab(TABS, 'Stable');
+
+	const { currency, all, setCurrency, currencies } = useCurrencyFilter();
+
 	const { modules, isLoading, error } = useSwapModules();
 	const { sortTab, sortReverse, handleSort } = useSort('Available In');
 
 	const sortedModules = useMemo(() => {
 		const dir = sortReverse ? -1 : 1;
-		return [...modules].sort((a, b) => dir * compareModules(sortTab, a, b));
-	}, [modules, sortTab, sortReverse]);
+		return modules.filter((m) => all || m.currency === currency).sort((a, b) => dir * compareModules(sortTab, a, b));
+	}, [modules, sortTab, sortReverse, all, currency]);
 
 	const { pools, isLoading: isLoadingPools, error: poolError } = useCurvePools();
 
-	const { fxPools, redeemPools } = useMemo(
-		() => ({
-			fxPools: pools.filter((p) => !isRedeemPool(p)),
-			redeemPools: pools.filter(isRedeemPool),
-		}),
-		[pools]
-	);
+	const { fxPools, redeemPools } = useMemo(() => {
+		const visible = pools.filter((p) => all || p.tokens.some((t) => t.symbol === currency));
+		return { fxPools: visible.filter((p) => !isRedeemPool(p)), redeemPools: visible.filter(isRedeemPool) };
+	}, [pools, all, currency]);
 
 	return (
 		<div className="space-y-8">
@@ -167,70 +173,82 @@ function SwapListPageContent() {
 
 			<HeroSteps steps={STEPS} />
 
-			<ZapInCard />
+			<div className="flex flex-col-reverse gap-4 md:flex-row md:items-center md:justify-between">
+				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
+				{/* a zap swaps any token, so there is no stablecoin to filter by */}
+				<CurrencyTabs currencies={currencies} value={currency} disabled={tab === 'Zap'} onChange={setCurrency} />
+			</div>
 
-			<Card variant="panel" className="space-y-8">
-				<PageHeader
-					title="Stable Swap"
-					description="Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get started."
-				/>
-				<Table>
-					<TableHead headers={HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-					<TableBody>
-						{isLoading ? (
-							<TableRowEmpty>Loading swap modules...</TableRowEmpty>
-						) : error ? (
-							<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
-						) : sortedModules.length === 0 ? (
-							<TableRowEmpty>No swap modules available.</TableRowEmpty>
-						) : (
-							sortedModules.map((m) => (
-								<TableRow
-									key={m.key}
-									headers={HEADERS}
-									colSpan={5}
-									tab={sortTab}
-									onClick={() => router.push(`/dashboard/swap/${m.moduleAddress}/stable`)}
-								>
-									<div className="flex items-center gap-2">
-										<TokenLogo currency={m.coinSymbol} size={6} className="-mr-2" />
-										<TokenLogo currency={m.currency} size={6} />
+			{tab === 'Zap' && <ZapInCard />}
+
+			{tab === 'Stable' && (
+				<Card variant="panel" className="space-y-8">
+					<PageHeader
+						title="Stable Swap"
+						description="Mint fresh stablecoins, or redeem them back into their backed assets, through the swap router. Select a coin to get started."
+					/>
+					<Table>
+						<TableHead headers={HEADERS} colSpan={5} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+						<TableBody>
+							{isLoading ? (
+								<TableRowEmpty>Loading swap modules...</TableRowEmpty>
+							) : error ? (
+								<TableRowEmpty>{`Error: ${error}`}</TableRowEmpty>
+							) : sortedModules.length === 0 ? (
+								<TableRowEmpty>No swap modules available.</TableRowEmpty>
+							) : (
+								sortedModules.map((m) => (
+									<TableRow
+										key={m.key}
+										headers={HEADERS}
+										colSpan={5}
+										tab={sortTab}
+										onClick={() => router.push(`/dashboard/swap/${m.moduleAddress}/stable`)}
+									>
+										<div className="flex items-center gap-2">
+											<TokenLogo currency={m.coinSymbol} size={6} className="-mr-2" />
+											<TokenLogo currency={m.currency} size={6} />
+											<span>
+												{m.coinSymbol} / {m.currency}
+											</span>
+										</div>
 										<span>
-											{m.coinSymbol} / {m.currency}
+											{formatCompactNumber(formatUnits(m.mintable, 18), 1, '', '', false)} {m.currency}
 										</span>
-									</div>
-									<span>
-										{formatCompactNumber(formatUnits(m.mintable, 18), 1, '', '', false)} {m.currency}
-									</span>
-									<span>
-										{formatCompactNumber(formatUnits(m.totalMinted, 18), 1, '')} {m.coinSymbol}
-									</span>
-									<span>{`${+(m.swapInFeePPM / 10_000).toFixed(2)}% / ${+(m.swapOutFeePPM / 10_000).toFixed(2)}%`}</span>
-									<span>{m.vaultName || '—'}</span>
-								</TableRow>
-							))
-						)}
-					</TableBody>
-				</Table>
-			</Card>
+										<span>
+											{formatCompactNumber(formatUnits(m.totalMinted, 18), 1, '')} {m.coinSymbol}
+										</span>
+										<span>{`${+(m.swapInFeePPM / 10_000).toFixed(2)}% / ${+(m.swapOutFeePPM / 10_000).toFixed(2)}%`}</span>
+										<span>{m.vaultName || '—'}</span>
+									</TableRow>
+								))
+							)}
+						</TableBody>
+					</Table>
+				</Card>
+			)}
 
-			<CurvePoolSection
-				title="FX Swap"
-				description="Swap between the USDU stablecoins (USDU, EURU and CHFU) through Curve pools. These pools stay inside the ecosystem."
-				pools={fxPools}
-				isLoading={isLoadingPools}
-				error={poolError}
-				emptyText="No FX pools available."
-			/>
+			{tab === 'FX Swap' && (
+				<CurvePoolSection
+					title="FX Swap"
+					description="Swap between the USDU stablecoins (USDU, EURU and CHFU) through Curve pools. These pools stay inside the ecosystem."
+					pools={fxPools}
+					isLoading={isLoadingPools}
+					error={poolError}
+					emptyText="No FX pools available."
+				/>
+			)}
 
-			<CurvePoolSection
-				title="Redeem Swap"
-				description="Redeem out of the ecosystem into USDC through Curve pools. The USDU / USDC pool is the primary exit liquidity for USDU."
-				pools={redeemPools}
-				isLoading={isLoadingPools}
-				error={poolError}
-				emptyText="No redeem pools available."
-			/>
+			{tab === 'Redeem' && (
+				<CurvePoolSection
+					title="Redeem Swap"
+					description="Redeem out of the ecosystem into USDC through Curve pools. The USDU / USDC pool is the primary exit liquidity for USDU."
+					pools={redeemPools}
+					isLoading={isLoadingPools}
+					error={poolError}
+					emptyText="No redeem pools available."
+				/>
+			)}
 		</div>
 	);
 }

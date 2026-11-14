@@ -13,6 +13,9 @@ import { StatCard } from '@/components/ui/stats';
 import { DonutChart, type DonutSlice } from '@/components/ui/charts';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
+import { PillTabs, CurrencyTabs } from '@/components/ui/input';
+import { useCurrencyFilter } from '@/hooks/ui/useCurrencyFilter';
+import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import Card from '@/components/ui/Card';
 import { formatCompactNumber } from '@/lib/utils';
 import { SEO } from '@/lib/constants';
@@ -53,7 +56,11 @@ function compareAssets(tab: string, a: WalletAsset, b: WalletAsset): number {
 	}
 }
 
+const TABS = ['Stablecoins', 'Crypto', 'Rewards'] as const;
+
 function DashboardPageContent() {
+	const [tab, setTab] = useQueryTab(TABS);
+	const { currency, all, setCurrency, currencies } = useCurrencyFilter();
 	const { isConnected, address } = useAuth();
 	const { assets: walletAssets, isLoading, error } = useWalletAssets(address as `0x${string}` | undefined);
 	const { assets: walletCrypto, isLoading: isLoadingCrypto } = useCryptoAssets(address as `0x${string}` | undefined);
@@ -80,18 +87,23 @@ function DashboardPageContent() {
 	);
 	const stablecoinTotal = assets.filter((a) => a.group).reduce((sum, a) => sum + a.value, 0);
 	const rewardsTotal = rewards.reduce((sum, r) => sum + r.value, 0);
-	const rewardSlices: DonutSlice[] = rewards.map((r) => ({ key: r.key, label: r.symbol, value: r.value, className: r.color }));
+	// the currency switcher narrows the rewards card to one vault, its shares are named r + the stablecoin
+	const visibleRewards = rewards.filter((r) => all || r.symbol === `r${currency}`);
+	const visibleRewardsTotal = visibleRewards.reduce((sum, r) => sum + r.value, 0);
+	const rewardSlices: DonutSlice[] = visibleRewards.map((r) => ({ key: r.key, label: r.symbol, value: r.value, className: r.color }));
 
 	// pure stablecoins per peg group, unheld coins included so the user sees everything the protocol supports
 	const stableGroups = useMemo(() => {
 		const dir = sortReverse ? -1 : 1;
-		return STABLE_GROUPS.map((g) => ({
-			...g,
-			assets: assets
-				.filter((a) => a.group === g.group && (showZero || a.balance > 0))
-				.sort((a, b) => dir * compareAssets(sortTab, a, b)),
-		})).filter((g) => showZero || g.assets.length > 0);
-	}, [assets, sortTab, sortReverse, showZero]);
+		return STABLE_GROUPS.filter((g) => all || STABLE_OF[g.group] === currency)
+			.map((g) => ({
+				...g,
+				assets: assets
+					.filter((a) => a.group === g.group && (showZero || a.balance > 0))
+					.sort((a, b) => dir * compareAssets(sortTab, a, b)),
+			}))
+			.filter((g) => showZero || g.assets.length > 0);
+	}, [assets, sortTab, sortReverse, showZero, all, currency]);
 
 	const cryptoAssets = useMemo(() => {
 		const dir = sortReverse ? -1 : 1;
@@ -125,200 +137,216 @@ function DashboardPageContent() {
 				<StatCard icon={faHandHoldingDollar} label="Borrow Assets" value={formatCompactNumber(0, 2, '', ' USDU')} />
 			</div>
 
-			<Card variant="panel" className="space-y-8">
-				<PageHeader
-					title="Stablecoin Assets"
-					actions={
-						<label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer select-none">
-							<span>Show zero balances</span>
-							<button
-								type="button"
-								role="switch"
-								aria-checked={showZero}
-								onClick={() => setShowZero((v) => !v)}
-								className={`relative w-9 h-5 rounded-full transition-colors ${showZero ? 'bg-usdu-orange' : 'bg-usdu-surface'}`}
-							>
-								<span
-									className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${showZero ? 'translate-x-4' : ''}`}
-								/>
-							</button>
-						</label>
-					}
-					description="USDU, EURU and CHFU plus every stablecoin the protocol bridges or pools, grouped by currency and valued at par in USDU."
-				/>
+			<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
+				{/* crypto assets are not tied to a stablecoin */}
+				<CurrencyTabs currencies={currencies} value={currency} onChange={setCurrency} disabled={tab === 'Crypto'} />
+			</div>
 
-				{isLoading || error || stableGroups.length === 0 ? (
+			{tab === 'Stablecoins' && (
+				<Card variant="panel" className="space-y-8">
+					<PageHeader
+						title="Stablecoin Assets"
+						actions={
+							<label className="flex items-center gap-2 text-sm text-text-secondary cursor-pointer select-none">
+								<span>Show zero balances</span>
+								<button
+									type="button"
+									role="switch"
+									aria-checked={showZero}
+									onClick={() => setShowZero((v) => !v)}
+									className={`relative w-9 h-5 rounded-full transition-colors ${showZero ? 'bg-usdu-orange' : 'bg-usdu-surface'}`}
+								>
+									<span
+										className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${showZero ? 'translate-x-4' : ''}`}
+									/>
+								</button>
+							</label>
+						}
+						description="USDU, EURU and CHFU plus every stablecoin the protocol bridges or pools, grouped by currency and valued at par in USDU."
+					/>
+
+					{isLoading || error || stableGroups.length === 0 ? (
+						<Table>
+							<TableHead headers={HEADERS} colSpan={4} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+							<TableBody>
+								<TableRowEmpty>
+									{isLoading
+										? 'Loading stablecoin assets...'
+										: error
+											? `Error: ${error}`
+											: 'No stablecoins in this wallet.'}
+								</TableRowEmpty>
+							</TableBody>
+						</Table>
+					) : (
+						stableGroups.map((g) => (
+							<div key={g.group} className="space-y-3">
+								<div className="flex items-center gap-2">
+									<span className={`w-2.5 h-2.5 rounded-full ${g.dot}`} />
+									<h3 className="text-usdu-black font-semibold">{g.label}</h3>
+								</div>
+								<Table>
+									<TableHead
+										headers={HEADERS}
+										colSpan={4}
+										actionCol
+										tab={sortTab}
+										reverse={sortReverse}
+										tabOnChange={handleSort}
+									/>
+									<TableBody>
+										{g.assets.map((a) => (
+											<TableRow
+												key={a.key}
+												headers={HEADERS}
+												colSpan={4}
+												tab={sortTab}
+												actionCol={
+													<div className="flex items-center justify-end gap-1">
+														{[
+															{
+																label: 'Swap',
+																icon: faArrowRightArrowLeft,
+																to: a.symbol === STABLE_OF[g.group] ? undefined : STABLE_OF[g.group],
+															},
+															{ label: 'Stake', icon: faSeedling, to: `r${STABLE_OF[g.group]}` },
+														].map((action) => (
+															<Link
+																key={action.label}
+																href={zapHref(a.address, action.to)}
+																title={`${action.label} ${a.symbol}`}
+																aria-label={`${action.label} ${a.symbol}`}
+																className="flex items-center justify-center w-9 h-9 rounded-lg border border-usdu-orange text-usdu-orange hover:bg-usdu-orange hover:text-white transition-colors"
+															>
+																<FontAwesomeIcon icon={action.icon} className="w-4 h-4" />
+															</Link>
+														))}
+													</div>
+												}
+											>
+												<div className="flex items-center gap-2">
+													<TokenLogo logoURI={a.logoURI} currency={a.symbol} size={6} />
+													<span>{a.name}</span>
+												</div>
+												<span>{formatCompactNumber(a.balance, 2, '', ` ${a.symbol}`)}</span>
+												<span>{`${a.price.toFixed(4)} USDU`}</span>
+												<span>{formatCompactNumber(a.value, 2, '', ' USDU')}</span>
+											</TableRow>
+										))}
+									</TableBody>
+								</Table>
+							</div>
+						))
+					)}
+				</Card>
+			)}
+
+			{tab === 'Crypto' && (
+				<Card variant="panel" className="space-y-8">
+					<PageHeader
+						title="Crypto Assets"
+						description="The largest crypto assets in your wallet, valued in USDU. Swap or stake them straight into a stablecoin or reward vault."
+					/>
+
 					<Table>
-						<TableHead headers={HEADERS} colSpan={4} tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
+						<TableHead headers={HEADERS} colSpan={4} actionCol tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
 						<TableBody>
-							<TableRowEmpty>
-								{isLoading ? 'Loading stablecoin assets...' : error ? `Error: ${error}` : 'No stablecoins in this wallet.'}
-							</TableRowEmpty>
+							{isLoadingCrypto || cryptoAssets.length === 0 ? (
+								<TableRowEmpty>
+									{isLoadingCrypto ? 'Loading crypto assets...' : 'No crypto assets in this wallet.'}
+								</TableRowEmpty>
+							) : (
+								cryptoAssets.map((a) => (
+									<TableRow
+										key={a.key}
+										headers={HEADERS}
+										colSpan={4}
+										tab={sortTab}
+										actionCol={
+											<div className="flex items-center justify-end gap-1">
+												{[
+													{ label: 'Swap', icon: faArrowRightArrowLeft, to: 'USDU' },
+													{ label: 'Stake', icon: faSeedling, to: 'rUSDU' },
+												].map((action) => (
+													<Link
+														key={action.label}
+														href={zapHref(a.address, action.to)}
+														title={`${action.label} ${a.symbol}`}
+														aria-label={`${action.label} ${a.symbol}`}
+														className="flex items-center justify-center w-9 h-9 rounded-lg border border-usdu-orange text-usdu-orange hover:bg-usdu-orange hover:text-white transition-colors"
+													>
+														<FontAwesomeIcon icon={action.icon} className="w-4 h-4" />
+													</Link>
+												))}
+											</div>
+										}
+									>
+										<div className="flex items-center gap-2">
+											<TokenLogo logoURI={a.logoURI} currency={a.symbol} size={6} />
+											<span>{a.name}</span>
+										</div>
+										<span>{formatCompactNumber(a.balance, a.balance < 1 ? 6 : 4, '', ` ${a.symbol}`)}</span>
+										<span>
+											{a.price > 0 ? `${a.price.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDU` : '-'}
+										</span>
+										<span>{a.price > 0 ? formatCompactNumber(a.value, 2, '', ' USDU') : '-'}</span>
+									</TableRow>
+								))
+							)}
 						</TableBody>
 					</Table>
-				) : (
-					stableGroups.map((g) => (
-						<div key={g.group} className="space-y-3">
-							<div className="flex items-center gap-2">
-								<span className={`w-2.5 h-2.5 rounded-full ${g.dot}`} />
-								<h3 className="text-usdu-black font-semibold">{g.label}</h3>
-							</div>
-							<Table>
-								<TableHead
-									headers={HEADERS}
-									colSpan={4}
-									actionCol
-									tab={sortTab}
-									reverse={sortReverse}
-									tabOnChange={handleSort}
-								/>
-								<TableBody>
-									{g.assets.map((a) => (
-										<TableRow
-											key={a.key}
-											headers={HEADERS}
-											colSpan={4}
-											tab={sortTab}
-											actionCol={
-												<div className="flex items-center justify-end gap-1">
-													{[
-														{
-															label: 'Swap',
-															icon: faArrowRightArrowLeft,
-															to: a.symbol === STABLE_OF[g.group] ? undefined : STABLE_OF[g.group],
-														},
-														{ label: 'Stake', icon: faSeedling, to: `r${STABLE_OF[g.group]}` },
-													].map((action) => (
-														<Link
-															key={action.label}
-															href={zapHref(a.address, action.to)}
-															title={`${action.label} ${a.symbol}`}
-															aria-label={`${action.label} ${a.symbol}`}
-															className="flex items-center justify-center w-9 h-9 rounded-lg border border-usdu-orange text-usdu-orange hover:bg-usdu-orange hover:text-white transition-colors"
-														>
-															<FontAwesomeIcon icon={action.icon} className="w-4 h-4" />
-														</Link>
-													))}
-												</div>
-											}
-										>
-											<div className="flex items-center gap-2">
-												<TokenLogo logoURI={a.logoURI} currency={a.symbol} size={6} />
-												<span>{a.name}</span>
-											</div>
-											<span>{formatCompactNumber(a.balance, 2, '', ` ${a.symbol}`)}</span>
-											<span>{`${a.price.toFixed(4)} USDU`}</span>
-											<span>{formatCompactNumber(a.value, 2, '', ' USDU')}</span>
-										</TableRow>
-									))}
-								</TableBody>
-							</Table>
+				</Card>
+			)}
+
+			{tab === 'Rewards' && (
+				<Card variant="panel" className="space-y-8">
+					<PageHeader
+						title="Stablecoin Rewards"
+						description="Your stake in the USDU, EURU and CHFU reward vaults, including the rewards streamed to you so far."
+					/>
+
+					<div className="grid grid-cols-1 items-center gap-8 md:grid-cols-2 md:gap-12">
+						<div className="flex justify-center">
+							<DonutChart
+								slices={rewardSlices}
+								centerLabel="Total staked"
+								centerValue={formatCompactNumber(visibleRewardsTotal, 2, '', ' USDU')}
+								size={240}
+							/>
 						</div>
-					))
-				)}
-			</Card>
 
-			<Card variant="panel" className="space-y-8">
-				<PageHeader
-					title="Crypto Assets"
-					description="The largest crypto assets in your wallet, valued in USDU. Swap or stake them straight into a stablecoin or reward vault."
-				/>
-
-				<Table>
-					<TableHead headers={HEADERS} colSpan={4} actionCol tab={sortTab} reverse={sortReverse} tabOnChange={handleSort} />
-					<TableBody>
-						{isLoadingCrypto || cryptoAssets.length === 0 ? (
-							<TableRowEmpty>
-								{isLoadingCrypto ? 'Loading crypto assets...' : 'No crypto assets in this wallet.'}
-							</TableRowEmpty>
-						) : (
-							cryptoAssets.map((a) => (
-								<TableRow
-									key={a.key}
-									headers={HEADERS}
-									colSpan={4}
-									tab={sortTab}
-									actionCol={
-										<div className="flex items-center justify-end gap-1">
-											{[
-												{ label: 'Swap', icon: faArrowRightArrowLeft, to: 'USDU' },
-												{ label: 'Stake', icon: faSeedling, to: 'rUSDU' },
-											].map((action) => (
-												<Link
-													key={action.label}
-													href={zapHref(a.address, action.to)}
-													title={`${action.label} ${a.symbol}`}
-													aria-label={`${action.label} ${a.symbol}`}
-													className="flex items-center justify-center w-9 h-9 rounded-lg border border-usdu-orange text-usdu-orange hover:bg-usdu-orange hover:text-white transition-colors"
-												>
-													<FontAwesomeIcon icon={action.icon} className="w-4 h-4" />
-												</Link>
-											))}
+						<div className="w-full divide-y divide-usdu-surface">
+							{visibleRewards.map((r) => (
+								<div key={r.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
+									<div className="flex items-center gap-3">
+										<span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
+										<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
+										<div>
+											<Link
+												href={`/dashboard/strategy/${r.vault}/rewards`}
+												className="text-usdu-black font-medium hover:text-usdu-orange hover:underline transition-colors"
+											>
+												{r.name}
+											</Link>
+											<p className="text-text-secondary text-sm flex items-center gap-1">
+												<FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-orange" />
+												{`${r.apr.toFixed(2)}% APR`}
+											</p>
 										</div>
-									}
-								>
-									<div className="flex items-center gap-2">
-										<TokenLogo logoURI={a.logoURI} currency={a.symbol} size={6} />
-										<span>{a.name}</span>
 									</div>
-									<span>{formatCompactNumber(a.balance, a.balance < 1 ? 6 : 4, '', ` ${a.symbol}`)}</span>
-									<span>
-										{a.price > 0 ? `${a.price.toLocaleString('en-US', { maximumFractionDigits: 2 })} USDU` : '-'}
-									</span>
-									<span>{a.price > 0 ? formatCompactNumber(a.value, 2, '', ' USDU') : '-'}</span>
-								</TableRow>
-							))
-						)}
-					</TableBody>
-				</Table>
-			</Card>
-
-			<Card variant="panel" className="space-y-8">
-				<PageHeader
-					title="Stablecoin Rewards"
-					description="Your stake in the USDU, EURU and CHFU reward vaults, including the rewards streamed to you so far."
-				/>
-
-				<div className="grid grid-cols-1 items-center gap-8 md:grid-cols-2 md:gap-12">
-					<div className="flex justify-center">
-						<DonutChart
-							slices={rewardSlices}
-							centerLabel="Total staked"
-							centerValue={formatCompactNumber(rewardsTotal, 2, '', ' USDU')}
-							size={240}
-						/>
-					</div>
-
-					<div className="w-full divide-y divide-usdu-surface">
-						{rewards.map((r) => (
-							<div key={r.key} className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-								<div className="flex items-center gap-3">
-									<span className={`w-2.5 h-2.5 rounded-full ${r.dot}`} />
-									<TokenLogo logoURI={r.logoURI} currency={r.symbol} size={6} />
-									<div>
-										<Link
-											href={`/dashboard/strategy/${r.vault}/rewards`}
-											className="text-usdu-black font-medium hover:text-usdu-orange hover:underline transition-colors"
-										>
-											{r.name}
-										</Link>
-										<p className="text-text-secondary text-sm flex items-center gap-1">
-											<FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-orange" />
-											{`${r.apr.toFixed(2)}% APR`}
+									<div className="text-right">
+										<p className="text-usdu-black font-medium">{formatCompactNumber(r.value, 2, '', ' USDU')}</p>
+										<p className="text-text-secondary text-sm">
+											{visibleRewardsTotal > 0 ? `${((r.value / visibleRewardsTotal) * 100).toFixed(1)}%` : '0%'}
 										</p>
 									</div>
 								</div>
-								<div className="text-right">
-									<p className="text-usdu-black font-medium">{formatCompactNumber(r.value, 2, '', ' USDU')}</p>
-									<p className="text-text-secondary text-sm">
-										{rewardsTotal > 0 ? `${((r.value / rewardsTotal) * 100).toFixed(1)}%` : '0%'}
-									</p>
-								</div>
-							</div>
-						))}
+							))}
+						</div>
 					</div>
-				</div>
-			</Card>
+				</Card>
+			)}
 		</div>
 	);
 }

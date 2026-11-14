@@ -7,7 +7,9 @@ import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRewardStreams } from '@/hooks/useRewardStreams';
 import { useStreamerVaultPosition } from '@/hooks/useStreamerVaultPosition';
-import { useStreamerVault } from '@/hooks/useStreamerVault';
+import { mainnet } from 'viem/chains';
+import { useTx } from '@/hooks/useTx';
+import { approveCall, stakeCall, unstakeCall } from '@/lib/tx/calls';
 import { aprSeries } from '@/lib/vault-series';
 import { useStreamerVaultCostBasis } from '@/hooks/useStreamerVaultCostBasis';
 import { useStreamerVaultDaily } from '@/hooks/useStreamerVaultDaily';
@@ -105,19 +107,7 @@ function StrategyDetailPageContent() {
 		isStake ? 0n : amountRaw
 	);
 
-	const { approve, deposit, redeem, isPending, isConfirming, isConfirmed, reset } = useStreamerVault();
-	const [pendingStep, setPendingStep] = useState<'approve' | 'action' | null>(null);
-
-	// Refetch the position and clear the input once a submitted transaction confirms
-	useEffect(() => {
-		if (isConfirmed) {
-			position.refetch();
-			if (pendingStep === 'action') setAmountRawInput('');
-			setPendingStep(null);
-			reset();
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [isConfirmed]);
+	const tx = useTx();
 
 	const {
 		entries,
@@ -198,8 +188,6 @@ function StrategyDetailPageContent() {
 	const outputPreviewRaw = isStake ? position.previewShares : position.previewAssets;
 
 	const insufficientBalance = amountRaw > 0n && amountRaw > inputBalanceRaw;
-	const isBusy = isPending || isConfirming;
-
 	// Rewards are split across all stakers, so the stake changes the APR.
 	const amountNum = Number(formatUnits(amountRaw, 18));
 	const projectedStaked = Math.max(isStake ? stream.staked + amountNum : stream.staked - amountNum, 0);
@@ -209,29 +197,24 @@ function StrategyDetailPageContent() {
 			? `Projected APR after ${isStake ? 'stake' : 'unstake'}: ${projectedApr.toFixed(2)}% (currently ${stream.apr.toFixed(2)}%)`
 			: undefined;
 
-	const handleApprove = async () => {
-		if (amountRaw === 0n) return;
-		try {
-			setPendingStep('approve');
-			await approve(stream.asset, stream.vault, amountRaw);
-		} catch {
-			setPendingStep(null);
-		}
-	};
-
+	// the approval (if missing) and the stake go out as one batch, the form is free again once the wallet signed
 	const handleAction = async () => {
 		if (!address || amountRaw === 0n) return;
 		const account = address as `0x${string}`;
 
 		try {
-			setPendingStep('action');
-			if (isStake) {
-				await deposit(stream.vault, amountRaw, account);
-			} else {
-				await redeem(stream.vault, amountRaw, account);
-			}
+			await tx.submit(
+				isStake
+					? [
+							position.allowanceRaw < amountRaw && approveCall(stream.asset, stream.vault, amountRaw, currency),
+							stakeCall(stream.vault, amountRaw, account),
+						]
+					: [unstakeCall(stream.vault, amountRaw, account)],
+				{ title: isStake ? `Stake ${currency}` : `Unstake ${stream.symbol}`, chainId: mainnet.id, onConfirmed: position.refetch }
+			);
+			setAmountRawInput('');
 		} catch {
-			setPendingStep(null);
+			// the user declined, the toast shows it
 		}
 	};
 
@@ -334,14 +317,12 @@ function StrategyDetailPageContent() {
 										{
 											tokenSymbol: currency,
 											needsApproval: amountRaw === 0n || position.allowanceRaw < amountRaw,
-											isApproving: isBusy && pendingStep === 'approve',
-											onApprove: handleApprove,
 										},
 									]
 								: []
 						}
-						isActing={isBusy && pendingStep === 'action'}
-						disabled={amountRaw === 0n || insufficientBalance || isBusy}
+						isActing={tx.isSigning}
+						disabled={amountRaw === 0n || insufficientBalance || tx.isSigning}
 						onAction={handleAction}
 						isConnected={isConnected}
 						onConnect={() => open()}

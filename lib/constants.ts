@@ -94,10 +94,21 @@ export const SEO = {
 		'Select a collateral and maturity to borrow USDU at a fixed term, or create a custom order.',
 		'/dashboard/borrow'
 	),
-	borrowOffer: pageSeo(
-		'Borrow Offer',
-		'Review the terms of a fixed-term borrow offer, including collateral, maturity, rate and availability.',
+	borrowMarket: pageSeo(
+		'Borrow Market',
+		'Borrow USDU against a collateral at a fixed rate and maturity, simple or leveraged.',
 		'/dashboard/borrow'
+	),
+	borrowPosition: pageSeo(
+		'Borrow Position',
+		'Manage the collateral, debt and price of a borrow position, challenge it, or buy its collateral once expired.',
+		'/dashboard/borrow'
+	),
+	borrowAuction: pageSeo('Borrow Auction', 'Bid on a challenge auction of the borrow market as its price falls.', '/dashboard/borrow'),
+	messages: pageSeo(
+		'Messages',
+		'Send end-to-end encrypted messages to other wallets, readable only by you and the recipient.',
+		'/dashboard/messages'
 	),
 	obligation: pageSeo(
 		'Obligations',

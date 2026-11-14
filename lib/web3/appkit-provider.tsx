@@ -5,6 +5,7 @@ import { WAGMI_CONFIG, WAGMI_ADAPTER, WAGMI_METADATA, WAGMI_CHAINS, WAGMI_CHAIN 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Config, State, WagmiProvider } from 'wagmi';
 import { createAppKit } from '@reown/appkit/react';
+import { QueryCachePersistence } from '@/lib/query/persist';
 
 const queryClient = new QueryClient();
 
@@ -31,7 +32,10 @@ createAppKit({
 export default function AppKitProvider({ children, initialState }: { children: ReactNode; initialState?: State }) {
 	return (
 		<WagmiProvider config={WAGMI_CONFIG as Config} initialState={initialState}>
-			<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+			<QueryClientProvider client={queryClient}>
+				<QueryCachePersistence />
+				{children}
+			</QueryClientProvider>
 		</WagmiProvider>
 	);
 }

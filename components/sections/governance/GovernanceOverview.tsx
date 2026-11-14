@@ -27,7 +27,7 @@ const STEPS = [
 
 export default function GovernanceOverview() {
 	return (
-		<section className="relative px-4 md:px-8 lg:px-16 pt-32 pb-16 bg-usdu-card">
+		<section className="relative px-4 md:px-8 lg:px-16 pt-32 pb-8 bg-usdu-card">
 			<motion.div
 				initial={{ opacity: 0, y: 30 }}
 				whileInView={{ opacity: 1, y: 0 }}
