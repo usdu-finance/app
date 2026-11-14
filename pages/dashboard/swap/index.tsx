@@ -145,7 +145,7 @@ const TABS = ['Zap', 'Stable', 'FX Swap', 'Redeem'] as const;
 
 function SwapListPageContent() {
 	const router = useRouter();
-	const [tab, setTab] = useQueryTab(TABS);
+	const [tab, setTab] = useQueryTab(TABS, 'Stable');
 
 	const { currency, all, setCurrency, currencies } = useCurrencyFilter();
 
