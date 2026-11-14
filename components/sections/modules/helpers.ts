@@ -208,15 +208,20 @@ export interface FigureRow {
 	title?: string;
 }
 
-/** Debt (totalMinted), Funds (totalAssets), Claimable (assets - debt, unrealized), Revenue (totalRevenue, realized). Missing values are omitted. */
-export function figureRows(f: { debt?: bigint; funds?: bigint; revenue?: bigint } | undefined, symbol?: string): FigureRow[] {
+/** Debt (totalMinted), Funds (totalAssets), Claimable (assets - debt, unrealized), Revenue (totalRevenue, realized). Missing values are omitted.
+ * `claimable`: undefined = assets minus debt, null = omit the row, bigint = use as given (seed pool legs shift, so their difference is meaningless). */
+export function figureRows(
+	f: { debt?: bigint; funds?: bigint; revenue?: bigint } | undefined,
+	symbol?: string,
+	claimable?: bigint | null
+): FigureRow[] {
 	if (!f) return [];
 	const rows: FigureRow[] = [];
 	const add = (label: FigureRow['label'], v: string | null, extra?: Partial<FigureRow>) => v && rows.push({ label, value: v, ...extra });
 	add('Debt', formatFigure(f.debt, symbol), { title: 'totalMinted' });
 	add('Funds', formatFigure(f.funds, symbol), { title: 'totalAssets' });
-	if (f.debt !== undefined && f.funds !== undefined) {
-		const d = f.funds - f.debt;
+	const d = claimable === undefined ? (f.debt !== undefined && f.funds !== undefined ? f.funds - f.debt : null) : claimable;
+	if (d !== null) {
 		add('Claimable', d < 0n ? `−${formatFigure(-d, symbol)}` : formatFigure(d, symbol), {
 			negative: d < 0n,
 			title: d < 0n ? 'Deficit: assets are below debt' : 'Unrealized: assets minus debt',
@@ -232,5 +237,5 @@ export function moduleFigureRows(
 	symbol?: string
 ): FigureRow[] {
 	if (!f?.byCurrency) return figureRows(f, symbol);
-	return Object.entries(f.byCurrency).flatMap(([currency, leg]) => figureRows(leg, currency).map((r) => ({ ...r, currency })));
+	return Object.entries(f.byCurrency).flatMap(([currency, leg]) => figureRows(leg, currency, null).map((r) => ({ ...r, currency })));
 }
