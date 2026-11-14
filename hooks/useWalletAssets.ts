@@ -67,9 +67,9 @@ export function useWalletAssets(owner: `0x${string}` | undefined): WalletAssetsD
 		): AssetDef => ({ key, symbol: key, name, logoURI, address: address as `0x${string}`, decimals: 18, ...extra });
 
 		const stables = [
-			token('USDU', 'USDU', '/coin/usdu.png', addresses.usduStable, { group: 'USD' }),
-			token('EURU', 'EURU', '/coin/euru.png', addresses.euruStable, { group: 'EUR' }),
-			token('CHFU', 'CHFU', '/coin/chfu.png', addresses.chfuStable, { group: 'CHF' }),
+			token('USDU', 'USDU', '/coins/usdu.png', addresses.usduStable, { group: 'USD' }),
+			token('EURU', 'EURU', '/coins/euru.png', addresses.euruStable, { group: 'EUR' }),
+			token('CHFU', 'CHFU', '/coins/chfu.png', addresses.chfuStable, { group: 'CHF' }),
 		];
 
 		// Coins the swap modules bridge into a U-stable (USDC, USDT, EURC, dEURO, ZCHF, ...), deduplicated by address
@@ -86,10 +86,10 @@ export function useWalletAssets(owner: `0x${string}` | undefined): WalletAssetsD
 		return [
 			...stables,
 			...bridged.values(),
-			token('rUSDU', 'Staked USDU', '/coin/rusdu.png', addresses.usduStreamerVaultV1, { vaultOf: 'USDU' }),
-			token('rEURU', 'Staked EURU', '/coin/reuru.png', addresses.euruStreamerVaultV1, { vaultOf: 'EURU' }),
-			token('rCHFU', 'Staked CHFU', '/coin/rchfu.png', addresses.chfuStreamerVaultV1, { vaultOf: 'CHFU' }),
-			...pools.map((p) => token(`LP-${p.key}`, `${p.label} LP`, '/coin/lp.svg', p.poolAddress, { symbol: 'LP' })),
+			token('rUSDU', 'Staked USDU', '/coins/rusdu.png', addresses.usduStreamerVaultV1, { vaultOf: 'USDU' }),
+			token('rEURU', 'Staked EURU', '/coins/reuru.png', addresses.euruStreamerVaultV1, { vaultOf: 'EURU' }),
+			token('rCHFU', 'Staked CHFU', '/coins/rchfu.png', addresses.chfuStreamerVaultV1, { vaultOf: 'CHFU' }),
+			...pools.map((p) => token(`LP-${p.key}`, `${p.label} LP`, '/coins/lp.svg', p.poolAddress, { symbol: 'LP' })),
 		];
 	}, [addresses, pools, modules]);
 

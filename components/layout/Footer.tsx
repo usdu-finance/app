@@ -103,7 +103,7 @@ export default function Footer() {
 								<FooterItem link={SOCIAL.Github_user} text="GitHub" icon={faGithub} />
 							</li>
 							<li>
-								<FooterItem link={SOCIAL.Twitter} text="Twitter" icon={faXTwitter} />
+								<FooterItem link={SOCIAL.Twitter} text="X" icon={faXTwitter} />
 							</li>
 							<li>
 								<FooterItem link={SOCIAL.Telegram} text="Telegram" icon={faTelegram} />
@@ -119,6 +119,16 @@ export default function Footer() {
 								<Link href="/docs" className="text-text-secondary hover:text-usdu-orange transition-colors text-sm">
 									Docs
 								</Link>
+							</li>
+							<li>
+								<a
+									href={SOCIAL.MediaKit}
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-text-secondary hover:text-usdu-orange transition-colors text-sm"
+								>
+									Media Kit
+								</a>
 							</li>
 							<li>
 								<Link

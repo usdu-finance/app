@@ -1,15 +1,13 @@
 import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGithub, faTelegram, faXTwitter } from '@fortawesome/free-brands-svg-icons';
-import { faArrowRight } from '@fortawesome/free-solid-svg-icons';
+import { faArrowRight, faFilePdf, faImages } from '@fortawesome/free-solid-svg-icons';
 import { SOCIAL } from '@/lib/constants';
 import ButtonInput from '@/components/ui/input/ButtonInput';
 import { Reveal, INNER } from './shared';
 
 const LINKS = [
-	{ label: 'GitHub', href: SOCIAL.Github_user, icon: faGithub },
-	{ label: 'X', href: SOCIAL.Twitter, icon: faXTwitter },
-	{ label: 'Telegram', href: SOCIAL.Telegram, icon: faTelegram },
+	{ label: 'Security audit', href: '/documents/BlockBite-USDU-Security-Audit-2025.pdf', icon: faFilePdf },
+	{ label: 'Media kit', href: SOCIAL.MediaKit, icon: faImages },
 ];
 
 export default function Cta() {

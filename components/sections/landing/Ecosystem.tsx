@@ -30,22 +30,22 @@ const PARTNERS = [
 ];
 
 const ASSETS = [
-	{ symbol: 'USDC', to: 'USDU', logo: '/coin/usdc.svg' },
-	{ symbol: 'USDT', to: 'USDU', logo: '/coin/usdt.svg' },
-	{ symbol: 'EURC', to: 'EURU', logo: '/coin/eurc.png' },
-	{ symbol: 'dEURO', to: 'EURU', logo: '/coin/deuro.svg' },
-	{ symbol: 'ZCHF', to: 'CHFU', logo: '/coin/zchf.svg' },
+	{ symbol: 'USDC', to: 'USDU', logo: '/coins/usdc.svg' },
+	{ symbol: 'USDT', to: 'USDU', logo: '/coins/usdt.svg' },
+	{ symbol: 'EURC', to: 'EURU', logo: '/coins/eurc.png' },
+	{ symbol: 'dEURO', to: 'EURU', logo: '/coins/deuro.svg' },
+	{ symbol: 'ZCHF', to: 'CHFU', logo: '/coins/zchf.svg' },
 ];
 
 // Any of these can be zapped into a stablecoin or reward vault in one transaction, routed through Enso
 const ZAP_ASSETS = [
-	{ symbol: 'ETH', logo: '/coin/eth.svg' },
-	{ symbol: 'WBTC', logo: '/coin/wbtc.svg' },
-	{ symbol: 'cbBTC', logo: '/coin/cbbtc.png' },
-	{ symbol: 'wstETH', logo: '/coin/wsteth.svg' },
-	{ symbol: 'LINK', logo: '/coin/link.png' },
-	{ symbol: 'UNI', logo: '/coin/uni.png' },
-	{ symbol: 'AAVE', logo: '/coin/aave.png' },
+	{ symbol: 'ETH', logo: '/coins/eth.svg' },
+	{ symbol: 'WBTC', logo: '/coins/wbtc.svg' },
+	{ symbol: 'cbBTC', logo: '/coins/cbbtc.png' },
+	{ symbol: 'wstETH', logo: '/coins/wsteth.svg' },
+	{ symbol: 'LINK', logo: '/coins/link.png' },
+	{ symbol: 'UNI', logo: '/coins/uni.png' },
+	{ symbol: 'AAVE', logo: '/coins/aave.png' },
 ];
 
 export default function Ecosystem() {

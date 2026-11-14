@@ -21,7 +21,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'USD Coin',
 		decimals: 6,
 		chainId: 1,
-		logoURI: '/coin/usdc.svg',
+		logoURI: '/coins/usdc.svg',
 	},
 	USDT: {
 		address: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
@@ -29,7 +29,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'Tether USD',
 		decimals: 6,
 		chainId: 1,
-		logoURI: '/coin/usdt.svg',
+		logoURI: '/coins/usdt.svg',
 	},
 	DAI: {
 		address: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
@@ -37,7 +37,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'Dai Stablecoin',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/dai.svg',
+		logoURI: '/coins/dai.svg',
 	},
 	ZCHF: {
 		address: '0xB58E61C3098d85632Df34EecfB899A1Ed80921cB',
@@ -45,7 +45,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'Frankencoin',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/zchf.svg',
+		logoURI: '/coins/zchf.svg',
 	},
 	dEURO: {
 		address: '0xbA3f535bbCcCcA2A154b573Ca6c5A49BAAE0a3ea',
@@ -53,7 +53,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'DecentralizedEURO',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/deuro.svg',
+		logoURI: '/coins/deuro.svg',
 	},
 	USDU: {
 		address: '0xdde3eC717f220Fc6A29D6a4Be73F91DA5b718e55',
@@ -61,7 +61,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'USDU',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/usdu.png',
+		logoURI: '/coins/usdu.png',
 	},
 	LP: {
 		// Placeholder entry: Curve LP tokens are pool-specific, this only supplies the shared logo
@@ -70,7 +70,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'Curve LP Token',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/lp.svg',
+		logoURI: '/coins/lp.svg',
 	},
 	EURU: {
 		address: '0x6e30d56cb23068dE5A084D4A4f2A909823424F06',
@@ -78,7 +78,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'EURU',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/euru.png',
+		logoURI: '/coins/euru.png',
 	},
 	CHFU: {
 		address: '0x4B43F48A665E2F15C4913a76CF67509672396146',
@@ -86,7 +86,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'CHFU',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/chfu.png',
+		logoURI: '/coins/chfu.png',
 	},
 
 	// Reward vault shares
@@ -96,7 +96,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'USDU Rewards',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/rusdu.png',
+		logoURI: '/coins/rusdu.png',
 	},
 	rEURU: {
 		address: ADDRESS[1].euruStreamerVaultV1,
@@ -104,7 +104,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'EURU Rewards',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/reuru.png',
+		logoURI: '/coins/reuru.png',
 	},
 	rCHFU: {
 		address: ADDRESS[1].chfuStreamerVaultV1,
@@ -112,7 +112,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'CHFU Rewards',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/rchfu.png',
+		logoURI: '/coins/rchfu.png',
 	},
 
 	// Crypto
@@ -122,7 +122,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'Ether',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/eth.svg',
+		logoURI: '/coins/eth.svg',
 	},
 	WETH: {
 		address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
@@ -130,7 +130,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'Wrapped Ether',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/weth.png',
+		logoURI: '/coins/weth.png',
 	},
 	WBTC: {
 		address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
@@ -138,7 +138,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'Wrapped BTC',
 		decimals: 8,
 		chainId: 1,
-		logoURI: '/coin/wbtc.svg',
+		logoURI: '/coins/wbtc.svg',
 	},
 	FPS: {
 		address: '0x1bA26788dfDe592fec8bcB0Eaff472a42BE341B2',
@@ -146,7 +146,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'Frankencoin Pool Share',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/fps.png',
+		logoURI: '/coins/fps.png',
 	},
 	FCS: {
 		address: '0xDb861830D9Ae2d1fCF99fA0cfd3973de382B0B5b',
@@ -154,7 +154,7 @@ export const TOKENS: Record<string, TokenConfig> = {
 		name: 'Frankencoin Shares',
 		decimals: 18,
 		chainId: 1,
-		logoURI: '/coin/fcs.png',
+		logoURI: '/coins/fcs.png',
 	},
 };
 

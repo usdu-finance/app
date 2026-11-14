@@ -19,7 +19,7 @@ const CRYPTO: { symbol: string; name: string; address: `0x${string}`; decimals: 
 		name: 'Wrapped stETH',
 		address: '0x7f39C581F595B53c5cb19bD0b3f8dA6c935E2Ca0',
 		decimals: 18,
-		logoURI: '/coin/wsteth.svg',
+		logoURI: '/coins/wsteth.svg',
 	},
 	{ ...TOKENS.WBTC, address: TOKENS.WBTC.address as `0x${string}` },
 	{
@@ -27,7 +27,7 @@ const CRYPTO: { symbol: string; name: string; address: `0x${string}`; decimals: 
 		name: 'Coinbase Wrapped BTC',
 		address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf',
 		decimals: 8,
-		logoURI: '/coin/cbbtc.png',
+		logoURI: '/coins/cbbtc.png',
 	},
 	{ symbol: 'LINK', name: 'Chainlink', address: '0x514910771AF9Ca656af840dff83E8264EcF986CA', decimals: 18 },
 	{ symbol: 'UNI', name: 'Uniswap', address: '0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984', decimals: 18 },

@@ -20,6 +20,7 @@ export const PROJECT = {
 // Social links
 export const SOCIAL = {
 	Github_user: 'https://github.com/usdu-finance',
+	MediaKit: 'https://github.com/usdu-finance/media',
 	Twitter: 'https://x.com/USDUfinance',
 	Telegram: 'https://t.me/usdufinance',
 	Defillama: 'https://defillama.com/stablecoin/usdu-finance',

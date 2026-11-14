@@ -347,7 +347,7 @@ export const docsContent: Record<string, React.ReactNode> = {
 			</P>
 			<UL>
 				<li>
-					<A href="https://usdu.finance/wp-content/uploads/2025/07/BlockBite-USDU-Security-Audit-2025.pdf">
+					<A href="/documents/BlockBite-USDU-Security-Audit-2025.pdf">
 						BlockBite USDU Security Audit 2025 (PDF)
 					</A>
 				</li>

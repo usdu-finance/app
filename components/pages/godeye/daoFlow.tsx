@@ -80,7 +80,7 @@ export function buildSeries(months: Map<number, FlowMonth>) {
 }
 
 // Last resort for coins neither the protocol's registry nor the CoW list has a logo for
-const LOCAL_LOGOS: Record<string, string> = { EURC: '/coin/eurc.png' };
+const LOCAL_LOGOS: Record<string, string> = { EURC: '/coins/eurc.png' };
 
 /** An amount followed by a tiny logo of its token instead of the symbol */
 export function Amount({ value, coin }: { value: number; coin: string }) {

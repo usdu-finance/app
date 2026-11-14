@@ -11,9 +11,9 @@ import { Skeleton } from './shared';
 const ORBIT_SECONDS = 70;
 
 const COINS = [
-	{ symbol: 'USDU', src: '/coin/usdu.png', angle: 0 },
-	{ symbol: 'EURU', src: '/coin/euru.png', angle: 120 },
-	{ symbol: 'CHFU', src: '/coin/chfu.png', angle: 240 },
+	{ symbol: 'USDU', src: '/coins/usdu.png', angle: 0 },
+	{ symbol: 'EURU', src: '/coins/euru.png', angle: 120 },
+	{ symbol: 'CHFU', src: '/coins/chfu.png', angle: 240 },
 ];
 
 /** Three stablecoins circling the governed modules that mint and burn them. */
