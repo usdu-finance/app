@@ -80,7 +80,7 @@ const TABS = ['Strategy Vaults', 'Reward Streams'] as const;
 
 function StrategyListPageContent() {
 	const router = useRouter();
-	const [tab, setTab] = useQueryTab(TABS);
+	const [tab, setTab] = useQueryTab(TABS, 'Reward Streams');
 	const { currency, all, setCurrency, currencies } = useCurrencyFilter();
 	const { sortTab, sortReverse, handleSort } = useSort('Strategy');
 

@@ -6,7 +6,8 @@ import { useAppKit } from '@reown/appkit/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTx } from '@/hooks/useTx';
 import { approveCall, zapCall, type ZapperSwapStepJson } from '@/lib/tx/calls';
-import { ZAPPER_SWAP_ADDRESS } from '@/lib/constants';
+import { ADDRESS } from '@usdu-finance/usdu-core';
+import { mainnet } from 'viem/chains';
 import { TOKENS } from '@/lib/tokens/config';
 import { TokenInput, ApproveActionInput, TokenSelectModal, type TokenOption } from '@/components/ui/input';
 import { fetchCowTokenList, getMergedTokenList } from '@/lib/tokens/cow-service';
@@ -219,7 +220,7 @@ export default function ZapInCard({
 							address: payToken.address as Address,
 							abi: erc20Abi,
 							functionName: 'allowance' as const,
-							args: [address as Address, ZAPPER_SWAP_ADDRESS],
+							args: [address as Address, ADDRESS[mainnet.id].zapperSwapEnsoV1],
 						},
 					]
 				: [],
@@ -236,7 +237,14 @@ export default function ZapInCard({
 	const { data: receiveBalanceData, refetch: refetchReceiveToken } = useReadContracts({
 		contracts:
 			address && !receivesEth
-				? [{ address: receiveToken.address as Address, abi: erc20Abi, functionName: 'balanceOf' as const, args: [address as Address] }]
+				? [
+						{
+							address: receiveToken.address as Address,
+							abi: erc20Abi,
+							functionName: 'balanceOf' as const,
+							args: [address as Address],
+						},
+					]
 				: [],
 		query: { enabled: !!address && !receivesEth, refetchInterval: 30_000 },
 	});
@@ -286,7 +294,8 @@ export default function ZapInCard({
 		try {
 			await tx.submit(
 				[
-					needsApproval && approveCall(payToken.address as Address, ZAPPER_SWAP_ADDRESS, amountRaw, payToken.symbol),
+					needsApproval &&
+						approveCall(payToken.address as Address, ADDRESS[mainnet.id].zapperSwapEnsoV1, amountRaw, payToken.symbol),
 					zapCall({
 						tokenIn: payToken.address as Address,
 						amountIn: amountRaw,
@@ -493,7 +502,7 @@ export default function ZapInCard({
 							}
 						/>
 						<DetailRow label="Zapper">
-							<AddressLink address={ZAPPER_SWAP_ADDRESS} />
+							<AddressLink address={ADDRESS[mainnet.id].zapperSwapEnsoV1} />
 						</DetailRow>
 					</div>
 				</div>

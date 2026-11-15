@@ -2,7 +2,8 @@ import { erc20Abi, type Address } from 'viem';
 import { ensoRoute, isEnsoEnabled, NATIVE_ETH, type EnsoRoute } from './enso';
 import { cached } from './api';
 import { client, isProtocolToken, type ZapRegistry, type ZapToken } from './registry';
-import { ZAPPER_SWAP_ADDRESS } from '@/lib/constants';
+import { ADDRESS } from '@usdu-finance/usdu-core';
+import { mainnet } from 'viem/chains';
 import { buildRoute, findPaths, quoteRoutes, SLIPPAGE_BPS, type Route, type RouteStep } from './routes';
 
 // Enso calldata is built with the zapper as sender and receiver, so quotes are wallet-independent and cacheable.
@@ -72,7 +73,7 @@ export async function quoteZap(
 	const native = isKnown ? await quoteRoutes(registry, tokenIn, tokenOut, amountIn) : [];
 	if (native.some((r) => r.available) || !isEnsoEnabled()) return { routes: native, complete: true };
 
-	const sender = ZAPPER_SWAP_ADDRESS;
+	const sender = ADDRESS[mainnet.id].zapperSwapEnsoV1;
 	const slippageBps = Number(SLIPPAGE_BPS);
 
 	// Direct Enso route, plus hybrid routes through each entry coin that has a native path onward
@@ -90,7 +91,9 @@ export async function quoteZap(
 	// Foreign output from a protocol token: native hops into an exit coin, then Enso from there to the target
 	const exits = isKnown
 		? registry.tokens
-				.filter((t) => !isProtocolToken(t.address) && !sameAddr(t.address, tokenIn.address) && !sameAddr(t.address, tokenOut.address))
+				.filter(
+					(t) => !isProtocolToken(t.address) && !sameAddr(t.address, tokenIn.address) && !sameAddr(t.address, tokenOut.address)
+				)
 				.map((t) => ({ token: t, hops: Math.min(...findPaths(registry, tokenIn, t).map((p) => p.length), Infinity) }))
 				.filter((e) => e.hops < Infinity)
 				.sort((a, b) => a.hops - b.hops)
@@ -102,7 +105,13 @@ export async function quoteZap(
 		if (!first) throw new Error('no native path with capacity');
 		const pools = BigInt(first.steps.filter((s) => s.kind === 'curve').length);
 		const handoff = (first.amountOut * (10_000n - EXIT_TRIM_BPS * pools)) / 10_000n;
-		const leg = await ensoRoute({ tokenIn: exit.address, tokenOut: tokenOut.address, amountIn: handoff, fromAddress: sender, slippageBps });
+		const leg = await ensoRoute({
+			tokenIn: exit.address,
+			tokenOut: tokenOut.address,
+			amountIn: handoff,
+			fromAddress: sender,
+			slippageBps,
+		});
 		return buildRoute(`${first.id}>enso`, [...first.steps, ensoStep(exit, tokenOut, handoff, leg)]);
 	});
 
