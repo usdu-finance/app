@@ -1,5 +1,7 @@
 import { erc20Abi } from 'viem';
+import { mainnet } from 'viem/chains';
 import {
+	ADDRESS,
 	ICurveStableSwapNG_ABI,
 	ISwapBridgeMorphoV1_ABI,
 	ISwapRouterV1_ABI,
@@ -9,7 +11,6 @@ import {
 	ZapperSwapEnsoV1_ABI,
 } from '@usdu-finance/usdu-core';
 import type { CurvePoolKind } from '@/lib/onchain/curve';
-import { ZAPPER_SWAP_ADDRESS } from '@/lib/constants';
 import type { TxCall } from './types';
 
 type Address = `0x${string}`;
@@ -62,12 +63,7 @@ export const addLiquidityCall = (kind: CurvePoolKind, pool: Address, amounts: re
 	label: 'Deposit',
 });
 
-export const removeLiquidityCall = (
-	kind: CurvePoolKind,
-	pool: Address,
-	amount: bigint,
-	minAmounts: readonly [bigint, bigint]
-): TxCall => ({
+export const removeLiquidityCall = (kind: CurvePoolKind, pool: Address, amount: bigint, minAmounts: readonly [bigint, bigint]): TxCall => ({
 	address: pool,
 	abi: curveAbi(kind),
 	functionName: 'remove_liquidity',
@@ -116,7 +112,7 @@ export const zapCall = (args: {
 	/** ETH to send along; only for a native-ETH input, where it must equal amountIn. */
 	value?: bigint;
 }): TxCall => ({
-	address: ZAPPER_SWAP_ADDRESS,
+	address: ADDRESS[mainnet.id].zapperSwapEnsoV1,
 	abi: ZapperSwapEnsoV1_ABI,
 	functionName: 'zap',
 	args: [

@@ -1,5 +1,3 @@
-import { ADDRESS } from '@usdu-finance/usdu-core';
-import { mainnet } from 'viem/chains';
 
 // App constants
 export const APP_NAME = 'USDU Finance';
@@ -36,11 +34,6 @@ export const getCurvePoolUrl = (poolAddress: string) => `https://www.curve.finan
 export const REOWN_PROJECT_ID = process.env.NEXT_PUBLIC_REOWN_PROJECT_ID;
 export const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL;
 export const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL;
-// ZapperSwapEnsoV1 on Ethereum, from usdu-core
-export const ZAPPER_SWAP_ADDRESS = ADDRESS[mainnet.id].zapperSwapEnsoV1;
-
-// ForeignSwapperV1 on Ethereum, from usdu-core
-export const FOREIGN_SWAPPER_ADDRESS = ADDRESS[mainnet.id].foreignSwapperV1;
 
 // Local storage keys
 export const STORAGE_KEYS = {

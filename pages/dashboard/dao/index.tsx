@@ -19,7 +19,7 @@ import { useSwapModules } from '@/hooks/useSwapModules';
 import { isRedeemPool, useCurvePools } from '@/hooks/useCurvePools';
 import { ERC4626_ABI, FOREIGN_TOKENS, nextChoices, resolvePath, type PathToken, type StepChoice } from '@/lib/swapper/routes';
 import { useTx } from '@/hooks/useTx';
-import { APP_REFETCH, FOREIGN_SWAPPER_ADDRESS, SEO } from '@/lib/constants';
+import { APP_REFETCH, SEO } from '@/lib/constants';
 import { TOKENS } from '@/lib/tokens/config';
 import { formatCompactNumber } from '@/lib/utils';
 
@@ -68,6 +68,7 @@ const STEPS = [
 ];
 
 const STABLE = ADDRESS[mainnet.id].usduStable;
+const FOREIGN_SWAPPER = ADDRESS[mainnet.id].foreignSwapperV1;
 
 function DaoPageContent() {
 	const { address } = useAccount();
@@ -85,13 +86,13 @@ function DaoPageContent() {
 	const { data, error, isLoading } = useReadContracts({
 		contracts: FOREIGN_TOKENS.flatMap((t) => [
 			{
-				address: FOREIGN_SWAPPER_ADDRESS,
+				address: FOREIGN_SWAPPER,
 				abi: ForeignSwapperV1_ABI,
 				functionName: 'getRoute' as const,
 				args: [t.address],
 			},
 			{
-				address: FOREIGN_SWAPPER_ADDRESS,
+				address: FOREIGN_SWAPPER,
 				abi: ForeignSwapperV1_ABI,
 				functionName: 'swappable' as const,
 				args: [t.address],
@@ -130,7 +131,7 @@ function DaoPageContent() {
 		submit(
 			[
 				{
-					address: FOREIGN_SWAPPER_ADDRESS,
+					address: FOREIGN_SWAPPER,
 					abi: ForeignSwapperV1_ABI,
 					functionName,
 					args: [token as `0x${string}`],
@@ -181,7 +182,7 @@ function DaoPageContent() {
 	});
 	const sharePrice = sharePriceRaw !== undefined && asset ? Number(formatUnits(sharePriceRaw, asset.decimals)) : undefined;
 
-	const ctx = { modules, pools: fxPools, swapper: FOREIGN_SWAPPER_ADDRESS, asset, sharePrice };
+	const ctx = { modules, pools: fxPools, swapper: FOREIGN_SWAPPER, asset, sharePrice };
 
 	// the route that is live now, as picked steps, so the form starts from it
 	const loaded = useMemo(() => {
@@ -245,7 +246,7 @@ function DaoPageContent() {
 		address: routeToken.address,
 		abi: erc20Abi,
 		functionName: 'allowance',
-		args: address ? [address, FOREIGN_SWAPPER_ADDRESS] : undefined,
+		args: address ? [address, FOREIGN_SWAPPER] : undefined,
 		query: { enabled: !!address, refetchInterval: APP_REFETCH },
 	});
 	const needed = maxAmount ? BigInt(maxAmount) : maxUint256 / 2n; // no cap: anything short of a max approval
@@ -261,13 +262,13 @@ function DaoPageContent() {
 								address: routeToken.address,
 								abi: erc20Abi,
 								functionName: 'approve' as const,
-								args: [FOREIGN_SWAPPER_ADDRESS, maxUint256] as const,
+								args: [FOREIGN_SWAPPER, maxUint256] as const,
 								label: `Approve ${routeToken.symbol}`,
 							},
 						]
 					: []),
 				{
-					address: FOREIGN_SWAPPER_ADDRESS,
+					address: FOREIGN_SWAPPER,
 					abi: ForeignSwapperV1_ABI,
 					functionName: 'setRoute',
 					args: [
