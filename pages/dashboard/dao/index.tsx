@@ -1,11 +1,9 @@
 import { useMemo, useState } from 'react';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
-import { decodeFunctionData, erc20Abi, formatUnits, parseUnits } from 'viem';
+import { decodeFunctionData, erc20Abi, formatUnits, maxUint256, parseUnits } from 'viem';
 import { mainnet } from 'viem/chains';
 import { NextSeo } from 'next-seo';
-import { ADDRESS, ISwapRouterV1_ABI, Stablecoin_ABI } from '@usdu-finance/usdu-core';
-// TODO: import ForeignSwapperV1_ABI from '@usdu-finance/usdu-core' once it is published, then delete lib/abis/ForeignSwapperV1.ts
-import { ForeignSwapperV1_ABI } from '@/lib/abis/ForeignSwapperV1';
+import { ADDRESS, ForeignSwapperV1_ABI, ISwapRouterV1_ABI, Stablecoin_ABI } from '@usdu-finance/usdu-core';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
@@ -13,10 +11,12 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowRightArrowLeft, faBan, faBolt, faCoins, faRoute, faXmark } from '@fortawesome/free-solid-svg-icons';
 import Card from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { ButtonInput, PillTabs, SelectInput, TabsBar, TokenInput, TokenSelectModal } from '@/components/ui/input';
+import { ApproveActionInput, PillTabs, SelectInput, TabsBar, TokenInput, TokenSelectModal } from '@/components/ui/input';
+import { useAppKit } from '@reown/appkit/react';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import { useSwapModules } from '@/hooks/useSwapModules';
+import { isRedeemPool, useCurvePools } from '@/hooks/useCurvePools';
 import { ERC4626_ABI, FOREIGN_TOKENS, nextChoices, resolvePath, type PathToken, type StepChoice } from '@/lib/swapper/routes';
 import { useTx } from '@/hooks/useTx';
 import { APP_REFETCH, FOREIGN_SWAPPER_ADDRESS, SEO } from '@/lib/constants';
@@ -71,6 +71,7 @@ const STABLE = ADDRESS[mainnet.id].usduStable;
 
 function DaoPageContent() {
 	const { address } = useAccount();
+	const { open } = useAppKit();
 	const { submit, isSigning } = useTx();
 
 	const { data: roles } = useReadContracts({
@@ -84,19 +85,19 @@ function DaoPageContent() {
 	const { data, error, isLoading } = useReadContracts({
 		contracts: FOREIGN_TOKENS.flatMap((t) => [
 			{
-				address: FOREIGN_SWAPPER_ADDRESS!,
+				address: FOREIGN_SWAPPER_ADDRESS,
 				abi: ForeignSwapperV1_ABI,
 				functionName: 'getRoute' as const,
 				args: [t.address],
 			},
 			{
-				address: FOREIGN_SWAPPER_ADDRESS!,
+				address: FOREIGN_SWAPPER_ADDRESS,
 				abi: ForeignSwapperV1_ABI,
 				functionName: 'swappable' as const,
 				args: [t.address],
 			},
 		]),
-		query: { enabled: !!FOREIGN_SWAPPER_ADDRESS, refetchInterval: APP_REFETCH },
+		query: { refetchInterval: APP_REFETCH },
 	});
 
 	const isRole = (i: 0 | 1) => {
@@ -107,8 +108,7 @@ function DaoPageContent() {
 
 	const [tab, setTab] = useQueryTab(TABS);
 
-	// TODO: temporary preview, the route cards are shown to everyone. Use `isRole(0)` once the UI is checked
-	const canSetRoute = true || isRole(0);
+	const isCurator = isRole(0); // only the curator sets routes, the guardian can only disable
 
 	const rows = useMemo(
 		() =>
@@ -130,7 +130,7 @@ function DaoPageContent() {
 		submit(
 			[
 				{
-					address: FOREIGN_SWAPPER_ADDRESS!,
+					address: FOREIGN_SWAPPER_ADDRESS,
 					abi: ForeignSwapperV1_ABI,
 					functionName,
 					args: [token as `0x${string}`],
@@ -142,6 +142,8 @@ function DaoPageContent() {
 
 	// --- set route (curator only) ---
 	const { modules } = useSwapModules();
+	const { pools } = useCurvePools();
+	const fxPools = useMemo(() => pools.filter((p) => !isRedeemPool(p)), [pools]); // the redeem pools lead out of the ecosystem
 	const [tokenSymbol, setTokenSymbol] = useState(FOREIGN_TOKENS[0]!.symbol);
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [edits, setEdits] = useState<Record<string, Partial<RouteDraft>>>({}); // per token, on top of the on-chain route
@@ -179,7 +181,7 @@ function DaoPageContent() {
 	});
 	const sharePrice = sharePriceRaw !== undefined && asset ? Number(formatUnits(sharePriceRaw, asset.decimals)) : undefined;
 
-	const ctx = { modules, swapper: FOREIGN_SWAPPER_ADDRESS!, asset, sharePrice };
+	const ctx = { modules, pools: fxPools, swapper: FOREIGN_SWAPPER_ADDRESS, asset, sharePrice };
 
 	// the route that is live now, as picked steps, so the form starts from it
 	const loaded = useMemo(() => {
@@ -188,6 +190,13 @@ function DaoPageContent() {
 		for (const step of onchain.steps) {
 			if (step.target.toLowerCase() === routeToken.address.toLowerCase()) {
 				picked.push('unwrap');
+				continue;
+			}
+			const pool = fxPools.find((x) => x.poolAddress.toLowerCase() === step.target.toLowerCase());
+			if (pool) {
+				const i = pool.tokens.findIndex((t) => t.address.toLowerCase() === step.tokenIn.toLowerCase());
+				if (i < 0) return undefined;
+				picked.push(`fx:${pool.key}:${i === 0 ? '01' : '10'}`);
 				continue;
 			}
 			try {
@@ -201,7 +210,7 @@ function DaoPageContent() {
 			}
 		}
 		return picked;
-	}, [onchain, modules, routeToken.address]);
+	}, [onchain, modules, fxPools, routeToken.address]);
 
 	const now = Math.floor(Date.now() / 1000);
 	// no live route yet: start with the first step that fits, the unwrap for a vault token, else a Stable Bridge
@@ -231,10 +240,32 @@ function DaoPageContent() {
 	const maxBelowMin = !!maxAmount && !!minAmount && BigInt(maxAmount) < BigInt(minAmount);
 	const canSet = path.steps.length > 0 && !path.error && BigInt(rate || '0') > 0n && !maxBelowMin;
 
+	// the swapper pulls from the connected wallet, so it needs an allowance covering the cap (or everything without one)
+	const { data: allowance } = useReadContract({
+		address: routeToken.address,
+		abi: erc20Abi,
+		functionName: 'allowance',
+		args: address ? [address, FOREIGN_SWAPPER_ADDRESS] : undefined,
+		query: { enabled: !!address, refetchInterval: APP_REFETCH },
+	});
+	const needed = maxAmount ? BigInt(maxAmount) : maxUint256 / 2n; // no cap: anything short of a max approval
+	const needsApproval = allowance !== undefined && allowance < needed;
+
 	const setRoute = () => {
-		if (!canSet || !FOREIGN_SWAPPER_ADDRESS) return;
+		if (!canSet || !isCurator) return;
 		return submit(
 			[
+				...(needsApproval
+					? [
+							{
+								address: routeToken.address,
+								abi: erc20Abi,
+								functionName: 'approve' as const,
+								args: [FOREIGN_SWAPPER_ADDRESS, maxUint256] as const,
+								label: `Approve ${routeToken.symbol}`,
+							},
+						]
+					: []),
 				{
 					address: FOREIGN_SWAPPER_ADDRESS,
 					abi: ForeignSwapperV1_ABI,
@@ -288,9 +319,7 @@ function DaoPageContent() {
 						<Table>
 							<TableHead headers={HEADERS} colSpan={COL_SPAN} actionCol />
 							<TableBody>
-								{!FOREIGN_SWAPPER_ADDRESS ? (
-									<TableRowEmpty>The foreign swapper is not deployed yet.</TableRowEmpty>
-								) : isLoading ? (
+								{isLoading ? (
 									<TableRowEmpty>Loading routes...</TableRowEmpty>
 								) : error ? (
 									<TableRowEmpty>{`Error: ${error.message}`}</TableRowEmpty>
@@ -349,9 +378,9 @@ function DaoPageContent() {
 						</Table>
 					</Card>
 
-					{canSetRoute && !!FOREIGN_SWAPPER_ADDRESS && (
+					{
 						<div className="grid gap-8 md:grid-cols-2">
-							<Card variant="panel" className="space-y-6">
+							<Card variant="panel" className="flex flex-col gap-6">
 								<PageHeader
 									title="Set Route"
 									description="Curator only. Starts from the live route of the token; the minimum rate is what a swap must deliver per whole token, otherwise it reverts."
@@ -367,29 +396,50 @@ function DaoPageContent() {
 									disabled={path.steps.length === 0}
 									note={path.steps.length ? `${path.end.symbol} per ${routeToken.symbol}` : 'Add a step first'}
 								/>
-								<TokenInput
-									label="Min amount per swap"
-									symbol={routeToken.symbol}
-									value={minAmount}
-									onChange={(v) => patch({ minAmount: v })}
-									digit={routeToken.decimals}
-									placeholder="None"
-								/>
-								<TokenInput
-									label="Max amount per swap"
-									symbol={routeToken.symbol}
-									value={maxAmount}
-									onChange={(v) => patch({ maxAmount: v })}
-									digit={routeToken.decimals}
-									placeholder="No cap"
-									error={maxBelowMin ? 'Below the min amount' : undefined}
-								/>
+								<div className="grid gap-6 md:grid-cols-2">
+									<TokenInput
+										label="Min amount"
+										symbol={routeToken.symbol}
+										value={minAmount}
+										onChange={(v) => patch({ minAmount: v })}
+										digit={routeToken.decimals}
+										placeholder="None"
+									/>
+									<TokenInput
+										label="Max amount"
+										symbol={routeToken.symbol}
+										value={maxAmount}
+										onChange={(v) => patch({ maxAmount: v })}
+										digit={routeToken.decimals}
+										placeholder="No cap"
+										error={maxBelowMin ? 'Below the min amount' : undefined}
+									/>
+								</div>
+								<div className="mt-auto">
+									<ApproveActionInput
+										actionLabel="Set Route"
+										isActing={isSigning}
+										disabled={!canSet || !isCurator || isSigning}
+										onAction={setRoute}
+										isConnected={!!address}
+										onConnect={() => open()}
+										hint={
+											address && !isCurator
+												? 'Only the curator can set a route.'
+												: path.steps.length === 0
+													? 'Add at least one step.'
+													: needsApproval
+														? `Also approves ${routeToken.symbol} for the swapper.`
+														: undefined
+										}
+									/>
+								</div>
 							</Card>
 
-							<Card variant="panel" className="space-y-6">
+							<Card variant="panel" className="flex flex-col gap-6">
 								<PageHeader
 									title="Steps"
-									description="Unwrap a vault token, or convert through any active Stable Bridge that takes the token on hand. Removing a step removes the ones after it."
+									description="Unwrap a vault token, convert through any active Stable Bridge, or swap between the USDU stablecoins on Curve, whichever takes the token on hand. Removing a step removes the ones after it."
 								/>
 								<div className="space-y-2">
 									{path.hops.length === 0 && <div className="text-text-secondary">No steps yet.</div>}
@@ -412,19 +462,22 @@ function DaoPageContent() {
 									{path.error && <div className="text-error">{path.error}</div>}
 								</div>
 								{path.steps.length < 8 && (
-									<SelectInput
-										label={path.steps.length === 0 ? 'Add the first step' : `Add a step, holding ${path.end.symbol}`}
-										options={options}
-										value=""
-										placeholder={options.length ? 'Select a step…' : `No step available for ${path.end.symbol}`}
-										disabled={options.length === 0}
-										onChange={(v) => patch({ choices: [...choices, v as StepChoice], rate: undefined })}
-									/>
+									<div className="mt-auto">
+										<SelectInput
+											label={
+												path.steps.length === 0 ? 'Add the first step' : `Add a step, holding ${path.end.symbol}`
+											}
+											options={options}
+											value=""
+											placeholder={options.length ? 'Select a step…' : `No step available for ${path.end.symbol}`}
+											disabled={options.length === 0}
+											onChange={(v) => patch({ choices: [...choices, v as StepChoice], rate: undefined })}
+										/>
+									</div>
 								)}
-								<ButtonInput label="Set route" disabled={!canSet || isSigning} onClick={setRoute} />
 							</Card>
 						</div>
-					)}
+					}
 				</>
 			)}
 			<TokenSelectModal
