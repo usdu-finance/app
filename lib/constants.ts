@@ -39,9 +39,8 @@ export const INDEXER_URL = process.env.NEXT_PUBLIC_INDEXER_URL;
 // ZapperSwapEnsoV1 on Ethereum, from usdu-core
 export const ZAPPER_SWAP_ADDRESS = ADDRESS[mainnet.id].zapperSwapEnsoV1;
 
-/** ForeignSwapperV1, not in the published ADDRESS registry yet: set once it is deployed, the DAO page stays empty until then. */
-// TODO: temporary zero-address placeholder to preview the UI, remove once deployed (then undefined shows the empty state)
-export const FOREIGN_SWAPPER_ADDRESS = (process.env.NEXT_PUBLIC_FOREIGN_SWAPPER || '0x0000000000000000000000000000000000000000') as `0x${string}` | undefined;
+// ForeignSwapperV1 on Ethereum, from usdu-core
+export const FOREIGN_SWAPPER_ADDRESS = ADDRESS[mainnet.id].foreignSwapperV1;
 
 // Local storage keys
 export const STORAGE_KEYS = {
