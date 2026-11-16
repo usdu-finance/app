@@ -3,6 +3,7 @@ import { ICurveStableSwapNG_ABI, ISwapRouterV1_ABI, ITwocrypto_ABI } from '@usdu
 import type { CurvePool } from '@/hooks/useCurvePools';
 import type { SwapModule } from '@/hooks/useSwapModules';
 import { TOKENS } from '@/lib/tokens/config';
+import { USDC_MAINNET } from '@/lib/whitelisted-tokens';
 
 /** A foreign token the DAO may hold. */
 export interface ForeignToken {
@@ -50,7 +51,7 @@ export type StepChoice = 'unwrap' | `in:${string}` | `out:${string}` | `fx:${str
 
 export interface PathContext {
 	modules: SwapModule[];
-	/** Curve FX pools (between the USDU stablecoins), usable as steps. */
+	/** Curve pools usable as steps: the FX pools between the USDU stablecoins and the USDC/USDU pool. */
 	pools: CurvePool[];
 	swapper: Address;
 	/** Underlying asset of the foreign token, if it is an ERC-4626 vault. */
@@ -77,6 +78,8 @@ export interface ResolvedPath {
 }
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+
+const curveLabel = (pool: CurvePool) => (pool.tokens.some((t) => same(t.address, USDC_MAINNET)) ? 'Curve Pool' : 'Curve FX Swap');
 
 /**
  * Builds the swapper's steps out of the picked ones. The amount word of each call is patched in by the swapper with
@@ -114,7 +117,7 @@ export function resolvePath(token: ForeignToken, choices: StepChoice[], ctx: Pat
 			if (!same(current.address, pool.tokens[i].address))
 				return { ...out, error: `${current.symbol} is not a coin of that Curve pool` };
 			next = pool.tokens[j];
-			label = `Curve FX Swap · ${current.symbol} → ${next.symbol}`;
+			label = `${curveLabel(pool)} · ${current.symbol} → ${next.symbol}`;
 			// pool.price is the live quote of 1 coin1 in coin0
 			out.suggestedRate *= i === 0 ? 1 / pool.price : pool.price;
 			const args = [BigInt(i), BigInt(j), 0n, 0n] as const;
@@ -192,7 +195,11 @@ export function nextChoices(
 		for (const ij of ['01', '10'] as const) {
 			const [i, j] = ij === '01' ? [0, 1] : [1, 0];
 			if (!same(path.end.address, pool.tokens[i]!.address)) continue;
-			options.push({ value: `fx:${pool.key}:${ij}`, label: `Curve FX Swap · ${pool.tokens[i]!.symbol} → ${pool.tokens[j]!.symbol}` });
+			if (same(pool.tokens[j]!.address, USDC_MAINNET)) continue; // swapping into USDC would lead out of the ecosystem
+			options.push({
+				value: `fx:${pool.key}:${ij}`,
+				label: `${curveLabel(pool)} · ${pool.tokens[i]!.symbol} → ${pool.tokens[j]!.symbol}`,
+			});
 		}
 	}
 	return options;
