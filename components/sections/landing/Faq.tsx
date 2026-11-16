@@ -3,6 +3,7 @@ import Link from 'next/link';
 import Accordion from '@/components/ui/Accordion';
 import { SOCIAL } from '@/lib/constants';
 import { Reveal, SectionHead, SECTION } from './shared';
+import { track, trackAttrs } from '@/lib/analytics';
 
 const FAQ: { q: string; a: React.ReactNode }[] = [
 	{
@@ -71,6 +72,7 @@ export default function Faq() {
 						<Accordion
 							key={item.q}
 							defaultOpen={i === 0}
+							onToggle={(open) => open && track('faq_toggle', { question: item.q })}
 							className="bg-usdu-card"
 							title={<span className="font-semibold text-usdu-black">{item.q}</span>}
 						>
@@ -81,6 +83,7 @@ export default function Faq() {
 						More questions? Ask in the{' '}
 						<a
 							href={SOCIAL.Telegram}
+							{...trackAttrs('outbound_click', { placement: 'faq', target: 'telegram' })}
 							target="_blank"
 							rel="noopener noreferrer"
 							className="font-medium text-usdu-orange hover:underline"

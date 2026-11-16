@@ -7,6 +7,7 @@ import ButtonInput from '@/components/ui/input/ButtonInput';
 import { formatCompactNumber } from '@/lib/utils';
 import type { LandingStats } from '@/hooks/useLandingStats';
 import { Skeleton } from './shared';
+import { trackAttrs } from '@/lib/analytics';
 
 const ORBIT_SECONDS = 70;
 
@@ -120,6 +121,7 @@ export default function Hero({ stats }: { stats: LandingStats }) {
 								label="Launch app"
 								size="lg"
 								href="/dashboard"
+								analytics={trackAttrs('cta_click', { placement: 'hero', target: 'dashboard' })}
 								icon={<FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />}
 								className="shadow-none"
 							/>
@@ -128,6 +130,7 @@ export default function Hero({ stats }: { stats: LandingStats }) {
 								variant="outline"
 								size="lg"
 								href="/docs"
+								analytics={trackAttrs('cta_click', { placement: 'hero', target: 'docs' })}
 								className="border-white/30 text-white hover:border-usdu-orange"
 							/>
 						</motion.div>

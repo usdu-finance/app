@@ -29,6 +29,7 @@ import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber, formatTimestampLocale } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
+import { track } from '@/lib/analytics';
 
 const TABS = ['Stake', 'Unstake'];
 const CHART_DAYS = 365;
@@ -202,6 +203,7 @@ function StrategyDetailPageContent() {
 		if (!address || amountRaw === 0n) return;
 		const account = address as `0x${string}`;
 
+		track('action_click', { page: 'strategy-rewards', action: isStake ? 'stake' : 'unstake', pair: currency, needs_approval: isStake && position.allowanceRaw < amountRaw });
 		try {
 			await tx.submit(
 				isStake

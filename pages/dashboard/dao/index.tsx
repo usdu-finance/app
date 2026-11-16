@@ -42,6 +42,7 @@ import { useTx } from '@/hooks/useTx';
 import { APP_REFETCH, SEO } from '@/lib/constants';
 import { TOKENS } from '@/lib/tokens/config';
 import { formatCompactNumber } from '@/lib/utils';
+import { track } from '@/lib/analytics';
 
 const HEADERS = ['Token', 'Approved', 'Threshold', 'Rate', 'Receives'];
 const COL_SPAN = HEADERS.length;
@@ -372,6 +373,7 @@ function DaoPageContent() {
 		navigator.clipboard
 			.writeText(proposalJson)
 			.then(() => {
+				track('proposal_copy', { routes: proposal.length });
 				setCopied(true);
 				setTimeout(() => setCopied(false), 1500);
 			})
@@ -379,6 +381,7 @@ function DaoPageContent() {
 	};
 
 	const downloadProposal = () => {
+		track('proposal_download', { routes: proposal.length });
 		const url = URL.createObjectURL(new Blob([proposalJson], { type: 'application/json' }));
 		const a = document.createElement('a');
 		a.href = url;

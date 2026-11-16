@@ -4,6 +4,7 @@ import { faArrowRight, faFilePdf, faImages } from '@fortawesome/free-solid-svg-i
 import { SOCIAL } from '@/lib/constants';
 import ButtonInput from '@/components/ui/input/ButtonInput';
 import { Reveal, INNER } from './shared';
+import { trackAttrs } from '@/lib/analytics';
 
 const LINKS = [
 	{ label: 'Security audit', href: '/documents/BlockBite-USDU-Security-Audit-2025.pdf', icon: faFilePdf },
@@ -28,6 +29,7 @@ export default function Cta() {
 								label="Launch app"
 								size="lg"
 								href="/dashboard"
+								analytics={trackAttrs('cta_click', { placement: 'closing-cta', target: 'dashboard' })}
 								icon={<FontAwesomeIcon icon={faArrowRight} className="h-4 w-4" />}
 								className="shadow-none"
 							/>
@@ -36,6 +38,7 @@ export default function Cta() {
 								variant="outline"
 								size="lg"
 								href="/transparency"
+								analytics={trackAttrs('cta_click', { placement: 'closing-cta', target: 'transparency' })}
 								className="border-white/30 text-white hover:border-usdu-orange"
 							/>
 						</div>

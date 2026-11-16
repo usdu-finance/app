@@ -28,6 +28,7 @@ import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber, formatTimestampLocale, formatAddress } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
 import { SEO } from '@/lib/constants';
+import { track } from '@/lib/analytics';
 
 const fmtStable = (currency: string, value: bigint, round: boolean = true) =>
 	`${formatCompactNumber(formatUnits(value, 18), 1, '', '', round)} ${currency}`;
@@ -184,6 +185,7 @@ function SwapDetailPageContent() {
 		const symbol = direction === 'in' ? selectedModule.coinSymbol : selectedModule.currency;
 		const { routerAddress, moduleAddress } = selectedModule;
 
+		track('action_click', { page: 'swap-stable', action: direction === 'in' ? 'mint' : 'redeem', pair: `${inputSymbol}>${outputSymbol}`, needs_approval: allowanceRaw < amountRaw });
 		try {
 			await tx.submit(
 				[

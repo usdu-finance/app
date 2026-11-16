@@ -16,6 +16,8 @@ interface ButtonDef {
 	loading?: boolean;
 	icon?: React.ReactNode;
 	className?: string;
+	/** Umami data attributes from `trackAttrs(...)`, so a click is reported as an event. */
+	analytics?: Record<string, string>;
 }
 
 interface ButtonInputProps extends ButtonDef {
@@ -52,6 +54,7 @@ function SingleButton({
 	loading = false,
 	icon,
 	className,
+	analytics,
 }: ButtonDef) {
 	const classes = cn(BASE, VARIANTS[variant], SIZES[size], className);
 
@@ -68,14 +71,14 @@ function SingleButton({
 
 	if (href) {
 		return (
-			<Link href={href} target={target} className={classes}>
+			<Link href={href} target={target} className={classes} {...analytics}>
 				{content}
 			</Link>
 		);
 	}
 
 	return (
-		<button type="button" className={classes} onClick={onClick} disabled={disabled || loading}>
+		<button type="button" className={classes} onClick={onClick} disabled={disabled || loading} {...analytics}>
 			{content}
 		</button>
 	);

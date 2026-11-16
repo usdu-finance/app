@@ -4,6 +4,7 @@ import { EXPLORER, KIND_META } from './godeye.constants';
 import { dateStr, fmt, pct, rgba, shortAddr } from './godeye.format';
 import { GodEyePeer } from './godeye.types';
 import { Dot, Glass, IconButton, SectionTitle, StatCard } from './GodEyeUi';
+import { track } from '@/lib/analytics';
 
 function HistoryChart({ history, color }: { history: { t: number; balance: number }[]; color: string }) {
 	const ref = useRef<HTMLCanvasElement>(null);
@@ -136,7 +137,14 @@ export default function GodEyeDetail({ token, address, fallbackLabel, onClose, o
 							>
 								Explorer ↗
 							</a>
-							<IconButton onClick={() => navigator.clipboard?.writeText(a.address)}>Copy</IconButton>
+							<IconButton
+								onClick={() => {
+									navigator.clipboard?.writeText(a.address);
+									track('address_copy', { context: 'god-eye' });
+								}}
+							>
+								Copy
+							</IconButton>
 						</div>
 
 						<div className="grid grid-cols-2 gap-2">

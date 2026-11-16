@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { amountBucket, track } from '@/lib/analytics';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { erc20Abi, formatUnits, isAddress, parseUnits, type Address } from 'viem';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useBalance, useReadContracts } from 'wagmi';
@@ -276,7 +277,13 @@ export default function ZapInCard({
 
 	const tx = useTx();
 
+	const pair = `${payToken.symbol}>${receiveToken.symbol}`;
+	const selectReceive = (t: TokenOption) => {
+		track('token_selected', { page: 'zap', side: 'receive', symbol: t.symbol });
+		setReceiveToken(t);
+	};
 	const selectPay = (t: TokenOption) => {
+		track('token_selected', { page: 'zap', side: 'pay', symbol: t.symbol });
 		setPayToken(t);
 		setAmountRawInput('');
 		// The receive side can't be the same coin; fall back to the first receive token that differs
@@ -285,12 +292,33 @@ export default function ZapInCard({
 		}
 	};
 
+	// one event per pair and outcome, the quote refetches every 15s and must not be counted again
+	const lastQuoteKey = useRef('');
+	useEffect(() => {
+		if (samePair || isQuoting || debouncedAmount === 0n) return;
+		const key = quoteError ? `${pair}:error` : route ? `${pair}:route` : quote ? `${pair}:${quote.reason ?? 'no-route'}` : '';
+		if (!key || key === lastQuoteKey.current) return;
+		lastQuoteKey.current = key;
+		if (quoteError) track('quote_failed', { page: 'zap', pair, reason: 'error' });
+		else if (route)
+			track('quote_received', { page: 'zap', pair, route: route.steps.map((st) => st.kind ?? 'step').join('+') || undefined });
+		else track('quote_failed', { page: 'zap', pair, reason: quote?.reason ?? 'no-route' });
+	}, [pair, quote, quoteError, route, isQuoting, debouncedAmount, samePair]);
+
 	const insufficientBalance = amountRaw > 0n && amountRaw > balanceRaw;
 	const needsApproval = !isNativeEth && amountRaw > 0n && allowanceRaw < amountRaw;
 
 	// the approval (if missing) and the zap go out as one batch, the form is free again once the wallet signed
 	const handleAction = async () => {
 		if (!route || !address || amountRaw === 0n) return;
+		const payPrice = priceOf(payToken.address);
+		track('action_click', {
+			page: 'zap',
+			action: 'zap',
+			pair,
+			amount: payPrice ? amountBucket(payPrice * parseFloat(formatUnits(amountRaw, payToken.decimals))) : undefined,
+			needs_approval: needsApproval,
+		});
 		try {
 			await tx.submit(
 				[
@@ -521,7 +549,7 @@ export default function ZapInCard({
 			<TokenSelectModal
 				isOpen={picker === 'receive'}
 				onClose={() => setPicker(null)}
-				onSelect={setReceiveToken}
+				onSelect={selectReceive}
 				tokens={tokens}
 				exclude={[payToken.address]}
 				title="You receive"

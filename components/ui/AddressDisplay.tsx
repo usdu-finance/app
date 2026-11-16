@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCopy, faCheckCircle } from '@fortawesome/free-solid-svg-icons';
+import { track } from '@/lib/analytics';
 
 interface AddressDisplayProps {
 	address: string;
@@ -35,6 +36,7 @@ export function AddressDisplay({
 		(e: React.MouseEvent) => {
 			e.stopPropagation();
 			navigator.clipboard.writeText(copyValue ?? address).then(() => {
+				track('address_copy', { context: 'address-display' });
 				setCopied(true);
 				setTimeout(() => setCopied(false), 2000);
 			});

@@ -7,6 +7,7 @@ import { ADDRESS } from '@usdu-finance/usdu-core';
 import { mainnet } from 'viem/chains';
 import { SOCIAL, getCurvePoolUrl } from '@/lib/constants';
 import { Reveal, SectionHead, SECTION, INNER } from './shared';
+import { trackAttrs } from '@/lib/analytics';
 
 const PARTNERS = [
 	{
@@ -63,6 +64,7 @@ export default function Ecosystem() {
 						<Reveal key={p.name} delay={i * 0.08} className="h-full">
 							<a
 								href={p.href}
+								{...trackAttrs('outbound_click', { placement: 'ecosystem', target: p.name })}
 								target="_blank"
 								rel="noopener noreferrer"
 								className="group flex h-full flex-col rounded-2xl border border-usdu-surface bg-usdu-bg p-6 transition-colors hover:border-usdu-orange"
@@ -100,6 +102,7 @@ export default function Ecosystem() {
 										{/* each chip opens the zap page paying with that token, into the stablecoin it bridges to */}
 										<Link
 											href={`/dashboard/zap/swap?from=${a.symbol}&to=${'to' in a ? a.to : 'USDU'}`}
+											{...trackAttrs('cta_click', { placement: 'ecosystem-zap', target: a.symbol })}
 											className="inline-flex items-center gap-2 rounded-full border border-usdu-surface bg-usdu-bg py-1.5 pl-2 pr-4 text-sm font-medium text-usdu-black transition-shadow hover:shadow-lg"
 										>
 											<Image src={a.logo} alt="" width={20} height={20} className="h-5 w-5 rounded-full" />

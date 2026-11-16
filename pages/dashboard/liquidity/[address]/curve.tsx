@@ -21,6 +21,7 @@ import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
 import { SEO, getCurvePoolUrl } from '@/lib/constants';
+import { track } from '@/lib/analytics';
 
 const SLIPPAGE_BPS = 50n; // 0.5%
 const TABS = ['Add', 'Remove'];
@@ -119,6 +120,12 @@ function LiquidityCurveDetailPageContent() {
 		if (!selectedPool || noInput) return;
 		const { kind, poolAddress, tokens } = selectedPool;
 
+		track('action_click', {
+			page: 'liquidity-curve',
+			action: isAdd ? 'add' : 'remove',
+			pair: `${tokens[0].symbol}/${tokens[1].symbol}`,
+			needs_approval: needsApproval0 || needsApproval1,
+		});
 		try {
 			await tx.submit(
 				isAdd
