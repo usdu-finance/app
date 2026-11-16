@@ -21,8 +21,6 @@ export default function App({ Component, pageProps }: AppProps) {
 				<Script
 					src={`${process.env.NEXT_PUBLIC_UMAMI_URL}/script.js`}
 					data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
-					// only report from the production host, so previews and localhost stay out of the data
-					data-domains={process.env.NEXT_PUBLIC_UMAMI_DOMAINS || undefined}
 					data-do-not-track="true"
 					// prefill params (?from=&to=, ?tab=) would split one page into many, events carry that instead
 					data-exclude-search="true"
