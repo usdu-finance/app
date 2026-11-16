@@ -7,15 +7,20 @@ interface AccordionProps {
 	children: ReactNode;
 	defaultOpen?: boolean;
 	className?: string;
+	/** Called after the panel opened or closed. */
+	onToggle?: (open: boolean) => void;
 }
 
-export default function Accordion({ title, children, defaultOpen = false, className = '' }: AccordionProps) {
+export default function Accordion({ title, children, defaultOpen = false, className = '', onToggle }: AccordionProps) {
 	const [isOpen, setIsOpen] = useState(defaultOpen);
 
 	return (
 		<div className={`border border-usdu-surface rounded-lg overflow-hidden ${className}`}>
 			<button
-				onClick={() => setIsOpen(!isOpen)}
+				onClick={() => {
+					setIsOpen(!isOpen);
+					onToggle?.(!isOpen);
+				}}
 				className="w-full px-6 py-4 bg-usdu-surface hover:bg-usdu-orange/10 transition-colors flex items-center justify-between"
 			>
 				<div className="flex-1 text-left">{title}</div>

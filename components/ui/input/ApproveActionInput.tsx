@@ -2,6 +2,7 @@ import React from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faWallet } from '@fortawesome/free-solid-svg-icons';
 import ButtonInput from './ButtonInput';
+import { track } from '@/lib/analytics';
 
 export interface ApprovalStep {
 	/** symbol of the token to approve, e.g. "CHFU" */
@@ -45,7 +46,10 @@ export default function ApproveActionInput({
 				label="Connect Wallet"
 				size="lg"
 				className="w-full"
-				onClick={onConnect}
+				onClick={() => {
+					track('wallet_connect_click', { source: `form:${actionLabel.toLowerCase()}` });
+					onConnect();
+				}}
 				icon={<FontAwesomeIcon icon={faWallet} className="w-4 h-4" />}
 			/>
 		);

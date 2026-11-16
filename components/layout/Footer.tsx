@@ -1,3 +1,4 @@
+import { trackAttrs } from '@/lib/analytics';
 import React from 'react';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -32,7 +33,13 @@ export function FooterItem({ link, text, icon, external = true }: FooterItemProp
 
 	if (external) {
 		return (
-			<a href={link} target="_blank" rel="noopener noreferrer" className={className}>
+			<a
+				href={link}
+				target="_blank"
+				rel="noopener noreferrer"
+				className={className}
+				{...trackAttrs('outbound_click', { placement: 'footer', target: text })}
+			>
 				<FontAwesomeIcon icon={icon} className="w-4 h-4" />
 				<span className="sm:inline">{text}</span>
 			</a>
@@ -40,7 +47,7 @@ export function FooterItem({ link, text, icon, external = true }: FooterItemProp
 	}
 
 	return (
-		<Link href={link} className={className}>
+		<Link href={link} className={className} {...trackAttrs('cta_click', { placement: 'footer', target: text })}>
 			<FontAwesomeIcon icon={icon} className="w-4 h-4" />
 			<span className="sm:inline">{text}</span>
 		</Link>
@@ -80,6 +87,7 @@ export default function Footer() {
 								<li key={token.symbol}>
 									<a
 										href={`https://etherscan.io/token/${token.address}`}
+										{...trackAttrs('outbound_click', { placement: 'footer', target: `etherscan-${token.symbol}` })}
 										target="_blank"
 										rel="noopener noreferrer"
 										className="inline-flex items-center gap-2 text-text-secondary hover:text-usdu-orange transition-colors text-sm"
@@ -116,13 +124,18 @@ export default function Footer() {
 						<h3 className="text-usdu-black font-semibold mb-6">Resources</h3>
 						<ul className="space-y-4">
 							<li>
-								<Link href="/docs" className="text-text-secondary hover:text-usdu-orange transition-colors text-sm">
+								<Link
+									href="/docs"
+									className="text-text-secondary hover:text-usdu-orange transition-colors text-sm"
+									{...trackAttrs('cta_click', { placement: 'footer', target: 'docs' })}
+								>
 									Docs
 								</Link>
 							</li>
 							<li>
 								<a
 									href={SOCIAL.MediaKit}
+									{...trackAttrs('outbound_click', { placement: 'footer', target: 'media-kit' })}
 									target="_blank"
 									rel="noopener noreferrer"
 									className="text-text-secondary hover:text-usdu-orange transition-colors text-sm"

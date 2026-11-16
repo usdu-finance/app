@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faArrowRight, faArrowRightArrowLeft, faDroplet, faFileContract, faLayerGroup } from '@fortawesome/free-solid-svg-icons';
 import { Reveal, SectionHead, SECTION, INNER } from './shared';
+import { trackAttrs } from '@/lib/analytics';
 
 const PRODUCTS = [
 	{
@@ -51,6 +52,7 @@ export default function Products() {
 						<Reveal key={p.title} delay={(i % 2) * 0.08} className="h-full">
 							<Link
 								href={p.href}
+								{...trackAttrs('cta_click', { placement: 'products', target: p.href })}
 								className="group flex h-full gap-5 rounded-2xl border border-usdu-surface bg-usdu-card p-6 transition-colors hover:border-usdu-orange md:p-8"
 							>
 								<span className="flex h-12 w-12 flex-none items-center justify-center rounded-xl bg-usdu-black text-white transition-colors group-hover:bg-usdu-orange">

@@ -12,6 +12,7 @@ import { DetailRow } from '@/components/ui/modal';
 import Card from '@/components/ui/Card';
 import { MODULE_CURRENCIES } from './helpers';
 import { formatCompactNumber, formatTimestampLocale } from '@/lib/utils';
+import { track } from '@/lib/analytics';
 
 const DAY = 86400;
 const EXPIRIES: Record<string, number> = { '6 months': 182 * DAY, '1 year': 365 * DAY, '2 years': 730 * DAY };
@@ -45,6 +46,7 @@ export default function ProposeModule({ currency }: { currency: string }) {
 	const delayDays = timelock !== undefined ? Math.ceil((Number(timelock) * 2) / DAY) : undefined;
 
 	const handlePropose = async () => {
+		track('action_click', { page: 'modules', action: 'propose-module' });
 		try {
 			await tx.submit([proposeModuleCall(stablecoin, trimmed as `0x${string}`, BigInt(expiredAt), name.trim())], {
 				title: 'Propose module',

@@ -21,6 +21,7 @@ import NotFound from '@/components/ui/NotFound';
 import { formatCompactNumber } from '@/lib/utils';
 import { NextSeo } from 'next-seo';
 import { SEO, getCurvePoolUrl } from '@/lib/constants';
+import { track } from '@/lib/analytics';
 
 const SLIPPAGE_BPS = 50n; // 0.5%
 
@@ -124,6 +125,12 @@ function SwapCurveDetailPageContent() {
 		if (!selectedPool || amountRaw === 0n || minOutRaw === 0n) return;
 		const tokenIn = selectedPool.tokens[zeroForOne ? 0 : 1];
 
+		track('action_click', {
+			page: 'swap-curve',
+			action: 'swap',
+			pair: `${inTok?.symbol ?? ''}`,
+			needs_approval: allowanceRaw < amountRaw,
+		});
 		try {
 			await tx.submit(
 				[

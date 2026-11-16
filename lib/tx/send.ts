@@ -12,6 +12,7 @@ import {
 import toast from 'react-hot-toast';
 import { txStore } from './store';
 import { notificationStore } from '@/lib/notifications/store';
+import { errorReason, track } from '@/lib/analytics';
 import type { TxBatch, TxCall, TxItem, TxMode } from './types';
 
 /** Gas for a call that cannot be estimated yet, because it depends on a call in front of it (e.g. a swap after its approval). */
@@ -68,6 +69,16 @@ export async function runBatch({ config, account, chainId, calls, title, onConfi
 	};
 	const toastId = toast.loading(`${title}: confirm in your wallet...`);
 
+	const meta = { action: title, mode, calls: calls.length, chain_id: chainId };
+	const startedAt = Date.now();
+	let submittedTracked = false;
+	const trackSubmitted = () => {
+		if (submittedTracked) return;
+		submittedTracked = true;
+		track('tx_submitted', meta);
+	};
+	track('tx_signing', meta);
+
 	const update = (patch: Partial<TxBatch>, itemPatch?: (items: TxItem[]) => TxItem[]) => {
 		batch.items = itemPatch ? itemPatch(batch.items) : batch.items;
 		Object.assign(batch, patch);
@@ -81,6 +92,9 @@ export async function runBatch({ config, account, chainId, calls, title, onConfi
 		);
 		toast.error(`${title}: ${error}`, { id: toastId });
 		notificationStore.push({ kind: 'tx', title: `${title} failed`, text: error });
+		const reason = errorReason(error);
+		if (reason === 'rejected') track('tx_rejected', meta);
+		else track('tx_failed', { ...meta, reason });
 	};
 	const progress = () => {
 		const done = batch.items.filter((it) => it.status === 'confirmed').length;
@@ -90,6 +104,7 @@ export async function runBatch({ config, account, chainId, calls, title, onConfi
 		update({ status: 'confirmed' });
 		toast.success(`${title}: confirmed`, { id: toastId });
 		notificationStore.push({ kind: 'tx', title: `${title} confirmed` });
+		track('tx_confirmed', { ...meta, seconds: Math.round((Date.now() - startedAt) / 1000) });
 		onConfirmed?.();
 	};
 
@@ -107,6 +122,7 @@ export async function runBatch({ config, account, chainId, calls, title, onConfi
 				forceAtomic: true,
 			});
 			update({ status: 'pending' }, (items) => items.map((it) => ({ ...it, status: 'submitted' })));
+			trackSubmitted();
 			toast.loading(`${title}: waiting for confirmation...`, { id: toastId });
 
 			// tracked in the background, the caller is released already
@@ -154,6 +170,7 @@ export async function runBatch({ config, account, chainId, calls, title, onConfi
 		}
 
 		update({ status: 'pending' });
+		trackSubmitted();
 		progress();
 
 		void Promise.all(

@@ -1,4 +1,5 @@
 import { useRouter } from 'next/router';
+import { track } from '@/lib/analytics';
 
 const slug = (tab: string) => tab.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
@@ -12,6 +13,7 @@ export function useQueryTab<T extends string>(tabs: readonly T[], defaultTab: T 
 	const tab = tabs.find((t) => slug(t) === query) ?? defaultTab;
 
 	const setTab = (next: T) => {
+		if (next !== tab) track('tab_switch', { page: router.pathname, tab: slug(next) });
 		const rest = { ...router.query };
 		delete rest.tab;
 		router.replace({ query: next === defaultTab ? rest : { ...rest, tab: slug(next) } }, undefined, { shallow: true });

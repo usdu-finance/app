@@ -10,6 +10,7 @@ import Image from 'next/image';
 import { LayoutProps } from './Layout.types';
 import { dashboardNavigation } from '@/lib/layout/navigation';
 import HeaderActions from './HeaderActions';
+import { track } from '@/lib/analytics';
 
 export default function DashboardLayout({ children }: LayoutProps) {
 	const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -77,7 +78,10 @@ export default function DashboardLayout({ children }: LayoutProps) {
 							{!isConnected ? (
 								<button
 									type="button"
-									onClick={() => open()}
+									onClick={() => {
+										track('wallet_connect_click', { source: 'header' });
+										open();
+									}}
 									className="inline-flex items-center gap-2 bg-usdu-orange text-white px-4 py-2 rounded-lg hover:bg-opacity-90 transition-colors text-sm font-medium"
 								>
 									<FontAwesomeIcon icon={faWallet} className="w-3 h-3" />
@@ -146,6 +150,7 @@ export default function DashboardLayout({ children }: LayoutProps) {
 								<button
 									type="button"
 									onClick={() => {
+										track('wallet_connect_click', { source: 'mobile-menu' });
 										open();
 										closeMobileMenu();
 									}}
