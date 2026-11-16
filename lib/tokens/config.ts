@@ -55,6 +55,14 @@ export const TOKENS: Record<string, TokenConfig> = {
 		chainId: 1,
 		logoURI: '/coins/deuro.svg',
 	},
+	svDEURO: {
+		address: '0x1F0e1d27b3D7F8A73D03a10D3078C32933297e90',
+		symbol: 'svDEURO',
+		name: 'Savings Vault DEURO',
+		decimals: 18,
+		chainId: 1,
+		logoURI: '/coins/svdeuro.svg',
+	},
 	USDU: {
 		address: '0xdde3eC717f220Fc6A29D6a4Be73F91DA5b718e55',
 		symbol: 'USDU',
