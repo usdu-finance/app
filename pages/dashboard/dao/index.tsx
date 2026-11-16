@@ -28,7 +28,7 @@ import { PillTabs, TabsBar, TokenInput, TokenSelectModal } from '@/components/ui
 import HeroSteps from '@/components/ui/HeroSteps';
 import { useQueryTab } from '@/hooks/ui/useQueryTab';
 import { useSwapModules } from '@/hooks/useSwapModules';
-import { isRedeemPool, useCurvePools } from '@/hooks/useCurvePools';
+import { useCurvePools } from '@/hooks/useCurvePools';
 import {
 	ERC4626_ABI,
 	FOREIGN_TOKENS,
@@ -199,15 +199,39 @@ function DaoPageContent() {
 			{ title: `${functionName === 'swap' ? 'Swap' : 'Disable route'} ${symbol}` }
 		).catch(() => undefined); // declined in the wallet
 
+	// every token a swap can run for right now, sent as one batch of swaps
+	const swappableRows = rows.filter((r) => r.route?.enabled && r.swappable > 0n);
+	const batchSwap = () =>
+		submit(
+			swappableRows.map(({ token }) => ({
+				address: FOREIGN_SWAPPER,
+				abi: ForeignSwapperV1_ABI,
+				functionName: 'swap' as const,
+				args: [token.address] as const,
+				label: `Swap ${token.symbol}`,
+			})),
+			{ title: `Swap ${swappableRows.map((r) => r.token.symbol).join(', ')}` }
+		).catch(() => undefined); // declined in the wallet
+
 	// --- set route (curator only) ---
 	const { modules } = useSwapModules();
 	const { pools } = useCurvePools();
-	const fxPools = useMemo(() => pools.filter((p) => !isRedeemPool(p)), [pools]); // the redeem pools lead out of the ecosystem
 	const [tokenSymbol, setTokenSymbol] = useState(FOREIGN_TOKENS[0]!.symbol);
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [stepsOpen, setStepsOpen] = useState(false);
 	const [edits, setEdits] = useState<Record<string, Partial<RouteDraft>>>({}); // per token, on top of the on-chain route
 	const edit = edits[tokenSymbol] ?? {};
+
+	// a click on a table row loads that token into the cards, starting from its live route and limits
+	const selectToken = (symbol: string) => {
+		setTokenSymbol(symbol);
+		setEdits((e) => {
+			const rest = { ...e };
+			delete rest[symbol];
+			return rest;
+		});
+		document.getElementById('set-route')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	};
 	const patch = (p: Partial<RouteDraft>) => setEdits((e) => ({ ...e, [tokenSymbol]: { ...e[tokenSymbol], ...p } }));
 
 	const tokenIndex = FOREIGN_TOKENS.findIndex((t) => t.symbol === tokenSymbol);
@@ -241,7 +265,7 @@ function DaoPageContent() {
 	});
 	const sharePrice = sharePriceRaw !== undefined && asset ? Number(formatUnits(sharePriceRaw, asset.decimals)) : undefined;
 
-	const ctx = { modules, pools: fxPools, swapper: FOREIGN_SWAPPER, asset, sharePrice };
+	const ctx = { modules, pools, swapper: FOREIGN_SWAPPER, asset, sharePrice };
 
 	// the route that is live now, as picked steps, so the form starts from it
 	const loaded = useMemo(() => {
@@ -252,7 +276,7 @@ function DaoPageContent() {
 				picked.push('unwrap');
 				continue;
 			}
-			const pool = fxPools.find((x) => x.poolAddress.toLowerCase() === step.target.toLowerCase());
+			const pool = pools.find((x) => x.poolAddress.toLowerCase() === step.target.toLowerCase());
 			if (pool) {
 				const i = pool.tokens.findIndex((t) => t.address.toLowerCase() === step.tokenIn.toLowerCase());
 				if (i < 0) return undefined;
@@ -270,7 +294,7 @@ function DaoPageContent() {
 			}
 		}
 		return picked;
-	}, [onchain, modules, fxPools, routeToken.address]);
+	}, [onchain, modules, pools, routeToken.address]);
 
 	const now = Math.floor(Date.now() / 1000);
 	// no live route yet: start with the first step that fits, the unwrap for a vault token, else a Stable Bridge
@@ -398,8 +422,12 @@ function DaoPageContent() {
 												key={token.symbol}
 												headers={HEADERS}
 												colSpan={COL_SPAN}
+												onClick={() => selectToken(token.symbol)}
 												actionCol={
-													<div className="flex items-center justify-end gap-1">
+													<div
+														className="flex items-center justify-end gap-1"
+														onClick={(e) => e.stopPropagation()}
+													>
 														<button
 															type="button"
 															title={`Swap ${token.symbol}`}
@@ -494,10 +522,28 @@ function DaoPageContent() {
 								)}
 							</TableBody>
 						</Table>
+						<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+							<div>
+								<div className="font-semibold text-text-primary">Execute actions</div>
+								<div className="text-text-secondary">
+									Runs every swap that is possible right now, one signature each or a single bundle where the wallet
+									supports it.
+								</div>
+							</div>
+							<button
+								type="button"
+								disabled={!address || swappableRows.length === 0 || isSigning}
+								onClick={batchSwap}
+								className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-usdu-orange text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap"
+							>
+								<FontAwesomeIcon icon={faArrowRightArrowLeft} className="w-4 h-4" />
+								{swappableRows.length > 0 ? `Batch swap (${swappableRows.length})` : 'Batch swap'}
+							</button>
+						</div>
 					</Card>
 
 					{
-						<div className="grid gap-8 md:grid-cols-2">
+						<div id="set-route" className="grid gap-8 md:grid-cols-2 scroll-mt-8">
 							<Card variant="panel" className="flex flex-col gap-6">
 								<PageHeader
 									title="Set Route"
