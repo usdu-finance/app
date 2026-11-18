@@ -16,8 +16,6 @@ import {
 	faBolt,
 	faCircleCheck,
 	faCoins,
-	faCopy,
-	faDownload,
 	faHourglassHalf,
 	faPlus,
 	faRoute,
@@ -42,7 +40,8 @@ import { useTx } from '@/hooks/useTx';
 import { APP_REFETCH, SEO } from '@/lib/constants';
 import { TOKENS } from '@/lib/tokens/config';
 import { formatCompactNumber } from '@/lib/utils';
-import { track } from '@/lib/analytics';
+import ProposalCard, { type ProposalStep } from '@/components/sections/dao/ProposalCard';
+import StreamerDepositorTab from '@/components/sections/dao/StreamerDepositorTab';
 
 const HEADERS = ['Token', 'Approved', 'Threshold', 'Rate', 'Receives'];
 const COL_SPAN = HEADERS.length;
@@ -68,7 +67,7 @@ interface RouteDraft {
 }
 
 // one tab per kind of action taken on behalf of the DAO, more will follow
-const TABS = ['Foreign Swapper'] as const;
+const TABS = ['Foreign Swapper', 'Streamer Depositor'] as const;
 
 const STEPS = [
 	{
@@ -85,6 +84,24 @@ const STEPS = [
 		icon: <FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-card" />,
 		title: 'Anyone converts',
 		description: 'Anyone can trigger the swap. The result always lands back in the DAO.',
+	},
+];
+
+const STREAMER_STEPS = [
+	{
+		icon: <FontAwesomeIcon icon={faCoins} className="w-3 h-3 text-usdu-card" />,
+		title: 'Approve a stablecoin',
+		description: 'The DAO approves the depositor for USDU, EURU or CHFU. The approval is the hard ceiling of what it can pull.',
+	},
+	{
+		icon: <FontAwesomeIcon icon={faRoute} className="w-3 h-3 text-usdu-card" />,
+		title: 'Set a flow',
+		description: 'The curator picks a share of its balance per week or month and a flow cap that bounds it.',
+	},
+	{
+		icon: <FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-card" />,
+		title: 'Anyone deposits',
+		description: 'Once per period anyone can trigger it. The amount goes from the DAO straight into the reward vault.',
 	},
 ];
 
@@ -325,14 +342,8 @@ function DaoPageContent() {
 	const maxBelowMin = !!maxAmount && !!minAmount && BigInt(maxAmount) < BigInt(minAmount);
 	const canSet = path.steps.length > 0 && !path.error && BigInt(rate || '0') > 0n && !maxBelowMin;
 
-	// --- DAO proposal: steps collected here are batched into one proposal in the Aragon app ---
-	const [proposal, setProposal] = useState<{ label: string; to: `0x${string}`; data: `0x${string}` }[]>([]);
-	const [copied, setCopied] = useState(false);
-	const proposalJson = JSON.stringify(
-		proposal.map(({ to, data }) => ({ to, value: '0', data })),
-		null,
-		2
-	);
+	// --- DAO proposal: steps collected here are batched into one proposal in the Aragon app (shared by all tabs) ---
+	const [proposal, setProposal] = useState<ProposalStep[]>([]);
 
 	// the DAO holds the tokens, so its own approval is needed, whatever the connected wallet has approved
 	// capped to the route's max amount, a route without a cap needs an unlimited approval
@@ -369,35 +380,18 @@ function DaoPageContent() {
 		]);
 	};
 
-	const copyProposal = () => {
-		navigator.clipboard
-			.writeText(proposalJson)
-			.then(() => {
-				track('proposal_copy', { routes: proposal.length });
-				setCopied(true);
-				setTimeout(() => setCopied(false), 1500);
-			})
-			.catch(() => undefined);
-	};
-
-	const downloadProposal = () => {
-		track('proposal_download', { routes: proposal.length });
-		const url = URL.createObjectURL(new Blob([proposalJson], { type: 'application/json' }));
-		const a = document.createElement('a');
-		a.href = url;
-		a.download = 'dao-proposal.json';
-		a.click();
-		URL.revokeObjectURL(url);
-	};
-
 	return (
 		<div className="space-y-8">
 			<PageHeader
 				title="DAO"
-				description="Foreign tokens held by the DAO are converted into ecosystem tokens along routes the curator configured. Anyone can trigger a conversion; the proceeds always go back to the DAO."
+				description={
+					tab === 'Streamer Depositor'
+						? 'The DAO funds the reward vaults from its stablecoin balance, a capped share per period. Anyone can trigger a deposit.'
+						: 'Foreign tokens held by the DAO are converted into ecosystem tokens along routes the curator configured. Anyone can trigger a conversion; the proceeds always go back to the DAO.'
+				}
 			/>
 
-			<HeroSteps steps={STEPS} />
+			<HeroSteps steps={tab === 'Streamer Depositor' ? STREAMER_STEPS : STEPS} />
 
 			<TabsBar>
 				<PillTabs value={tab} onChange={setTab} options={TABS.map((t) => ({ value: t, label: t }))} />
@@ -632,74 +626,22 @@ function DaoPageContent() {
 							</Card>
 						</div>
 					}
-
-					<Card variant="panel" className="flex flex-col gap-6">
-						<PageHeader
-							title="DAO Proposal"
-							description="Collect steps here and paste the JSON into the Aragon app. All steps are batched into one transaction of the proposal and executed by the DAO."
-						/>
-						<div className="space-y-2">
-							{proposal.length === 0 && (
-								<div className="text-text-secondary">No steps yet. Build a route above and add it.</div>
-							)}
-							{proposal.map((step, i) => (
-								<div key={i} className="flex items-center justify-between gap-4 rounded-lg bg-usdu-bg px-4 py-2">
-									<span>
-										<span className="text-text-muted">{i + 1}.</span> {step.label}
-									</span>
-									<button
-										type="button"
-										title="Remove this step"
-										aria-label={`Remove proposal step ${i + 1}`}
-										onClick={() => setProposal((p) => p.filter((_, j) => j !== i))}
-										className={ICON_BTN}
-									>
-										<FontAwesomeIcon icon={faXmark} className="w-4 h-4" />
-									</button>
-								</div>
-							))}
-						</div>
-						{proposal.length > 0 && (
-							<div className="space-y-2">
-								<div className="flex items-center justify-between">
-									<span className="text-text-secondary">Payload</span>
-									<div className="flex items-center gap-6">
-										<button
-											type="button"
-											onClick={copyProposal}
-											className="flex items-center gap-2 text-usdu-orange hover:underline"
-										>
-											<FontAwesomeIcon icon={faCopy} className="w-4 h-4" />
-											{copied ? 'Copied' : 'Copy JSON'}
-										</button>
-										<button
-											type="button"
-											onClick={downloadProposal}
-											className="flex items-center gap-2 text-usdu-orange hover:underline"
-										>
-											<FontAwesomeIcon icon={faDownload} className="w-4 h-4" />
-											Download JSON
-										</button>
-										<button
-											type="button"
-											onClick={() => setProposal([])}
-											className="text-text-secondary hover:text-text-primary transition-colors"
-										>
-											Clear
-										</button>
-									</div>
-								</div>
-								<textarea
-									readOnly
-									value={proposalJson}
-									rows={Math.min(proposalJson.split('\n').length, 16)}
-									className="w-full rounded-lg bg-usdu-bg p-4 font-mono text-xs break-all"
-								/>
-							</div>
-						)}
-					</Card>
 				</>
 			)}
+
+			{tab === 'Streamer Depositor' && (
+				<StreamerDepositorTab dao={dao} canDisable={canDisable} addToProposal={(steps) => setProposal((p) => [...p, ...steps])} />
+			)}
+
+			<ProposalCard
+				proposal={proposal}
+				setProposal={setProposal}
+				empty={
+					tab === 'Streamer Depositor'
+						? 'No steps yet. Configure a flow above and add it.'
+						: 'No steps yet. Build a route above and add it.'
+				}
+			/>
 			<Modal
 				isOpen={stepsOpen}
 				onClose={() => setStepsOpen(false)}
