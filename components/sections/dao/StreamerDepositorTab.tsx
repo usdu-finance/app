@@ -357,11 +357,11 @@ export default function StreamerDepositorTab({
 							<div className="text-text-primary">
 								{fmt(capValue, symbol)} / {percent}% = <span className="font-semibold">{fmt(capBalance, symbol)}</span>
 							</div>
-							<div className="text-sm text-text-secondary">
-								{row.balance >= capBalance
-									? `The DAO holds more than that, so the cap limits the flow to ${fmt(capValue, symbol)} per ${unit}.`
-									: 'The DAO holds less than that, so the flow follows the share and stays below the cap.'}
-							</div>
+							{row.balance >= capBalance && (
+								<div className="text-sm text-text-secondary">
+									{`The DAO holds more than that, so the cap limits the flow to ${fmt(capValue, symbol)} per ${unit}.`}
+								</div>
+							)}
 						</div>
 					)}
 				</Card>
