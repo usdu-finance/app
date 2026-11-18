@@ -330,9 +330,10 @@ function DaoPageContent() {
 
 	// suggested floor: par after the module fees and the vault share price, minus 0.5% of slack
 	const suggestedRate = path.steps.length ? BigInt(Math.floor(path.suggestedRate * 0.995 * 1e6)) * 10n ** 12n : 0n;
-	const rate =
-		edit.rate ??
-		(edit.choices === undefined && loaded && onchain ? fromContractRate(onchain.minRate).toString() : suggestedRate.toString());
+	// nothing set yet is an empty field, but a typed 0 has to stay: the input holds "0" while you type 0.5
+	const defaultRate =
+		edit.choices === undefined && loaded && onchain ? fromContractRate(onchain.minRate).toString() : suggestedRate.toString();
+	const rate = edit.rate ?? (defaultRate === '0' ? '' : defaultRate);
 	// a token without a live route starts from 10 min and 1000 max, a live route keeps its own (empty for none / no cap)
 	const defaultAmount = (whole: string) => parseUnits(whole, routeToken.decimals).toString();
 	const live = onchain?.enabled ? onchain : undefined;
@@ -549,7 +550,7 @@ function DaoPageContent() {
 								<TokenInput
 									label="Minimum rate"
 									symbol={routeToken.symbol}
-									value={rate === '0' ? '' : rate}
+									value={rate}
 									onChange={(v) => patch({ rate: v })}
 									onTokenClick={() => setPickerOpen(true)}
 									digit={18}
