@@ -7,7 +7,7 @@ import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/componen
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import Card from '@/components/ui/Card';
-import { TokenInput, TokenSelectModal } from '@/components/ui/input';
+import { PillTabs, TokenInput, TokenSelectModal } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { ApyChart } from '@/components/ui/charts';
 import { useTx } from '@/hooks/useTx';
@@ -33,6 +33,8 @@ const DEFAULT_CAP = (10n * 10n ** BigInt(DECIMALS)).toString(); // 10 tokens, un
 
 const MAX_BPS = 10_000n;
 const TARGET_APYS = [5, 10]; // % per year
+const RATE_VIEWS = ['Flow rate', 'Capped flow rate'] as const; // the share of the balance, or the cap
+type RateView = (typeof RATE_VIEWS)[number];
 const TOTAL_ASSETS_ABI = parseAbi(['function totalAssets() view returns (uint256)']);
 
 /** A number of periods as text, with years added once it gets long. */
@@ -123,7 +125,6 @@ export default function StreamerDepositorTab({
 			delete rest[next];
 			return rest;
 		});
-		document.getElementById('set-flow')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	};
 
 	const live = row.onchain?.enabled ? row.onchain : undefined;
@@ -132,6 +133,7 @@ export default function StreamerDepositorTab({
 	const percent = String(Number(bpsDigits || '0') / 100);
 	const [pickerOpen, setPickerOpen] = useState(false);
 	const [periodOpen, setPeriodOpen] = useState(false);
+	const [rateView, setRateView] = useState<RateView>('Flow rate');
 	const period: Period = edit.period ?? (live && Number(live.cooldown) === PERIODS.Monthly ? 'Monthly' : 'Weekly');
 	const cap = edit.cap ?? (live ? live.flowCap.toString() : DEFAULT_CAP);
 
@@ -140,15 +142,14 @@ export default function StreamerDepositorTab({
 	const capValue = BigInt(cap || '0');
 	const canSet = bps !== undefined && capValue > 0n;
 
-	// what one period would move at today's balance: the percentage, bounded by the cap
+	// what one period would move at today's balance: the percentage of it
 	const share = bps !== undefined ? (row.balance * BigInt(bps)) / 10_000n : 0n;
-	const perPeriod = capValue > 0n && share > capValue ? capValue : share;
 
 	// APY the flow pays to the vault: what a year of deposits at today's balance is worth against the vault's TVL.
 	// The balance shrinks by the share each period unless it is topped up, so this is an upper estimate; with the cap
 	// binding the flow is flat and the number is exact.
 	// how long the DAO's balance lasts if it is burned at this pace alone: a cap burns it linearly, a share leaves a
-	// shrinking rest each period, so it is never fully used up and the note gives the half-life and 99% instead
+	// shrinking rest each period, so it is never fully used up and the note gives the half-life instead
 	const balanceNum = Number(formatUnits(row.balance, DECIMALS));
 	const capNum = Number(formatUnits(capValue, DECIMALS));
 	const decay = (left: number) => Math.log(left) / Math.log(1 - (bps ?? 0) / 10_000);
@@ -157,11 +158,17 @@ export default function StreamerDepositorTab({
 			? undefined
 			: bps === 10_000
 				? 'The whole balance is burned in the first period'
-				: `Balance halved after ~${duration(decay(0.5), period)}, 99% burned after ~${duration(decay(0.01), period)}`;
+				: `Balance halved after ~${duration(decay(0.5), period)}`;
+	// the DAO balance at which the share equals the cap: above it the cap limits the flow, below it the share does
+	const capBalance = bps !== undefined && capValue > 0n ? (capValue * 10_000n) / BigInt(bps) : 0n;
+	const unit = period === 'Weekly' ? 'week' : 'month';
+
 	const capNote =
 		row.balance === 0n || capValue === 0n ? undefined : `Balance burned completely after ~${duration(balanceNum / capNum, period)}`;
 
-	const yearly = (perPeriod * BigInt(365 * DAY)) / BigInt(PERIODS[period]);
+	// what the preview shows, per year: the flow rate is the share of the balance, the capped flow rate is the cap itself
+	const perYear = (amount: bigint) => (amount * BigInt(365 * DAY)) / BigInt(PERIODS[period]);
+	const shownYearly = perYear(rateView === 'Capped flow rate' ? capValue : share);
 	const tvl = row.tvl;
 
 	// the payload would target the zero address, so say so in every step until the depositor is deployed
@@ -225,8 +232,8 @@ export default function StreamerDepositorTab({
 				/>
 				{!STREAMER_DEPOSITOR_DEPLOYED && (
 					<div className="rounded-lg bg-usdu-bg px-4 py-3 text-text-secondary">
-						The depositor is not deployed yet. You can already prepare a proposal below, the target address is filled in once it
-						is.
+						The depositor is not deployed yet. You can try out a setup below, but the payload targets the zero address until it
+						is deployed, so do not execute it yet.
 					</div>
 				)}
 				<Table>
@@ -310,7 +317,7 @@ export default function StreamerDepositorTab({
 				</Table>
 			</Card>
 
-			<div id="set-flow" className="grid gap-8 md:grid-cols-2 scroll-mt-8">
+			<div className="grid gap-8 md:grid-cols-2">
 				<Card variant="panel" className="flex flex-col gap-6">
 					<PageHeader
 						title="Set Flow"
@@ -319,7 +326,7 @@ export default function StreamerDepositorTab({
 					<TokenInput
 						label="Share of the DAO's balance per period"
 						symbol={symbol}
-						value={bpsDigits === '0' ? '' : bpsDigits}
+						value={bpsDigits}
 						onChange={(v) => patch({ bps: v })}
 						onTokenClick={() => setPickerOpen(true)}
 						digit={2}
@@ -344,6 +351,19 @@ export default function StreamerDepositorTab({
 						digit={DECIMALS}
 						placeholder="0.00"
 					/>
+					{capBalance > 0n && (
+						<div className="space-y-1">
+							<div className="text-text-secondary">Balance at which the cap takes over</div>
+							<div className="text-text-primary">
+								{fmt(capValue, symbol)} / {percent}% = <span className="font-semibold">{fmt(capBalance, symbol)}</span>
+							</div>
+							<div className="text-sm text-text-secondary">
+								{row.balance >= capBalance
+									? `The DAO holds more than that, so the cap limits the flow to ${fmt(capValue, symbol)} per ${unit}.`
+									: 'The DAO holds less than that, so the flow follows the share and stays below the cap.'}
+							</div>
+						</div>
+					)}
 				</Card>
 
 				<Card variant="panel" className="flex flex-col gap-6">
@@ -351,14 +371,12 @@ export default function StreamerDepositorTab({
 						title="Preview"
 						description="What a period would move at the DAO's current balance, with the setup on the left."
 					/>
-					<div className="space-y-2">
-						<div className="flex items-center justify-between">
-							<span className="text-text-secondary">Per year at this flow</span>
-							<span>{fmt(yearly, symbol)}</span>
-						</div>
+					<div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+						<PillTabs value={rateView} onChange={setRateView} options={RATE_VIEWS.map((v) => ({ value: v, label: v }))} />
+						<span>{fmt(shownYearly, symbol)} / year</span>
 					</div>
 					<ApyChart
-						yearly={Number(formatUnits(yearly, DECIMALS))}
+						yearly={Number(formatUnits(shownYearly, DECIMALS))}
 						tvl={Number(formatUnits(tvl, DECIMALS))}
 						targets={TARGET_APYS}
 						formatTvl={(v) => formatCompactNumber(v, 1, '').replace(/\.0(?=[kMBT]?$)/, '')}
