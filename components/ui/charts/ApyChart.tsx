@@ -79,7 +79,10 @@ export default function ApyChart({ yearly, tvl, targets = [], metric = 'APY', fo
 	};
 
 	const tooltipLeft = hover !== null ? Math.min(Math.max(x(hover), 70), Math.max(width - 70, 70)) : 0;
-	const todayAnchor = x(tvl) > width - 80 ? 'end' : 'middle';
+	// the label of today's line, centered on it unless that would run off the chart
+	const todayLabel = currentApy !== undefined ? `Today · ${currentApy.toFixed(2)}% at ${formatTvl(tvl)} TVL` : '';
+	const todayHalf = (todayLabel.length * 7) / 2; // text-xs, close enough to place it
+	const todayAnchor = x(tvl) + todayHalf > width - MARGIN.right ? 'end' : x(tvl) - todayHalf < MARGIN.left ? 'start' : 'middle';
 
 	return (
 		// relative: the sr-only list below is absolutely positioned, and without a positioned parent it is measured against the
@@ -229,7 +232,7 @@ export default function ApyChart({ yearly, tvl, targets = [], metric = 'APY', fo
 								/>
 								<circle cx={x(tvl)} cy={y(currentApy)} r={5} className="fill-usdu-orange stroke-usdu-bg" strokeWidth={2} />
 								<text x={x(tvl)} y={MARGIN.top - 6} textAnchor={todayAnchor} className="fill-text-secondary text-xs">
-									{`Today · ${currentApy.toFixed(2)}%`}
+									{todayLabel}
 								</text>
 							</>
 						)}
