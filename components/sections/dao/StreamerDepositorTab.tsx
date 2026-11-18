@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { useAccount, useReadContracts } from 'wagmi';
-import { encodeFunctionData, erc20Abi, formatUnits, maxUint256 } from 'viem';
+import { encodeFunctionData, erc20Abi, formatUnits, maxUint256, parseAbi } from 'viem';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBan, faCircleCheck, faCoins, faHourglassHalf, faPlus } from '@fortawesome/free-solid-svg-icons';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { TokenLogo } from '@/components/ui/logo';
 import { PageHeader } from '@/components/ui/layout';
 import Card from '@/components/ui/Card';
-import { PillTabs, TextInput, TokenInput } from '@/components/ui/input';
+import { TokenInput, TokenSelectModal } from '@/components/ui/input';
+import { Modal } from '@/components/ui/modal';
 import { useTx } from '@/hooks/useTx';
 import { APP_REFETCH } from '@/lib/constants';
 import { formatCompactNumber } from '@/lib/utils';
@@ -24,15 +25,21 @@ const ICON_BTN =
 const DAY = 24 * 3600;
 const PERIODS = { Weekly: 7 * DAY, Monthly: 30 * DAY } as const;
 type Period = keyof typeof PERIODS;
-const PERIOD_OPTIONS = (Object.keys(PERIODS) as Period[]).map((p) => ({ value: p, label: p }));
+const PERIOD_OPTIONS = Object.keys(PERIODS) as Period[];
 
 const DECIMALS = 18; // USDU, EURU and CHFU
+const DEFAULT_CAP = (10n * 10n ** BigInt(DECIMALS)).toString(); // 10 tokens, until a flow is set
 
-/** "1.5" -> 150 basis points, undefined while it is not a percentage with at most two decimals. */
-const parseBps = (percent: string): number | undefined => {
-	if (!/^\d+(\.\d{1,2})?$/.test(percent)) return undefined;
-	const bps = Math.round(parseFloat(percent) * 100);
-	return bps >= 1 && bps <= 10_000 ? bps : undefined;
+const MAX_BPS = 10_000n;
+const TARGET_APYS = [5, 10]; // % per year
+const TOTAL_ASSETS_ABI = parseAbi(['function totalAssets() view returns (uint256)']);
+
+/** A number of periods as text, with years added once it gets long. */
+const duration = (periods: number, period: Period) => {
+	const unit = period === 'Weekly' ? 'week' : 'month';
+	const n = Math.max(1, Math.ceil(periods));
+	const years = (n * PERIODS[period]) / (365 * DAY);
+	return `${n.toLocaleString('en-US')} ${unit}${n === 1 ? '' : 's'}${years >= 2 ? ` (~${years.toFixed(1)} years)` : ''}`;
 };
 
 const periodLabel = (seconds: number) =>
@@ -67,13 +74,21 @@ export default function StreamerDepositorTab({
 	const { address } = useAccount();
 	const { submit, isSigning } = useTx();
 
+	// the DAO's balances and approvals do not depend on the depositor being deployed
+	const { data: tokenData } = useReadContracts({
+		contracts: STREAMER_FLOWS.flatMap((f) => [
+			{ address: f.token, abi: erc20Abi, functionName: 'allowance' as const, args: [dao, STREAMER_DEPOSITOR] as const },
+			{ address: f.token, abi: erc20Abi, functionName: 'balanceOf' as const, args: [dao] as const },
+			{ address: f.vault, abi: TOTAL_ASSETS_ABI, functionName: 'totalAssets' as const }, // the vault's TVL
+		]),
+		query: { refetchInterval: APP_REFETCH },
+	});
+
 	const { data, error, isLoading } = useReadContracts({
 		contracts: STREAMER_FLOWS.flatMap((f) => [
 			{ address: STREAMER_DEPOSITOR, abi: StreamerDepositorV1_ABI, functionName: 'getFlow' as const, args: [f.token] as const },
 			{ address: STREAMER_DEPOSITOR, abi: StreamerDepositorV1_ABI, functionName: 'depositable' as const, args: [f.token] as const },
 			{ address: STREAMER_DEPOSITOR, abi: StreamerDepositorV1_ABI, functionName: 'nextDepositAt' as const, args: [f.token] as const },
-			{ address: f.token, abi: erc20Abi, functionName: 'allowance' as const, args: [dao, STREAMER_DEPOSITOR] as const },
-			{ address: f.token, abi: erc20Abi, functionName: 'balanceOf' as const, args: [dao] as const },
 		]),
 		query: { enabled: STREAMER_DEPOSITOR_DEPLOYED, refetchInterval: APP_REFETCH },
 	});
@@ -82,34 +97,64 @@ export default function StreamerDepositorTab({
 		() =>
 			STREAMER_FLOWS.map((flow, i) => ({
 				flow,
-				onchain: data?.[i * 5]?.result as OnchainFlow | undefined,
-				depositable: (data?.[i * 5 + 1]?.result as bigint | undefined) ?? 0n,
-				nextAt: (data?.[i * 5 + 2]?.result as bigint | undefined) ?? 0n,
-				approved: (data?.[i * 5 + 3]?.result as bigint | undefined) ?? 0n,
-				balance: (data?.[i * 5 + 4]?.result as bigint | undefined) ?? 0n,
+				onchain: data?.[i * 3]?.result as OnchainFlow | undefined,
+				depositable: (data?.[i * 3 + 1]?.result as bigint | undefined) ?? 0n,
+				nextAt: (data?.[i * 3 + 2]?.result as bigint | undefined) ?? 0n,
+				approved: (tokenData?.[i * 3]?.result as bigint | undefined) ?? 0n,
+				balance: (tokenData?.[i * 3 + 1]?.result as bigint | undefined) ?? 0n,
+				tvl: (tokenData?.[i * 3 + 2]?.result as bigint | undefined) ?? 0n,
 			})),
-		[data]
+		[data, tokenData]
 	);
 
 	// --- set flow form, starting from the live flow of the selected stablecoin ---
 	const [symbol, setSymbol] = useState<(typeof STREAMER_FLOWS)[number]['symbol']>(STREAMER_FLOWS[0]!.symbol);
-	const [edits, setEdits] = useState<Record<string, { percent?: string; period?: Period; cap?: string }>>({});
+	const [edits, setEdits] = useState<Record<string, { bps?: string; period?: Period; cap?: string }>>({});
 	const row = rows.find((r) => r.flow.symbol === symbol)!;
 	const edit = edits[symbol] ?? {};
 	const patch = (p: typeof edit) => setEdits((e) => ({ ...e, [symbol]: { ...e[symbol], ...p } }));
 
 	const live = row.onchain?.enabled ? row.onchain : undefined;
-	const percent = edit.percent ?? (live ? String(live.bps / 100) : '1');
+	// basis points as digits of a 2-decimal input: 100 is 1.00%
+	const bpsDigits = edit.bps ?? (live ? String(live.bps) : '100');
+	const percent = String(Number(bpsDigits || '0') / 100);
+	const [pickerOpen, setPickerOpen] = useState(false);
+	const [periodOpen, setPeriodOpen] = useState(false);
 	const period: Period = edit.period ?? (live && Number(live.cooldown) === PERIODS.Monthly ? 'Monthly' : 'Weekly');
-	const cap = edit.cap ?? (live ? live.flowCap.toString() : '');
+	const cap = edit.cap ?? (live ? live.flowCap.toString() : DEFAULT_CAP);
 
-	const bps = parseBps(percent);
+	const bpsValue = BigInt(bpsDigits || '0');
+	const bps = bpsValue >= 1n && bpsValue <= MAX_BPS ? Number(bpsValue) : undefined;
 	const capValue = BigInt(cap || '0');
-	const canSet = STREAMER_DEPOSITOR_DEPLOYED && bps !== undefined && capValue > 0n;
+	const canSet = bps !== undefined && capValue > 0n;
 
 	// what one period would move at today's balance: the percentage, bounded by the cap
 	const share = bps !== undefined ? (row.balance * BigInt(bps)) / 10_000n : 0n;
 	const perPeriod = capValue > 0n && share > capValue ? capValue : share;
+
+	// APY the flow pays to the vault: what a year of deposits at today's balance is worth against the vault's TVL.
+	// The balance shrinks by the share each period unless it is topped up, so this is an upper estimate; with the cap
+	// binding the flow is flat and the number is exact.
+	// how long the DAO's balance lasts if it is burned at this pace alone: a cap burns it linearly, a share leaves a
+	// shrinking rest each period, so it is never fully used up and the note gives the half-life and 99% instead
+	const balanceNum = Number(formatUnits(row.balance, DECIMALS));
+	const capNum = Number(formatUnits(capValue, DECIMALS));
+	const decay = (left: number) => Math.log(left) / Math.log(1 - (bps ?? 0) / 10_000);
+	const shareNote =
+		row.balance === 0n || bps === undefined
+			? undefined
+			: bps === 10_000
+				? 'The whole balance is burned in the first period'
+				: `Balance halved after ~${duration(decay(0.5), period)}, 99% burned after ~${duration(decay(0.01), period)}`;
+	const capNote =
+		row.balance === 0n || capValue === 0n ? undefined : `Balance burned completely after ~${duration(balanceNum / capNum, period)}`;
+
+	const yearly = (perPeriod * BigInt(365 * DAY)) / BigInt(PERIODS[period]);
+	const tvl = row.tvl;
+	const currentApy = tvl > 0n ? Number((yearly * 10_000n) / tvl) / 100 : undefined;
+
+	// the payload would target the zero address, so say so in every step until the depositor is deployed
+	const NOT_DEPLOYED = STREAMER_DEPOSITOR_DEPLOYED ? '' : '[depositor not deployed, do not execute] ';
 
 	const add = () => {
 		if (!canSet || bps === undefined) return;
@@ -118,13 +163,13 @@ export default function StreamerDepositorTab({
 		// the allowance is the DAO's own hard ceiling; the flow cap already bounds what a period can spend
 		if (row.approved < capValue) {
 			steps.push({
-				label: `Approve ${symbol} for the depositor (unlimited)`,
+				label: `${NOT_DEPLOYED}Approve ${symbol} for the depositor (unlimited)`,
 				to: token,
 				data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [STREAMER_DEPOSITOR, maxUint256] }),
 			});
 		}
 		steps.push({
-			label: `Set flow ${symbol}: ${percent}% ${periodLabel(PERIODS[period])}, cap ${formatCompactNumber(formatUnits(capValue, DECIMALS), 2, '', ` ${symbol}`)}`,
+			label: `${NOT_DEPLOYED}Set flow ${symbol}: ${percent}% ${periodLabel(PERIODS[period])}, cap ${formatCompactNumber(formatUnits(capValue, DECIMALS), 2, '', ` ${symbol}`)}`,
 			to: STREAMER_DEPOSITOR,
 			data: encodeFunctionData({
 				abi: StreamerDepositorV1_ABI,
@@ -257,24 +302,31 @@ export default function StreamerDepositorTab({
 						title="Set Flow"
 						description="Curator only. Starts from the live flow of the stablecoin. Each period moves the percentage of the DAO's balance, or the cap if that is lower."
 					/>
-					<PillTabs
-						value={symbol}
-						onChange={setSymbol}
-						options={STREAMER_FLOWS.map((f) => ({ value: f.symbol, label: f.symbol }))}
+					<TokenInput
+						label="Share of the DAO's balance per period"
+						symbol={symbol}
+						value={bpsDigits === '0' ? '' : bpsDigits}
+						onChange={(v) => patch({ bps: v })}
+						onTokenClick={() => setPickerOpen(true)}
+						digit={2}
+						placeholder="1.00"
+						note={shareNote}
+						limitLabel="Flow"
+						limit={share}
+						limitDigit={DECIMALS}
+						error={bps === undefined ? 'A percentage from 0.01 to 100' : undefined}
 					/>
-					<TextInput
-						label="Share of the DAO's balance per period (%)"
-						value={percent}
-						onChange={(v) => patch({ percent: v })}
-						placeholder="1"
-						error={bps === undefined ? 'A percentage from 0.01 to 100, at most two decimals' : undefined}
-					/>
-					<PillTabs value={period} onChange={(v) => patch({ period: v })} options={PERIOD_OPTIONS} />
 					<TokenInput
 						label="Flow cap per period"
 						symbol={symbol}
 						value={cap}
 						onChange={(v) => patch({ cap: v })}
+						onTokenClick={() => setPeriodOpen(true)}
+						tokenLabel={period}
+						note={capNote}
+						limitLabel="DAO balance"
+						limit={row.balance}
+						limitDigit={DECIMALS}
 						digit={DECIMALS}
 						placeholder="0.00"
 					/>
@@ -286,18 +338,47 @@ export default function StreamerDepositorTab({
 						description="What a period would move at the DAO's current balance, with the setup on the left."
 					/>
 					<div className="space-y-2">
-						<div className="flex items-center justify-between rounded-lg bg-usdu-bg px-4 py-2">
-							<span className="text-text-secondary">DAO balance</span>
-							<span>{fmt(row.balance, symbol)}</span>
+						<div className="flex items-center justify-between">
+							<span className="text-text-secondary">Per year at this flow</span>
+							<span>{fmt(yearly, symbol)}</span>
 						</div>
-						<div className="flex items-center justify-between rounded-lg bg-usdu-bg px-4 py-2">
-							<span className="text-text-secondary">{percent || '0'}% of the balance</span>
-							<span>{fmt(share, symbol)}</span>
+						<div className="flex items-center justify-between">
+							<span className="text-text-secondary">Vault TVL / APY today</span>
+							<span>
+								{fmt(tvl, symbol)}
+								{currentApy !== undefined && ` / ${currentApy.toFixed(2)}%`}
+							</span>
 						</div>
-						<div className="flex items-center justify-between rounded-lg bg-usdu-bg px-4 py-2">
-							<span className="text-text-secondary">Moved per {period === 'Weekly' ? 'week' : 'month'} (after the cap)</span>
-							<span className="font-semibold text-text-primary">{fmt(perPeriod, symbol)}</span>
-						</div>
+					</div>
+					<div className="space-y-2">
+						{TARGET_APYS.map((apy) => {
+							// TVL at which the yearly flow is worth exactly this APY
+							const needed = (yearly * 100n) / BigInt(apy);
+							const missing = needed > tvl ? needed - tvl : 0n;
+							const covered = needed === 0n ? 0 : Math.min(100, Number((tvl * 100n) / needed));
+							return (
+								<div key={apy} className="space-y-2">
+									<div className="flex items-center justify-between">
+										<span className="text-text-secondary">TVL for {apy}% APY</span>
+										<span className="font-semibold text-text-primary">{fmt(needed, symbol)}</span>
+									</div>
+									<div className="h-1.5 w-full rounded-full bg-usdu-surface overflow-hidden">
+										<div className="h-full bg-usdu-orange" style={{ width: `${covered}%` }} />
+									</div>
+									<div className="text-sm text-text-secondary">
+										{needed === 0n
+											? '—'
+											: missing > 0n
+												? `Missing ${fmt(missing, symbol)}`
+												: 'Reached, the vault is at or above it'}
+									</div>
+								</div>
+							);
+						})}
+					</div>
+					<div className="text-sm text-text-secondary">
+						APY = a year of deposits at today&apos;s balance ÷ the vault&apos;s TVL. The balance shrinks by the share each
+						period unless it is topped up, so the real figure ends up lower, unless the cap holds the flow flat.
 					</div>
 					<button
 						type="button"
@@ -310,6 +391,36 @@ export default function StreamerDepositorTab({
 					</button>
 				</Card>
 			</div>
+			<Modal isOpen={periodOpen} onClose={() => setPeriodOpen(false)} title="Period" size="sm">
+				<div className="space-y-3">
+					{PERIOD_OPTIONS.map((p) => (
+						<button
+							key={p}
+							type="button"
+							onClick={() => {
+								patch({ period: p });
+								setPeriodOpen(false);
+							}}
+							className={`w-full rounded-lg bg-usdu-bg px-4 py-3 text-left border-2 transition-colors hover:border-usdu-orange ${p === period ? 'border-usdu-orange' : 'border-transparent'}`}
+						>
+							<div className="font-semibold text-text-primary">{p}</div>
+							<div className="text-sm text-text-secondary">
+								{p === 'Weekly' ? 'One deposit every 7 days at most' : 'One deposit every 30 days at most'}
+							</div>
+						</button>
+					))}
+				</div>
+			</Modal>
+			<TokenSelectModal
+				isOpen={pickerOpen}
+				onClose={() => setPickerOpen(false)}
+				onSelect={(t) => {
+					setSymbol(t.symbol as typeof symbol);
+					setPickerOpen(false);
+				}}
+				tokens={STREAMER_FLOWS.map((f) => ({ symbol: f.symbol, address: f.token, decimals: DECIMALS, name: f.symbol }))}
+				title="Select stablecoin"
+			/>
 		</>
 	);
 }
