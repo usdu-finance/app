@@ -43,11 +43,12 @@ export default function DaoExpenses({
 		let lastOut = 0;
 
 		for (const r of data?.transfers ?? []) {
-			// Only what went to a wallet is paid out. Funds the DAO sends to a module or any other contract are an allocation, not a cost.
-			if (r.dir !== 'out' || r.kind !== 'wallet' || !currencies.includes(r.currency)) continue;
+			// Only what went to a wallet, or was streamed to a reward vault, is paid out. Funds the DAO sends to a module or any
+			// other contract are an allocation, not a cost.
+			if (r.dir !== 'out' || (r.kind !== 'wallet' && r.kind !== 'stream') || !currencies.includes(r.currency)) continue;
 			// the combined view values every payout in dollars at the rate of the day it was paid
 			const amount = usd ? r.amount * rateOf(r.currency, r.t) : r.amount;
-			const category = categoryOf(r.txHash, r.coin);
+			const category = r.kind === 'stream' ? 'streaming' : categoryOf(r.txHash, r.coin);
 			const month = monthOf(r.t);
 			for (const q of [-1, month]) {
 				const byCategory = stats.get(q) ?? new Map<ExpenseCategory, Stat>();
@@ -125,7 +126,7 @@ export default function DaoExpenses({
 							{shortAddr(DAO)}
 						</a>{' '}
 						paid out {usd ? 'across USDU, EURU and CHFU, converted to USD at the exchange rate of the day' : `in ${symbol}`} for
-						running the protocol, by category. Payouts without a category yet show as uncategorised.
+						running the protocol and rewarding stakers, by category. Payouts without a category yet show as uncategorised.
 					</p>
 				</div>
 			</div>

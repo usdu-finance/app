@@ -39,8 +39,11 @@ export const SWAP_BRIDGES = Object.entries(A).flatMap(([key, address]) => {
 	return [{ module: String(address).toLowerCase(), label: `${m[1].toUpperCase()} Bridge ${m[2]}` }];
 });
 
-/** Who is on the other side of a transfer: a protocol module or minter, a plain wallet, or any other known contract (pools, vaults, the multisig...) */
-export type DaoPeerKind = 'module' | 'wallet' | 'other';
+/**
+ * Who is on the other side of a transfer: a protocol module or minter, a plain wallet, a reward vault the streamer
+ * depositor paid into (an expense of the DAO), or any other known contract (pools, vaults, the multisig...)
+ */
+export type DaoPeerKind = 'module' | 'wallet' | 'stream' | 'other';
 
 export interface DaoTransfer {
 	txHash: string;
@@ -51,7 +54,7 @@ export interface DaoTransfer {
 	/** the other side's lowercase address */
 	peer: string;
 	kind: DaoPeerKind;
-	/** the module's name, when it is one */
+	/** the module's name, or the reward vault's, when it is one */
 	label: string | null;
 	/** the coin's symbol */
 	coin: string;
