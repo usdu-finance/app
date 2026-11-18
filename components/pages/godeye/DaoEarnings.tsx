@@ -183,7 +183,7 @@ export default function DaoEarnings({
 				<div>
 					<h2 className="text-lg font-semibold">DAO earnings</h2>
 					<p className="text-xs text-text-muted">
-						Revenue that modules and minters paid to the DAO curator{' '}
+						Revenue that modules and minters paid to the DAO{' '}
 						<a
 							href={explorerAddress(DAO)}
 							target="_blank"

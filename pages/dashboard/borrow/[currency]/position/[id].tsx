@@ -386,8 +386,8 @@ function BorrowPositionPageContent() {
 							</div>
 							<p className="text-sm text-text-secondary">
 								{sellAbove
-									? 'At or above the position price the owner keeps the surplus, and the curator takes a small expiry fee out of the proceeds.'
-									: 'Below the position price the proceeds go to the debt first. The owner forfeits what is left over to the curator.'}
+									? 'At or above the position price the owner keeps the surplus, and the DAO takes a small expiry fee out of the proceeds.'
+									: 'Below the position price the proceeds go to the debt first. The owner forfeits what is left over to the DAO.'}
 							</p>
 
 							<ApproveActionInput

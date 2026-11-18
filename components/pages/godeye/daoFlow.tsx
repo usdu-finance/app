@@ -13,7 +13,7 @@ import { Dot, Glass, SectionTitle } from './GodEyeUi';
 
 /** Shared by DaoEarnings and DaoExpenses: the same month axis, chart, table and amounts, with different data behind them. */
 
-/** The DAO's curator address: what the earnings are paid to and the expenses are paid from */
+/** The DAO address: what the earnings are paid to and the expenses are paid from */
 export const DAO = ADDRESS[mainnet.id].curator.toLowerCase();
 
 /** The frame of one section of the page */

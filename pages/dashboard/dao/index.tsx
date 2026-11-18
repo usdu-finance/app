@@ -78,7 +78,7 @@ const STEPS = [
 	{
 		icon: <FontAwesomeIcon icon={faRoute} className="w-3 h-3 text-usdu-card" />,
 		title: 'Set a route',
-		description: 'The curator chains an unwrap and Stable Bridges into a route, with a minimum rate as price protection.',
+		description: 'The DAO chains an unwrap and Stable Bridges into a route, with a minimum rate as price protection.',
 	},
 	{
 		icon: <FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-card" />,
@@ -96,7 +96,7 @@ const STREAMER_STEPS = [
 	{
 		icon: <FontAwesomeIcon icon={faRoute} className="w-3 h-3 text-usdu-card" />,
 		title: 'Set a flow',
-		description: 'The curator picks a share of its balance per week or month and a flow cap that bounds it.',
+		description: 'The DAO picks a share of its balance per week or month and a flow cap that bounds it.',
 	},
 	{
 		icon: <FontAwesomeIcon icon={faBolt} className="w-3 h-3 text-usdu-card" />,
@@ -121,7 +121,7 @@ function DaoPageContent() {
 		query: { refetchInterval: APP_REFETCH },
 	});
 
-	const dao = (roles?.[0]?.result as `0x${string}` | undefined) ?? DAO; // the swapper pulls from the curator
+	const dao = (roles?.[0]?.result as `0x${string}` | undefined) ?? DAO; // the swapper pulls from the DAO
 
 	const { data, error, isLoading } = useReadContracts({
 		contracts: FOREIGN_TOKENS.flatMap((t) => [
@@ -231,7 +231,7 @@ function DaoPageContent() {
 			{ title: `Swap ${swappableRows.map((r) => r.token.symbol).join(', ')}` }
 		).catch(() => undefined); // declined in the wallet
 
-	// --- set route (curator only) ---
+	// --- set route (DAO only) ---
 	const { modules } = useSwapModules();
 	const { pools } = useCurvePools();
 	const [tokenSymbol, setTokenSymbol] = useState(FOREIGN_TOKENS[0]!.symbol);
@@ -387,7 +387,7 @@ function DaoPageContent() {
 				description={
 					tab === 'Streamer Depositor'
 						? 'The DAO funds the reward vaults from its stablecoin balance, a capped share per period. Anyone can trigger a deposit.'
-						: 'Foreign tokens held by the DAO are converted into ecosystem tokens along routes the curator configured. Anyone can trigger a conversion; the proceeds always go back to the DAO.'
+						: 'Foreign tokens held by the DAO are converted into ecosystem tokens along routes the DAO configured. Anyone can trigger a conversion; the proceeds always go back to the DAO.'
 				}
 			/>
 
@@ -402,7 +402,7 @@ function DaoPageContent() {
 					<Card variant="panel" className="space-y-8">
 						<PageHeader
 							title="Foreign Swapper"
-							description="A swap pulls the DAO's balance, bounded by its allowance and the route cap, and enforces the route's minimum rate. Only the curator can set a route; the guardian or curator can disable one."
+							description="A swap pulls the DAO's balance, bounded by its allowance and the route cap, and enforces the route's minimum rate. Only the DAO can set a route; the guardian or the DAO can disable one."
 						/>
 						<Table>
 							<TableHead headers={HEADERS} colSpan={COL_SPAN} actionCol />
@@ -544,7 +544,7 @@ function DaoPageContent() {
 							<Card variant="panel" className="flex flex-col gap-6">
 								<PageHeader
 									title="Set Route"
-									description="Curator only. Starts from the live route of the token; the minimum rate is what a swap must deliver per whole token, otherwise it reverts."
+									description="DAO only. Starts from the live route of the token; the minimum rate is what a swap must deliver per whole token, otherwise it reverts."
 								/>
 								<TokenInput
 									label="Minimum rate"

@@ -18,7 +18,7 @@ import {
 } from './daoFlow';
 
 /**
- * What the DAO curator paid out, per month and per category. The chain only shows transfers, so the category of each
+ * What the DAO paid out, per month and per category. The chain only shows transfers, so the category of each
  * payout comes from the ledger in lib/dao-expenses.ts; payouts that are not listed there show as uncategorised.
  */
 export default function DaoExpenses({
@@ -115,7 +115,7 @@ export default function DaoExpenses({
 				<div>
 					<h2 className="text-lg font-semibold">DAO expenses</h2>
 					<p className="text-xs text-text-muted">
-						What the DAO curator{' '}
+						What the DAO{' '}
 						<a
 							href={explorerAddress(DAO)}
 							target="_blank"

@@ -30,7 +30,7 @@ export const docsNavigation: DocsGroup[] = [
 	{
 		title: 'Governance',
 		pages: [
-			{ slug: 'governance', title: 'DAO structure', description: 'The Aragon DAO, its multisigs and the curator role.' },
+			{ slug: 'governance', title: 'DAO structure', description: 'The Aragon DAO and its multisigs.' },
 			{ slug: 'module-lifecycle', title: 'Module lifecycle', description: 'Propose, delay, veto, activate and expire.' },
 		],
 	},

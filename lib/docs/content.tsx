@@ -134,7 +134,7 @@ const balance = await client.readContract({
 		<>
 			<OL>
 				<li>
-					<strong>Governed, modular issuance.</strong> The DAO, the curator of every stablecoin, approves modules. A stablecoin has no
+					<strong>Governed, modular issuance.</strong> The DAO approves modules. A stablecoin has no
 					minting logic of its own: only approved modules can mint and burn, and swaps are just one module type. See <A href="/docs/module-lifecycle">Module lifecycle</A>.
 				</li>
 				<li>
@@ -259,12 +259,12 @@ const balance = await client.readContract({
 	governance: (
 		<>
 			<P>
-				The USDU DAO, governed on Aragon, is the <strong>curator</strong> of the stablecoins: it alone can submit modules, change the time lock or appoint a
+				The USDU DAO, governed on Aragon, controls the stablecoins: it alone can submit modules, change the time lock or appoint a
 				guardian.
 			</P>
 			<UL>
 				<li>
-					<strong>Aragon DAO:</strong> the core contract and curator of the stablecoins.
+					<strong>Aragon DAO:</strong> the core contract, it controls the stablecoins.
 				</li>
 				<li>
 					<strong>Multisig:</strong> creates and approves proposals for the DAO.
@@ -278,7 +278,7 @@ const balance = await client.readContract({
 			</UL>
 			<AddressTable
 				rows={[
-					['Aragon DAO (curator)', addr.aragonDao],
+					['Aragon DAO', addr.aragonDao],
 					['Multisig', addr.aragonMultiSig],
 					['Delayed action', addr.aragonDelayedAction],
 					['Veto multisig', addr.aragonVetoMultiSig],
@@ -294,7 +294,7 @@ const balance = await client.readContract({
 		<>
 			<OL>
 				<li>
-					<strong>Propose.</strong> The curator submits a module with an expiry date and a public message. The stablecoin stores it as
+					<strong>Propose.</strong> The DAO submits a module with an expiry date and a public message. The stablecoin stores it as
 					pending.
 				</li>
 				<li>
@@ -302,7 +302,7 @@ const balance = await client.readContract({
 					set between 7 days and 4 weeks.
 				</li>
 				<li>
-					<strong>Veto possible.</strong> While pending, the curator or the guardian can revoke the change. On the Aragon side the veto
+					<strong>Veto possible.</strong> While pending, the DAO or the guardian can revoke the change. On the Aragon side the veto
 					multisig can stop a staged proposal during its own delay.
 				</li>
 				<li>
@@ -383,7 +383,7 @@ const balance = await client.readContract({
 			<H2>Governance and tools</H2>
 			<AddressTable
 				rows={[
-					['Aragon DAO (curator)', addr.aragonDao],
+					['Aragon DAO', addr.aragonDao],
 					['Multisig', addr.aragonMultiSig],
 					['Delayed action', addr.aragonDelayedAction],
 					['Veto multisig', addr.aragonVetoMultiSig],

@@ -14,7 +14,7 @@ const roles = [
 		title: 'Aragon DAO',
 		address: addr.aragonDao,
 		description:
-			'The DAO core contract. It is the curator of the stablecoins, so only it can submit modules, change the time lock or appoint a guardian.',
+			'The DAO core contract. It controls the stablecoins, so only it can submit modules, change the time lock or appoint a guardian.',
 	},
 	{
 		title: 'Multisig',

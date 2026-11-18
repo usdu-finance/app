@@ -1,5 +1,5 @@
 /**
- * What the DAO curator paid out, by category. Categories cannot be read from the chain (a transfer to a wallet does not
+ * What the DAO paid out, by category. Categories cannot be read from the chain (a transfer to a wallet does not
  * say whether it was a bug bounty or a development payout), so they are kept here, keyed by transaction hash. A payout
  * that is not listed shows up as "uncategorised", so nothing is hidden by a missing entry.
  *
