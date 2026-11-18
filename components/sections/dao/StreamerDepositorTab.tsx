@@ -182,12 +182,14 @@ export default function StreamerDepositorTab({
 		const approveAmount = (capValue * BigInt(365 * DAY) + periodSeconds - 1n) / periodSeconds;
 		if (row.approved < approveAmount) {
 			steps.push({
+				kind: 'streamer-depositor',
 				label: `Approve ${symbol} for the depositor (one year of the cap: ${formatCompactNumber(formatUnits(approveAmount, DECIMALS), 2, '', ` ${symbol}`)})`,
 				to: token,
 				data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [STREAMER_DEPOSITOR, approveAmount] }),
 			});
 		}
 		steps.push({
+			kind: 'streamer-depositor',
 			label: `Set flow ${symbol}: ${percent}% ${periodLabel(PERIODS[period])}, cap ${formatCompactNumber(formatUnits(capValue, DECIMALS), 2, '', ` ${symbol}`)}`,
 			to: STREAMER_DEPOSITOR,
 			data: encodeFunctionData({

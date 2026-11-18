@@ -5,7 +5,11 @@ import Card from '@/components/ui/Card';
 import { PageHeader } from '@/components/ui/layout';
 import { track } from '@/lib/analytics';
 
+/** What a step belongs to, which names the downloaded file */
+export type ProposalKind = 'foreign-swapper' | 'streamer-depositor';
+
 export interface ProposalStep {
+	kind: ProposalKind;
 	label: string;
 	to: `0x${string}`;
 	data: `0x${string}`;
@@ -48,7 +52,9 @@ export default function ProposalCard({
 		const url = URL.createObjectURL(new Blob([proposalJson], { type: 'application/json' }));
 		const a = document.createElement('a');
 		a.href = url;
-		a.download = 'dao-proposal.json';
+		// e.g. dao-proposal-streamer-depositor-1763480000.json: what kind of proposal, and the unix time so every file is unique
+		const kinds = [...new Set(proposal.map((s) => s.kind))];
+		a.download = `dao-proposal-${kinds.join('-')}-${Math.floor(Date.now() / 1000)}.json`;
 		a.click();
 		URL.revokeObjectURL(url);
 	};

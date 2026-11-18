@@ -355,11 +355,13 @@ function DaoPageContent() {
 		setProposal((p) => [
 			...p,
 			{
+				kind: 'foreign-swapper',
 				label: `Approve ${routeToken.symbol} for the swapper (${maxAmount ? formatUnits(approveAmount, routeToken.decimals) : 'unlimited'})`,
 				to: routeToken.address,
 				data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [FOREIGN_SWAPPER, approveAmount] }),
 			},
 			{
+				kind: 'foreign-swapper',
 				label: `Set route ${routeToken.symbol} → ${path.end.symbol}`,
 				to: FOREIGN_SWAPPER,
 				data: encodeFunctionData({
