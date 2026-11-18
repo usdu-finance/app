@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/ui/layout';
 import Card from '@/components/ui/Card';
 import { TokenInput, TokenSelectModal } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
+import { ApyChart } from '@/components/ui/charts';
 import { useTx } from '@/hooks/useTx';
 import { APP_REFETCH } from '@/lib/constants';
 import { formatCompactNumber } from '@/lib/utils';
@@ -114,6 +115,17 @@ export default function StreamerDepositorTab({
 	const edit = edits[symbol] ?? {};
 	const patch = (p: typeof edit) => setEdits((e) => ({ ...e, [symbol]: { ...e[symbol], ...p } }));
 
+	// a click on a table row loads that stablecoin into the form, starting from its live flow
+	const selectFlow = (next: typeof symbol) => {
+		setSymbol(next);
+		setEdits((e) => {
+			const rest = { ...e };
+			delete rest[next];
+			return rest;
+		});
+		document.getElementById('set-flow')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+	};
+
 	const live = row.onchain?.enabled ? row.onchain : undefined;
 	// basis points as digits of a 2-decimal input: 100 is 1.00%
 	const bpsDigits = edit.bps ?? (live ? String(live.bps) : '100');
@@ -151,7 +163,6 @@ export default function StreamerDepositorTab({
 
 	const yearly = (perPeriod * BigInt(365 * DAY)) / BigInt(PERIODS[period]);
 	const tvl = row.tvl;
-	const currentApy = tvl > 0n ? Number((yearly * 10_000n) / tvl) / 100 : undefined;
 
 	// the payload would target the zero address, so say so in every step until the depositor is deployed
 	const NOT_DEPLOYED = STREAMER_DEPOSITOR_DEPLOYED ? '' : '[depositor not deployed, do not execute] ';
@@ -160,12 +171,15 @@ export default function StreamerDepositorTab({
 		if (!canSet || bps === undefined) return;
 		const { token, vault } = row.flow;
 		const steps: ProposalStep[] = [];
-		// the allowance is the DAO's own hard ceiling; the flow cap already bounds what a period can spend
-		if (row.approved < capValue) {
+		// the allowance is the DAO's own hard ceiling: one year of the cap, the cap times the periods in a year (rounded up)
+		// skipped while the current approval already covers it
+		const periodSeconds = BigInt(PERIODS[period]);
+		const approveAmount = (capValue * BigInt(365 * DAY) + periodSeconds - 1n) / periodSeconds;
+		if (row.approved < approveAmount) {
 			steps.push({
-				label: `${NOT_DEPLOYED}Approve ${symbol} for the depositor (unlimited)`,
+				label: `${NOT_DEPLOYED}Approve ${symbol} for the depositor (one year of the cap: ${formatCompactNumber(formatUnits(approveAmount, DECIMALS), 2, '', ` ${symbol}`)})`,
 				to: token,
-				data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [STREAMER_DEPOSITOR, maxUint256] }),
+				data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [STREAMER_DEPOSITOR, approveAmount] }),
 			});
 		}
 		steps.push({
@@ -207,7 +221,7 @@ export default function StreamerDepositorTab({
 			<Card variant="panel" className="space-y-8">
 				<PageHeader
 					title="Streamer Depositor"
-					description="Once per period, anyone can move a share of the DAO's stablecoin balance, bounded by the flow cap and the DAO's approval, straight into the reward vault, where it streams to the stakers. Only the curator sets a flow; the guardian or curator can disable one."
+					description="Once per period, anyone can move a share of the DAO's stablecoin balance, bounded by the flow cap and the DAO's approval, straight into the reward vault, where it streams to the stakers. Only the DAO sets a flow; the guardian or the DAO can disable one."
 				/>
 				{!STREAMER_DEPOSITOR_DEPLOYED && (
 					<div className="rounded-lg bg-usdu-bg px-4 py-3 text-text-secondary">
@@ -230,7 +244,7 @@ export default function StreamerDepositorTab({
 										key={r.flow.symbol}
 										headers={HEADERS}
 										colSpan={COL_SPAN}
-										onClick={() => setSymbol(r.flow.symbol)}
+										onClick={() => selectFlow(r.flow.symbol)}
 										actionCol={
 											<div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
 												<button
@@ -296,11 +310,11 @@ export default function StreamerDepositorTab({
 				</Table>
 			</Card>
 
-			<div className="grid gap-8 md:grid-cols-2">
+			<div id="set-flow" className="grid gap-8 md:grid-cols-2 scroll-mt-8">
 				<Card variant="panel" className="flex flex-col gap-6">
 					<PageHeader
 						title="Set Flow"
-						description="Curator only. Starts from the live flow of the stablecoin. Each period moves the percentage of the DAO's balance, or the cap if that is lower."
+						description="DAO only. Starts from the live flow of the stablecoin. Each period moves the percentage of the DAO's balance, or the cap if that is lower."
 					/>
 					<TokenInput
 						label="Share of the DAO's balance per period"
@@ -342,40 +356,14 @@ export default function StreamerDepositorTab({
 							<span className="text-text-secondary">Per year at this flow</span>
 							<span>{fmt(yearly, symbol)}</span>
 						</div>
-						<div className="flex items-center justify-between">
-							<span className="text-text-secondary">Vault TVL / APY today</span>
-							<span>
-								{fmt(tvl, symbol)}
-								{currentApy !== undefined && ` / ${currentApy.toFixed(2)}%`}
-							</span>
-						</div>
 					</div>
-					<div className="space-y-2">
-						{TARGET_APYS.map((apy) => {
-							// TVL at which the yearly flow is worth exactly this APY
-							const needed = (yearly * 100n) / BigInt(apy);
-							const missing = needed > tvl ? needed - tvl : 0n;
-							const covered = needed === 0n ? 0 : Math.min(100, Number((tvl * 100n) / needed));
-							return (
-								<div key={apy} className="space-y-2">
-									<div className="flex items-center justify-between">
-										<span className="text-text-secondary">TVL for {apy}% APY</span>
-										<span className="font-semibold text-text-primary">{fmt(needed, symbol)}</span>
-									</div>
-									<div className="h-1.5 w-full rounded-full bg-usdu-surface overflow-hidden">
-										<div className="h-full bg-usdu-orange" style={{ width: `${covered}%` }} />
-									</div>
-									<div className="text-sm text-text-secondary">
-										{needed === 0n
-											? '—'
-											: missing > 0n
-												? `Missing ${fmt(missing, symbol)}`
-												: 'Reached, the vault is at or above it'}
-									</div>
-								</div>
-							);
-						})}
-					</div>
+					<ApyChart
+						yearly={Number(formatUnits(yearly, DECIMALS))}
+						tvl={Number(formatUnits(tvl, DECIMALS))}
+						targets={TARGET_APYS}
+						formatTvl={(v) => formatCompactNumber(v, 1, '').replace(/\.0(?=[kMBT]?$)/, '')}
+						unit={symbol}
+					/>
 					<div className="text-sm text-text-secondary">
 						APY = a year of deposits at today&apos;s balance ÷ the vault&apos;s TVL. The balance shrinks by the share each
 						period unless it is topped up, so the real figure ends up lower, unless the cap holds the flow flat.
