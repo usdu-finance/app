@@ -13,9 +13,11 @@ import { ApyChart } from '@/components/ui/charts';
 import { useTx } from '@/hooks/useTx';
 import { APP_REFETCH } from '@/lib/constants';
 import { formatCompactNumber } from '@/lib/utils';
-// TODO: import from '@usdu-finance/usdu-core' once the package with StreamerDepositorV1 is published, see lib/streamer/depositor.ts
-import { STREAMER_DEPOSITOR, STREAMER_DEPOSITOR_DEPLOYED, STREAMER_FLOWS, StreamerDepositorV1_ABI } from '@/lib/streamer/depositor';
+import { ADDRESS, StreamerDepositorV1_ABI } from '@usdu-finance/usdu-core';
+import { STREAMER_FLOWS } from '@/lib/streamer/depositor';
 import type { ProposalStep } from './ProposalCard';
+
+const STREAMER_DEPOSITOR = ADDRESS[1].streamerDepositorV1;
 
 const HEADERS = ['Token', 'Approved', 'Per period', 'Cap', 'Next deposit'];
 const COL_SPAN = HEADERS.length;
@@ -77,7 +79,6 @@ export default function StreamerDepositorTab({
 	const { address } = useAccount();
 	const { submit, isSigning } = useTx();
 
-	// the DAO's balances and approvals do not depend on the depositor being deployed
 	const { data: tokenData } = useReadContracts({
 		contracts: STREAMER_FLOWS.flatMap((f) => [
 			{ address: f.token, abi: erc20Abi, functionName: 'allowance' as const, args: [dao, STREAMER_DEPOSITOR] as const },
@@ -93,7 +94,7 @@ export default function StreamerDepositorTab({
 			{ address: STREAMER_DEPOSITOR, abi: StreamerDepositorV1_ABI, functionName: 'depositable' as const, args: [f.token] as const },
 			{ address: STREAMER_DEPOSITOR, abi: StreamerDepositorV1_ABI, functionName: 'nextDepositAt' as const, args: [f.token] as const },
 		]),
-		query: { enabled: STREAMER_DEPOSITOR_DEPLOYED, refetchInterval: APP_REFETCH },
+		query: { refetchInterval: APP_REFETCH },
 	});
 
 	const rows = useMemo(
@@ -171,9 +172,6 @@ export default function StreamerDepositorTab({
 	const shownYearly = perYear(rateView === 'Capped flow rate' ? capValue : share);
 	const tvl = row.tvl;
 
-	// the payload would target the zero address, so say so in every step until the depositor is deployed
-	const NOT_DEPLOYED = STREAMER_DEPOSITOR_DEPLOYED ? '' : '[depositor not deployed, do not execute] ';
-
 	const add = () => {
 		if (!canSet || bps === undefined) return;
 		const { token, vault } = row.flow;
@@ -184,13 +182,13 @@ export default function StreamerDepositorTab({
 		const approveAmount = (capValue * BigInt(365 * DAY) + periodSeconds - 1n) / periodSeconds;
 		if (row.approved < approveAmount) {
 			steps.push({
-				label: `${NOT_DEPLOYED}Approve ${symbol} for the depositor (one year of the cap: ${formatCompactNumber(formatUnits(approveAmount, DECIMALS), 2, '', ` ${symbol}`)})`,
+				label: `Approve ${symbol} for the depositor (one year of the cap: ${formatCompactNumber(formatUnits(approveAmount, DECIMALS), 2, '', ` ${symbol}`)})`,
 				to: token,
 				data: encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [STREAMER_DEPOSITOR, approveAmount] }),
 			});
 		}
 		steps.push({
-			label: `${NOT_DEPLOYED}Set flow ${symbol}: ${percent}% ${periodLabel(PERIODS[period])}, cap ${formatCompactNumber(formatUnits(capValue, DECIMALS), 2, '', ` ${symbol}`)}`,
+			label: `Set flow ${symbol}: ${percent}% ${periodLabel(PERIODS[period])}, cap ${formatCompactNumber(formatUnits(capValue, DECIMALS), 2, '', ` ${symbol}`)}`,
 			to: STREAMER_DEPOSITOR,
 			data: encodeFunctionData({
 				abi: StreamerDepositorV1_ABI,
@@ -230,16 +228,10 @@ export default function StreamerDepositorTab({
 					title="Streamer Depositor"
 					description="Once per period, anyone can move a share of the DAO's stablecoin balance, bounded by the flow cap and the DAO's approval, straight into the reward vault, where it streams to the stakers. Only the DAO sets a flow; the guardian or the DAO can disable one."
 				/>
-				{!STREAMER_DEPOSITOR_DEPLOYED && (
-					<div className="rounded-lg bg-usdu-bg px-4 py-3 text-text-secondary">
-						The depositor is not deployed yet. You can try out a setup below, but the payload targets the zero address until it
-						is deployed, so do not execute it yet.
-					</div>
-				)}
 				<Table>
 					<TableHead headers={HEADERS} colSpan={COL_SPAN} actionCol />
 					<TableBody>
-						{STREAMER_DEPOSITOR_DEPLOYED && isLoading ? (
+						{isLoading ? (
 							<TableRowEmpty>Loading flows...</TableRowEmpty>
 						) : error ? (
 							<TableRowEmpty>{`Error: ${error.message}`}</TableRowEmpty>
