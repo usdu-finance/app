@@ -126,6 +126,7 @@ export default function StreamerDepositorTab({
 			delete rest[next];
 			return rest;
 		});
+		document.getElementById('set-flow')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 	};
 
 	const live = row.onchain?.enabled ? row.onchain : undefined;
@@ -311,7 +312,7 @@ export default function StreamerDepositorTab({
 				</Table>
 			</Card>
 
-			<div className="grid gap-8 md:grid-cols-2">
+			<div id="set-flow" className="grid gap-8 md:grid-cols-2 scroll-mt-8">
 				<Card variant="panel" className="flex flex-col gap-6">
 					<PageHeader
 						title="Set Flow"
@@ -351,11 +352,11 @@ export default function StreamerDepositorTab({
 							<div className="text-text-primary">
 								{fmt(capValue, symbol)} / {percent}% = <span className="font-semibold">{fmt(capBalance, symbol)}</span>
 							</div>
-							{row.balance >= capBalance && (
-								<div className="text-sm text-text-secondary">
-									{`The DAO holds more than that, so the cap limits the flow to ${fmt(capValue, symbol)} per ${unit}.`}
-								</div>
-							)}
+							<div className="text-sm text-text-secondary">
+								{row.balance >= capBalance
+									? `The DAO holds more than that, so the cap limits the flow to ${fmt(capValue, symbol)} per ${unit}.`
+									: 'The DAO holds less than that, so the flow follows the share and stays below the cap.'}
+							</div>
 						</div>
 					)}
 				</Card>
