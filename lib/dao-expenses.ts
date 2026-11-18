@@ -1,13 +1,15 @@
 /**
- * What the DAO curator paid out, by category. Categories cannot be read from the chain (a transfer to a wallet does not
+ * What the DAO paid out, by category. Categories cannot be read from the chain (a transfer to a wallet does not
  * say whether it was a bug bounty or a development payout), so they are kept here, keyed by transaction hash. A payout
  * that is not listed shows up as "uncategorised", so nothing is hidden by a missing entry.
  *
  * Add a line to EXPENSE_LEDGER for every new payout. The amounts come from the DAO wallet's transfers (every counted coin, see lib/dao-transfers.ts), only the category lives here. Only transfers to plain wallets count as payouts.
- * Reward streams into the reward vaults are not listed: anyone can fund those, so they are not a DAO expense (yet).
+ * Reward streams paid by the streamer depositor are not listed either: the indexer records each one as an Expense event,
+ * and the transfers route marks the payment, so they count as their own category automatically. Anyone else funding a
+ * reward vault is not a DAO expense.
  */
 
-export type ExpenseCategory = 'development' | 'security' | 'uncategorised';
+export type ExpenseCategory = 'development' | 'security' | 'streaming' | 'uncategorised';
 
 export const EXPENSE_CATEGORIES: Record<ExpenseCategory, { name: string; caption: string; color: string }> = {
 	development: {
@@ -16,6 +18,11 @@ export const EXPENSE_CATEGORIES: Record<ExpenseCategory, { name: string; caption
 		color: '#2563eb',
 	},
 	security: { name: 'Security & audits', caption: 'Bug bounties, audits and other security work', color: '#d97706' },
+	streaming: {
+		name: 'Reward streams',
+		caption: 'Paid into the reward vaults by the streamer depositor and streamed to the stakers',
+		color: '#0d9488',
+	},
 	uncategorised: { name: 'Uncategorised', caption: 'Not in the ledger yet', color: '#64748b' },
 };
 

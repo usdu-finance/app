@@ -40,7 +40,7 @@ export const DEMO_CONVERSATIONS: DemoConversation[] = [
 	},
 	{
 		id: 'curator',
-		name: 'Curator multisig',
+		name: 'DAO multisig',
 		address: '0x2c91be40d7a5f3860e1d4b9a7c35f208e6d1a4b7',
 		fingerprint: 'A81D 5E30 C2F7 96B4',
 		verified: true,

@@ -22,9 +22,9 @@ export interface CuratorBalancesData {
 }
 
 /**
- * Hook to fetch token balances (USDU and USDC) from the DAO curator address
+ * Hook to fetch token balances (USDU and USDC) from the DAO address
  * @param chainId - Chain ID to query (defaults to mainnet)
- * @returns Token balances for USDU and USDC held by the curator/DAO
+ * @returns Token balances for USDU and USDC held by the DAO
  */
 export function useCuratorBalances(chainId: number = mainnet.id): CuratorBalancesData {
 	// Only mainnet has curator and usduStable addresses; USDC is the same on every chain

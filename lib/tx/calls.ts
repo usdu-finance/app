@@ -15,7 +15,7 @@ import type { TxCall } from './types';
 
 type Address = `0x${string}`;
 
-/** Fee of a public module proposal, paid in the stablecoin to its curator (ConstantsLib.PUBLIC_FEE). */
+/** Fee of a public module proposal, paid in the stablecoin to the DAO (ConstantsLib.PUBLIC_FEE). */
 export const PUBLIC_PROPOSAL_FEE = 10_000n * 10n ** 18n;
 
 /** Builders for the calls of a batch. They only describe a call, `useTx().submit` sends them. */

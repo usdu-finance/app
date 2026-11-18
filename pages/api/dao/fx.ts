@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { cached, sendError, sendJson } from '@/lib/zap/api';
 
 const LLAMA_CHART = 'https://coins.llama.fi/chart';
-// The curator's history starts in mid 2025
+// The DAO's history starts in mid 2025
 const START = 1748736000;
 const DAY = 86400;
 // DefiLlama serves at most 500 points per request

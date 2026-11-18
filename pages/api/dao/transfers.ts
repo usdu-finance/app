@@ -91,6 +91,12 @@ for (const [key, value] of Object.entries(A)) {
 	else STATIC_OTHER.add(a);
 }
 const BRIDGES = new Map(SWAP_BRIDGES.map((b) => [b.module, b.label]));
+// the reward vaults the streamer depositor pays into, by address
+const REWARD_VAULTS = new Map([
+	[A.usduStreamerVaultV1.toLowerCase(), 'USDU reward vault'],
+	[A.euruStreamerVaultV1.toLowerCase(), 'EURU reward vault'],
+	[A.chfuStreamerVaultV1.toLowerCase(), 'CHFU reward vault'],
+]);
 // a bridge counts in its own stablecoin's currency, which its label starts with
 const BRIDGE_CURRENCY = new Map(SWAP_BRIDGES.map((b) => [b.module, b.label.split(' ')[0]]));
 
@@ -160,6 +166,46 @@ async function loadSwaps(): Promise<Map<string, string[]>> {
 	}
 }
 
+/**
+ * The reward vault every indexed Expense event paid into, by transaction. Those are the deposits the streamer depositor
+ * made out of the DAO wallet. A plain transfer of the DAO to a vault could just as well be the DAO staking, which is not
+ * an expense, so only an indexed Expense marks a payment as a reward stream. An indexer without the expense table yet
+ * leaves the list empty, as there is nothing to mark then.
+ */
+async function loadExpenses(): Promise<Map<string, Set<string>>> {
+	const out = new Map<string, Set<string>>();
+	for (let after: string | null = null; ; ) {
+		const r = await fetch(INDEXER, {
+			method: 'POST',
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify({
+				query: `query($after: String) { moduleExpenseV1Expenses(where: { chainId: ${mainnet.id} }, orderBy: "created", orderDirection: "asc", limit: 1000, after: $after) { items { txHash to } pageInfo { hasNextPage endCursor } } }`,
+				variables: { after },
+			}),
+		});
+		if (!r.ok) throw new Error(`indexer ${r.status}`);
+		const j = (await r.json()) as {
+			data?: {
+				moduleExpenseV1Expenses: {
+					items: { txHash: string; to: string }[];
+					pageInfo: { hasNextPage: boolean; endCursor: string | null };
+				};
+			};
+		};
+		const page = j.data?.moduleExpenseV1Expenses;
+		if (!page) {
+			console.warn('dao transfers: the indexer has no expense list yet');
+			return out;
+		}
+		for (const x of page.items) {
+			const hash = x.txHash.toLowerCase();
+			out.set(hash, (out.get(hash) ?? new Set<string>()).add(x.to.toLowerCase()));
+		}
+		if (!page.pageInfo.hasNextPage || !page.pageInfo.endCursor) return out;
+		after = page.pageInfo.endCursor;
+	}
+}
+
 /** The curated address book of the indexer: exchanges, multisigs and the like, so they are not mistaken for wallets */
 async function loadBook(): Promise<Map<string, { label: string; kind: string }>> {
 	const r = await fetch(`${INDEXER}/godeye/addressbook?chainId=${mainnet.id}`);
@@ -169,7 +215,13 @@ async function loadBook(): Promise<Map<string, { label: string; kind: string }>>
 }
 
 async function build(): Promise<DaoTransfers> {
-	const [, modules, book, swaps] = await Promise.all([refreshHistory(), loadModules(), loadBook(), loadSwaps()]);
+	const [, modules, book, swaps, expenses] = await Promise.all([
+		refreshHistory(),
+		loadModules(),
+		loadBook(),
+		loadSwaps(),
+		loadExpenses(),
+	]);
 
 	const peerOf = (a: string): { kind: DaoPeerKind; label: string | null } => {
 		if (a === ZERO || a === DAO) return { kind: 'other', label: null };
@@ -201,12 +253,18 @@ async function build(): Promise<DaoTransfers> {
 		const mods = dir === 'in' ? swaps.get(t.hash.toLowerCase()) : undefined;
 		const bridge = mods && (mods.find((m) => BRIDGE_CURRENCY.get(m) === coin.currency) ?? mods[0]);
 		const peer = bridge ?? (dir === 'out' ? t.to.toLowerCase() : from);
+		// what the depositor paid into a reward vault, in the transaction of an indexed Expense to that vault
+		const stream = dir === 'out' && expenses.get(t.hash.toLowerCase())?.has(peer) ? REWARD_VAULTS.get(peer) : undefined;
 		transfers.push({
 			txHash: t.hash,
 			t: Math.floor(Date.parse(t.metadata.blockTimestamp) / 1000),
 			dir,
 			peer,
-			...(bridge ? { kind: 'module' as const, label: BRIDGES.get(bridge) ?? null } : peerOf(peer)),
+			...(bridge
+				? { kind: 'module' as const, label: BRIDGES.get(bridge) ?? null }
+				: stream
+					? { kind: 'stream' as const, label: stream }
+					: peerOf(peer)),
 			coin: coin.symbol,
 			currency: coin.currency,
 			amount: Number(formatUnits(BigInt(t.rawContract.value), Number(t.rawContract.decimal))),

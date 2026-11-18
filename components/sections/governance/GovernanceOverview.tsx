@@ -8,14 +8,13 @@ const STEPS = [
 	{
 		icon: <FontAwesomeIcon icon={faFileSignature} className="w-3 h-3 text-usdu-card" />,
 		title: 'Proposal via the Aragon DAO',
-		description:
-			'A new module, or a change to an existing one, is proposed through the Aragon DAO. The DAO is the curator of the stablecoins.',
+		description: 'A new module, or a change to an existing one, is proposed through the Aragon DAO, which controls the stablecoins.',
 	},
 	{
 		icon: <FontAwesomeIcon icon={faHourglassHalf} className="w-3 h-3 text-usdu-card" />,
 		title: 'Delay and veto window',
 		description:
-			'The change is staged and waits for the time lock to pass. Until then the veto multisig, or the curator, can still reject it.',
+			'The change is staged and waits for the time lock to pass. Until then the veto multisig, or the DAO, can still reject it.',
 	},
 	{
 		icon: <FontAwesomeIcon icon={faPowerOff} className="w-3 h-3 text-usdu-card" />,

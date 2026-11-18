@@ -59,6 +59,8 @@ interface Props {
 	onReset?: () => void;
 	/** Turns the token badge into a button, e.g. to open a token picker. Works even when the input is disabled. */
 	onTokenClick?: () => void;
+	/** Text next to the logo in the badge instead of the symbol, e.g. "USDU / week" for a selector of something else than the token. */
+	tokenLabel?: string;
 	/** Logo for tokens the logo lookup doesn't know, e.g. an imported token. */
 	logoURI?: string;
 	autoFocus?: boolean;
@@ -90,6 +92,7 @@ export default function TokenInput({
 	onMax = () => {},
 	onReset = () => {},
 	onTokenClick,
+	tokenLabel,
 	logoURI,
 	error,
 	warning,
@@ -157,7 +160,7 @@ export default function TokenInput({
 							}}
 						>
 							<TokenLogo currency={symbol} logoURI={logoURI} size={6} />
-							<span className="text-text-primary font-semibold">{symbol || 'Select'}</span>
+							<span className="text-text-primary font-semibold">{tokenLabel ?? (symbol || 'Select')}</span>
 							<FontAwesomeIcon icon={faChevronDown} className="w-3 h-3 text-text-secondary" />
 						</button>
 					) : (

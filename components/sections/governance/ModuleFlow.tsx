@@ -6,7 +6,7 @@ const stages = [
 	{
 		title: 'Propose',
 		description:
-			'The curator, which is the Aragon DAO, submits a module together with its expiry date and a public message. The stablecoin stores it as pending.',
+			'The Aragon DAO submits a module together with its expiry date and a public message. The stablecoin stores it as pending.',
 	},
 	{
 		title: 'Delay window',
@@ -16,7 +16,7 @@ const stages = [
 	{
 		title: 'Veto possible',
 		description:
-			'While a change is pending, the curator or the guardian can revoke it. On the Aragon side the veto multisig can stop a staged proposal during its own delay.',
+			'While a change is pending, the DAO or the guardian can revoke it. On the Aragon side the veto multisig can stop a staged proposal during its own delay.',
 	},
 	{
 		title: 'Active until expiry',

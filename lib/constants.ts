@@ -63,7 +63,7 @@ export const SEO = {
 	),
 	dao: pageSeo(
 		'DAO',
-		'Convert foreign tokens held by the DAO into ecosystem tokens through curator-configured routes, callable by anyone.',
+		'Convert foreign tokens held by the DAO into ecosystem tokens through routes the DAO configured, callable by anyone.',
 		'/dashboard/dao'
 	),
 	zapSwap: pageSeo(
