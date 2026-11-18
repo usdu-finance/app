@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from 'react';
 interface Props {
 	yearly: number; // paid into the vault per year at the flow, in tokens
 	tvl: number; // the vault's TVL today, in tokens
-	targets: number[]; // APY targets in %
+	targets?: number[]; // APY targets in %, none draws only the curve and today's line
+	metric?: string; // what the curve is called, APY by default (APR for a stream rate)
 	formatTvl: (v: number) => string; // compact, without the unit
 	unit: string; // token symbol
 	height?: number;
@@ -27,7 +28,7 @@ const niceStep = (max: number, ticks: number) => {
  * each target APY is a dot where its line meets the curve: the accent when the vault is already at or above that TVL,
  * gray while it is missing. The key below the chart lists the same values in text.
  */
-export default function ApyChart({ yearly, tvl, targets, formatTvl, unit, height = 240, className = '' }: Props) {
+export default function ApyChart({ yearly, tvl, targets = [], metric = 'APY', formatTvl, unit, height = 240, className = '' }: Props) {
 	const ref = useRef<HTMLDivElement>(null);
 	const [width, setWidth] = useState(0);
 	const [hover, setHover] = useState<number | null>(null); // TVL under the pointer
@@ -90,7 +91,7 @@ export default function ApyChart({ yearly, tvl, targets, formatTvl, unit, height
 						width={width}
 						height={height}
 						role="img"
-						aria-label="APY of the flow by vault TVL"
+						aria-label={`${metric} of the flow by vault TVL`}
 						onPointerMove={onMove}
 						onPointerLeave={() => setHover(null)}
 					>
@@ -256,14 +257,16 @@ export default function ApyChart({ yearly, tvl, targets, formatTvl, unit, height
 					</svg>
 				)}
 
-				{empty && <div className="text-text-secondary">Nothing flows yet, so there is no APY to draw.</div>}
+				{empty && <div className="text-text-secondary">Nothing flows yet, so there is no {metric} to draw.</div>}
 
 				{hover !== null && !empty && (
 					<div
 						className="pointer-events-none absolute -translate-x-1/2 rounded-lg border border-usdu-surface bg-usdu-bg px-3 py-2 shadow-sm"
 						style={{ left: tooltipLeft, top: 0 }}
 					>
-						<div className="text-sm font-semibold text-text-primary">{apyAt(hover).toFixed(2)}% APY</div>
+						<div className="text-sm font-semibold text-text-primary">
+							{apyAt(hover).toFixed(2)}% {metric}
+						</div>
 						<div className="text-xs text-text-secondary">
 							at {formatTvl(hover)} {unit} TVL
 						</div>
@@ -275,13 +278,13 @@ export default function ApyChart({ yearly, tvl, targets, formatTvl, unit, height
 			{!empty && (
 				<ul className="sr-only">
 					<li>
-						Today: {formatTvl(tvl)} {unit} TVL{currentApy !== undefined && `, ${currentApy.toFixed(2)}% APY`}
+						Today: {formatTvl(tvl)} {unit} TVL{currentApy !== undefined && `, ${currentApy.toFixed(2)}% ${metric}`}
 					</li>
 					{targets.map((a) => {
 						const needed = neededAt(a);
 						return (
 							<li key={a}>
-								{a}% APY at {formatTvl(needed)} {unit} TVL,{' '}
+								{a}% {metric} at {formatTvl(needed)} {unit} TVL,{' '}
 								{needed <= tvl ? 'reached' : `missing ${formatTvl(needed - tvl)} ${unit}`}
 							</li>
 						);

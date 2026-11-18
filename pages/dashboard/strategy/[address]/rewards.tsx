@@ -18,7 +18,7 @@ import { useSort } from '@/hooks/ui/useSort';
 import { PageHeader } from '@/components/ui/layout';
 import Card from '@/components/ui/Card';
 import { TokenInput, ApproveActionInput, TabInput } from '@/components/ui/input';
-import { TimeSeriesChart } from '@/components/ui/charts';
+import { ApyChart, TimeSeriesChart } from '@/components/ui/charts';
 import HeroSteps from '@/components/ui/HeroSteps';
 import { Table, TableHead, TableBody, TableRow, TableRowEmpty } from '@/components/ui/table';
 import { DetailRow } from '@/components/ui/modal';
@@ -33,7 +33,7 @@ import { track } from '@/lib/analytics';
 
 const TABS = ['Stake', 'Unstake'];
 const CHART_DAYS = 365;
-const CHART_TABS = ['APR', 'Price', 'TVL'];
+const CHART_TABS = ['APR', 'Price', 'TVL', 'APR by TVL'];
 const STEPS = [
 	{
 		icon: <FontAwesomeIcon icon={faArrowRightToBracket} className="w-3 h-3 text-usdu-card" />,
@@ -176,10 +176,15 @@ function StrategyDetailPageContent() {
 			headline: lastApr ? fmtPercent(lastApr.v) : '—',
 			format: fmtPercent,
 		},
+		// not a time series: the curve is drawn by ApyChart from the current stream rate
+		'APR by TVL': { points: [], variant: 'area' as const, headline: fmtPercent(stream.apr), format: fmtPercent },
 	}[chartTab]!;
-	const chartSubtitle = { TVL: 'Total value locked', Price: `${stream.symbol} price in ${currency}`, APR: 'Realized, 7-day rolling' }[
-		chartTab
-	];
+	const chartSubtitle = {
+		TVL: 'Total value locked',
+		Price: `${stream.symbol} price in ${currency}`,
+		APR: 'Realized, 7-day rolling',
+		'APR by TVL': 'The current stream rate spread over any TVL',
+	}[chartTab];
 	const realizedDays = Math.min(Math.floor((now - (dailyPoints[0]?.day ?? now)) / 86_400), 7);
 	const realizedApr = lastApr ? fmtPercent(lastApr.v) : '—';
 	const inputSymbol = isStake ? currency : stream.symbol;
@@ -241,7 +246,15 @@ function StrategyDetailPageContent() {
 						<p className="text-2xl font-bold text-text-primary text-right">{chart.headline}</p>
 					</div>
 
-					{chart.points.length > 1 ? (
+					{chartTab === 'APR by TVL' ? (
+						<ApyChart
+							yearly={stream.ratePerDay * 365}
+							tvl={stream.staked}
+							metric="APR"
+							formatTvl={(v) => formatCompactNumber(v, 1, '').replace(/\.0(?=[kMBT]?$)/, '')}
+							unit={currency}
+						/>
+					) : chart.points.length > 1 ? (
 						<TimeSeriesChart
 							points={chart.points}
 							variant={chart.variant}
