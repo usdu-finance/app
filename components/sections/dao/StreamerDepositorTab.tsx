@@ -216,6 +216,20 @@ export default function StreamerDepositorTab({
 			{ title: `${functionName === 'deposit' ? 'Deposit' : 'Disable flow'} ${flowSymbol}` }
 		).catch(() => undefined); // declined in the wallet
 
+	// every flow a deposit can run for right now, sent as one batch of deposits
+	const depositableRows = rows.filter((r) => r.onchain?.enabled && r.depositable > 0n);
+	const batchDeposit = () =>
+		submit(
+			depositableRows.map((r) => ({
+				address: STREAMER_DEPOSITOR,
+				abi: StreamerDepositorV1_ABI,
+				functionName: 'deposit' as const,
+				args: [r.flow.token] as const,
+				label: `Deposit ${r.flow.symbol}`,
+			})),
+			{ title: `Deposit ${depositableRows.map((r) => r.flow.symbol).join(', ')}` }
+		).catch(() => undefined); // declined in the wallet
+
 	const now = Math.floor(Date.now() / 1000);
 	const nextLabel = (r: (typeof rows)[number]) => {
 		if (!r.onchain?.enabled) return '—';
@@ -310,6 +324,24 @@ export default function StreamerDepositorTab({
 						)}
 					</TableBody>
 				</Table>
+				<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+					<div>
+						<div className="font-semibold text-text-primary">Execute actions</div>
+						<div className="text-text-secondary">
+							Runs every deposit that is possible right now, one signature each or a single bundle where the wallet supports
+							it.
+						</div>
+					</div>
+					<button
+						type="button"
+						disabled={!address || depositableRows.length === 0 || isSigning}
+						onClick={batchDeposit}
+						className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-usdu-orange text-white hover:opacity-90 transition-opacity disabled:opacity-40 disabled:pointer-events-none whitespace-nowrap"
+					>
+						<FontAwesomeIcon icon={faCoins} className="w-4 h-4" />
+						{depositableRows.length > 0 ? `Batch deposit (${depositableRows.length})` : 'Batch deposit'}
+					</button>
+				</div>
 			</Card>
 
 			<div id="set-flow" className="grid gap-8 md:grid-cols-2 scroll-mt-8">
