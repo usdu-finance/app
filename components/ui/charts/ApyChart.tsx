@@ -81,7 +81,9 @@ export default function ApyChart({ yearly, tvl, targets, formatTvl, unit, height
 	const todayAnchor = x(tvl) > width - 80 ? 'end' : 'middle';
 
 	return (
-		<div className={className}>
+		// relative: the sr-only list below is absolutely positioned, and without a positioned parent it is measured against the
+		// whole page, so its spot far down inside <main> would make the page itself scrollable
+		<div className={`relative ${className}`}>
 			<div ref={ref} className="relative w-full" style={{ height }}>
 				{!empty && width > 0 && (
 					<svg
